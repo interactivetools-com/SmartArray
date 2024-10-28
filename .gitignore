@@ -1,6 +1,7 @@
 .idea/
-vendor/
+.phpunit.result.cache
+composer*.phar
 composer.bat
 composer.lock
-composer*.phar
-.phpunit.result.cache
+test.php
+vendor/

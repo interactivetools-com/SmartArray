@@ -47,7 +47,7 @@ foreach ($users as $user) {
 }
 
 // Values are automatically HTML-encoded in string contexts to prevent XSS (see SmartString docs more details)
-echo $users->first()->city; // Output: &lt;i&gt;New York&lt;/i&gt;
+echo $users->first()->name; // Output: John O&apos;Connor
     
 // Use chainable methods to transform data
 $userIdAsCSV = $users->pluck('id')->join(', '); // Output: "10, 15, 20"

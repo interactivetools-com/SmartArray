@@ -59,8 +59,7 @@ $usersArray = $users->toArray(); // Convert back to a regular PHP array and valu
 $userId = $users->first()->id->value(); // Returns 10 as an integer
 ```    
 
-You can read more about SmartString features and usage examples here:
-https://github.com/interactivetools-com/SmartString
+See the [Method Reference](#method-reference) for more information on available methods.
 
 ## Creating Grid Layouts
 
@@ -116,8 +115,7 @@ Both approaches create the following code:
     </tr>
 </table>
 ```
-
-See the method reference below for more information on available methods.
+See the [Method Reference](#method-reference) for more information on available methods.
 
 ## Debugging and Help
 

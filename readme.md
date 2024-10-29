@@ -206,6 +206,11 @@ Continues...
 |   **Debugging and Help** |                                                                                                                                                                             |
 |                   help() | Displays help information about available methods                                                                                                                           |
 
+**See Also:** For working with `SmartArray` values, check out the included companion
+library `SmartString`, all `SmartArray` values are `SmartString` objects with
+automatic HTML encoding and chainable methods:  
+https://github.com/interactivetools-com/SmartString?tab=readme-ov-file#method-reference
+
 ## Questions?
 
 This library was developed for CMS Builder, post a message in our "CMS Builder" forum here:

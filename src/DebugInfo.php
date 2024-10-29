@@ -71,6 +71,7 @@ class DebugInfo
             toArray()                Recursively convert SmartArray and SmartStrings back to a standard PHP array.
             keys()                   New SmartArray of keys
             values()                 New SmartArray of values
+            unique()                 New SmartArray with unique values (removes duplicates, preserves keys)
             indexBy($key)            New SmartArray indexed by column
             groupBy($key)            Group by column (list of rows for each key)
             join($separator)         Join elements into a string

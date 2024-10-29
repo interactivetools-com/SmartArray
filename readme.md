@@ -115,6 +115,7 @@ Both approaches create the following code:
     </tr>
 </table>
 ```
+
 See the [Method Reference](#method-reference) for more information on available methods.
 
 ## Debugging and Help
@@ -195,6 +196,7 @@ Continues...
 | **Array Transformation** |                                                                                                                                                                             |
 |                   keys() | Get just the keys as a new `SmartArray`, e.g., `['id', 'name', 'email']`                                                                                                    |
 |                 values() | Get just the values as a new `SmartArray`, discarding the keys                                                                                                              |
+|                 unique() | Get unique values (removes duplicates, preserves keys)                                                                                                                      
 |         indexBy($column) | For nested arrays, create a new `SmartArray` using a column as the key, e.g., `indexBy('id')`. Duplicates use latest value.                                                 |
 |         groupBy($column) | Like `indexBy()` but returns values as a `SmartArray` to preserve duplicates.  e.g., `$usersByCity = $users->groupBy('city')`                                               |
 |         join($separator) | Combine values into a `SmartString`, e.g., `$users->pluck('id')->join(', ')` creates `"23, 51, 72"`                                                                         |

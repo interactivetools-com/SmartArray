@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Itools\SmartArray;
@@ -11,7 +12,7 @@ use JsonSerializable;
 /**
  * SmartArray - Represent an array as an ArrayObject with extra features and a fluent, chainable interface.
  */
-class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ignore S1448 "Too many methods"
+class SmartArray extends ArrayObject implements JsonSerializable                                                                                                                                                                                                                    // NOSONAR - Ignore S1448 "Too many methods"
 {
     #region Creation and Conversion
 
@@ -65,7 +66,6 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
         }
     }
 
-
     /**
      * Recursively converts SmartArray back to a standard PHP array.
      *
@@ -84,16 +84,15 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
         $array = [];
         foreach ($this as $key => $value) {
             $array[$key] = match (true) {
-                $value instanceof self        => $value->toArray(),  // Recursively convert nested SmartArrays
-                $value instanceof SmartString => $value->value(),    // Convert SmartStrings to original values
-                $value instanceof SmartNull   => null,               // Convert SmartNull to null
+                $value instanceof self        => $value->toArray(),   // Recursively convert nested SmartArrays
+                $value instanceof SmartString => $value->value(),     // Convert SmartStrings to original values
+                $value instanceof SmartNull   => null,                // Convert SmartNull to null
                 default                       => throw new InvalidArgumentException("Unexpected value type encountered: " . get_debug_type($value)),
             };
         }
 
         return $array;
     }
-
 
     /**
      * Customizes JSON serialization for list-like arrays (sequential keys 0, 1, 2...).
@@ -292,10 +291,10 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
     {
         $typeOrClass = get_debug_type($value); // Returns SmartArray instead of \Itools\SmartArray\SmartArray
         $quotedKey   = is_numeric($key) ? $key : "'$key'";
-        $newValue = match ($typeOrClass) {
-            'array'                                  => new SmartArray($value),   // Convert nested arrays to SmartArrays
+        $newValue    = match ($typeOrClass) {
+            'array' => new SmartArray($value),                                    // Convert nested arrays to SmartArrays
             'string', 'int', 'float', 'bool', 'null' => new SmartString($value),  // Convert scalars and nulls to SmartStrings
-            default                                  => throw new InvalidArgumentException("SmartArray doesn't support '$typeOrClass' values. Key $quotedKey"),
+            default => throw new InvalidArgumentException("SmartArray doesn't support '$typeOrClass' values. Key $quotedKey"),
         };
 
         parent::offsetSet($key, $newValue);
@@ -341,6 +340,21 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
     }
 
     /**
+     * Returns a new SmartArray instance with unique values, preserving keys.  Just like array_unique().
+     *
+     * This method removes duplicate values from the SmartArray, preserving the original keys.
+     * The first occurrence of each unique value is preserved.
+     *
+     * @return SmartArray A new instance of SmartArray with duplicate values removed,
+     *                    keeping only the first occurrence of each unique value.
+     */
+    public function unique(): SmartArray
+    {
+        $unique = array_unique($this->toArray());
+        return new SmartArray($unique);
+    }
+
+    /**
      * Creates a new SmartArray indexed by the specified column.
      *
      * This method transforms the current SmartArray (assumed to be a nested array of rows)
@@ -376,14 +390,12 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
     public function indexBy(string $column): SmartArray
     {
         $values = [];
-        if ($this->count() > 0) {
-            $this->assertNestedArray();
-            $this->first()->warnIfMissing($column, 'argument');
+        $this->assertNestedArray();
+        $this->first()->warnIfMissing($column, 'argument');
 
-            foreach ($this->toArray() as $row) {
-                $key = $row[$column];
-                $values[$key] = $row;
-            }
+        foreach ($this->toArray() as $row) {
+            $key = $row[$column];
+            $values[$key] = $row;
         }
 
         return new SmartArray($values);
@@ -422,14 +434,12 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
     public function groupBy(string $column): SmartArray
     {
         $values = [];
-        if ($this->count() > 0) {
-            $this->assertNestedArray();
-            $this->first()->warnIfMissing($column, 'argument');
+        $this->assertNestedArray();
+        $this->first()->warnIfMissing($column, 'argument');
 
-            foreach ($this->toArray() as $row) {
-                $key = $row[$column];
-                $values[$key][] = $row;
-            }
+        foreach ($this->toArray() as $row) {
+            $key = $row[$column];
+            $values[$key][] = $row;
         }
 
         return new SmartArray($values);
@@ -452,13 +462,10 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
      */
     public function join(string $separator): SmartString
     {
-        $value = "";
-        if ($this->count() > 0) {
-            $this->assertFlatArray();
+        $this->assertFlatArray();
 
-            $values = array_map('strval', array_values($this->toArray()));
-            $value  = implode($separator, $values);
-        }
+        $values = array_map('strval', array_values($this->toArray()));
+        $value  = implode($separator, $values);
 
         return new SmartString($value);
     }
@@ -505,10 +512,6 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
      */
     public function pluck(string|int $key): SmartArray
     {
-        if ($this->count() === 0) {
-            return new SmartArray();
-        }
-
         $this->assertNestedArray();
         $this->first()->warnIfMissing($key, 'argument');
 
@@ -571,7 +574,7 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
      */
     public function __toString(): string
     {
-        $caller       = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[0];
+        $caller = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[0];
         $inFileOnLine = sprintf("in %s on line %s", $caller['file'], $caller['line']);
 
         // output warning and trigger PHP warning (for logging)
@@ -604,9 +607,9 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
     // array elements are stored in an inaccessible internal array in $this->storage by PHP's ArrayObject
     // So getting/setting properties updates the stored element values, NOT the properties themselves
     // To maintain separation, internal properties must be private and accessed via getProp() and setProp()
-    private bool $isFirst  = false;    // Is this ArrayObject the first child element of a parent ArrayObject? // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
-    private bool $isLast   = false;    // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
-    private int  $position = 0;        // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
+    private bool $isFirst  = false;                                                                                                                                                                           // Is this ArrayObject the first child element of a parent ArrayObject? // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
+    private bool $isLast = false;                                                                                                                                                                                                                                                  // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
+    private int  $position = 0;                                                                                                                                                                                                                                                     // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
 
     /**
      * Method to toggle the ArrayObject's STD_PROP_LIST flag
@@ -650,7 +653,7 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
      */
     private function assertFlatArray(): void
     {
-        if ($this->isNestedSmartArray()) {
+        if ($this->count() > 0 && $this->isNestedSmartArray()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a flat array, but got a nested SmartArray";
             throw new InvalidArgumentException($error);
@@ -662,7 +665,7 @@ class SmartArray extends ArrayObject implements JsonSerializable // NOSONAR - Ig
      */
     private function assertNestedArray(): void
     {
-        if (!$this->isNestedSmartArray()) {
+        if ($this->count() > 0 && !$this->isNestedSmartArray()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a nested SmartArray, but got a flat array";
             throw new InvalidArgumentException($error);

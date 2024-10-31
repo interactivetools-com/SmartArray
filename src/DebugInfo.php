@@ -72,11 +72,13 @@ class DebugInfo
             keys()                   New SmartArray of keys
             values()                 New SmartArray of values
             unique()                 New SmartArray with unique values (removes duplicates, preserves keys)
-            indexBy($key)            New SmartArray indexed by column
-            groupBy($key)            Group by column (list of rows for each key)
+            sort()                   New SmartArray sorted by values
+            sortBy($column)          New SmartArray sorted by column
+            indexBy($column)         New SmartArray indexed by column
+            groupBy($column)         Group by column (list of rows for each key)
             join($separator)         Join elements into a string
             map($callback)           Apply callback to each element
-            pluck($key)              Extract single column from nested array
+            pluck($column)           Extract single column from nested array
             chunk($size)             Split into smaller SmartArrays
 
             Iteration:

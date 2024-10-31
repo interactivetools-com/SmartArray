@@ -259,12 +259,11 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      *
      * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property access
      * for all keys, whether they are defined or not, completely bypassing __get.
-     *
-     * @param $key
-     * @return SmartArray|SmartString|SmartNull
      */
-    public function offsetGet($key): SmartArray|SmartString|SmartNull
+    public function offsetGet(mixed $key): SmartArray|SmartString|SmartNull
     {
+        $key = $key instanceof SmartString ? $key->value() : $key; // Convert SmartString keys to raw values
+
         if ($this->offsetExists($key)) {
             return parent::offsetGet($key);
         }
@@ -352,6 +351,38 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         $unique = array_unique($this->toArray());
         return new SmartArray($unique);
+    }
+
+    /**
+     * Returns a new SmartArray instance sorted by values, uses PHP sort() function.
+     */
+    public function sort(int $flags = SORT_REGULAR): SmartArray
+    {
+        $this->assertFlatArray();
+
+        $sorted = $this->toArray();
+        sort($sorted, $flags);
+        return new SmartArray($sorted);
+    }
+
+    /**
+     * Returns a new SmartArray sorted by the specified column, uses PHP array_multisort().
+     *
+     * @param string $column
+     * @param int $type
+     * @return SmartArray
+     */
+    public function sortBy(string $column, int $type = SORT_REGULAR): SmartArray {
+
+        $this->assertNestedArray();
+        $this->first()->warnIfMissing($column, 'argument');
+
+        // sort by key
+        $sorted       = $this->toArray();
+        $columnValues = array_column($sorted, $column);
+        array_multisort($columnValues, SORT_ASC, $type, $sorted);
+
+        return new SmartArray($sorted);
     }
 
     /**

@@ -27,7 +27,7 @@
   },
   "require": {
     "php": "^8.0",
-    "itools/smartstring": "^v1.3.0"
+    "itools/smartstring": "*@dev"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.6"

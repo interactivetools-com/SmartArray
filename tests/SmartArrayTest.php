@@ -61,31 +61,31 @@ class SmartArrayTest extends TestCase
         $expected = <<<'__TEXT__'
             array(
                 array(
-                    html    => '<img alt=\'"\'>'
-                    int     => 7
-                    float   => 5.7
-                    string  => '&nbsp;'
-                    bool    => true
-                    null    => NULL
-                    isFirst => 'C'
+                    html    => '<img alt=\'"\'>',
+                    int     => 7,
+                    float   => 5.7,
+                    string  => '&nbsp;',
+                    bool    => true,
+                    null    => NULL,
+                    isFirst => 'C',
                 ),
                 array(
-                    html    => '<p>"It\'s"</p>'
-                    int     => 0
-                    float   => 1.23
-                    string  => '"green"'
-                    bool    => false
-                    null    => NULL
-                    isFirst => 'Q'
+                    html    => '<p>"It\'s"</p>',
+                    int     => 0,
+                    float   => 1.23,
+                    string  => '"green"',
+                    bool    => false,
+                    null    => NULL,
+                    isFirst => 'Q',
                 ),
                 array(
-                    html    => '<hr class=\'line\'>'
-                    int     => 1
-                    float   => -16.7
-                    string  => '<blue>'
-                    bool    => false
-                    null    => NULL
-                    isFirst => 'K'
+                    html    => '<hr class=\'line\'>',
+                    int     => 1,
+                    float   => -16.7,
+                    string  => '<blue>',
+                    bool    => false,
+                    null    => NULL,
+                    isFirst => 'K',
                 ),
             ),
             __TEXT__;
@@ -98,13 +98,13 @@ class SmartArrayTest extends TestCase
     {
         $expected = <<<'__TEXT__'
             array(
-                html    => '<p>"It\'s"</p>'
-                int     => 0
-                float   => 1.23
-                string  => '"green"'
-                bool    => false
-                null    => NULL
-                isFirst => 'Q'
+                html    => '<p>"It\'s"</p>',
+                int     => 0,
+                float   => 1.23,
+                string  => '"green"',
+                bool    => false,
+                null    => NULL,
+                isFirst => 'Q',
             ),
             __TEXT__;
         $actual   = rtrim(self::compactVarExport($this->getTestRecord()));
@@ -124,9 +124,17 @@ class SmartArrayTest extends TestCase
             $reflection = new ReflectionObject($var);
             foreach ($reflection->getProperties() as $property) {
                 $property->setAccessible(true);
-                $properties[$property->getName()] = $property->getValue($var);
+                if ($property->getName() !== 'parent') { // exclude parent reference
+                    $properties[$property->getName()] = $property->getValue($var);
+                }
             }
-            $propertiesCSV = implode(", ", array_map(fn($k, $v) => "$k => " . var_export($v, true), array_keys($properties), array_values($properties)));
+            $propertiesCSV = implode(", ", array_map(function ($key, $value) {
+                $varExport = match (true) {
+                    is_array($value) => "[" . implode(", ", array_map(static fn($k, $v) => "$k => " . var_export($v, true), array_keys($value), $value)) . "]",
+                    default          => var_export($value, true),
+                };
+                return "$key => $varExport";
+            }, array_keys($properties), array_values($properties)));
             $propertiesCSV = str_replace("true, ", "true,  ", $propertiesCSV); // align true/false values for better readability
 
             // build output
@@ -162,7 +170,7 @@ class SmartArrayTest extends TestCase
         } elseif ($var instanceof SmartNull) {
             $output = "SmartNull()\n";
         } else {
-            $output = var_export($var, true) . "\n";
+            $output = var_export($var, true) . ",\n";
         }
 
         return $output;
@@ -175,33 +183,33 @@ class SmartArrayTest extends TestCase
     {
         $object   = new SmartArray($this->getTestRecords());
         $expected = <<<'__TEXT__'
-            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0
-                SmartArray([   // Properties: isFirst => true,  isLast => false, position => 1
-                    html    => SmartString('<img alt=\'"\'>')
-                    int     => SmartString(7)
-                    float   => SmartString(5.7)
-                    string  => SmartString('&nbsp;')
-                    bool    => SmartString(true)
-                    null    => SmartString(NULL)
-                    isFirst => SmartString('C')
+            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0, metadata => []
+                SmartArray([   // Properties: isFirst => true,  isLast => false, position => 1, metadata => []
+                    html    => '<img alt=\'"\'>',
+                    int     => 7,
+                    float   => 5.7,
+                    string  => '&nbsp;',
+                    bool    => true,
+                    null    => NULL,
+                    isFirst => 'C',
                 ]),
-                SmartArray([   // Properties: isFirst => false, isLast => false, position => 2
-                    html    => SmartString('<p>"It\'s"</p>')
-                    int     => SmartString(0)
-                    float   => SmartString(1.23)
-                    string  => SmartString('"green"')
-                    bool    => SmartString(false)
-                    null    => SmartString(NULL)
-                    isFirst => SmartString('Q')
+                SmartArray([   // Properties: isFirst => false, isLast => false, position => 2, metadata => []
+                    html    => '<p>"It\'s"</p>',
+                    int     => 0,
+                    float   => 1.23,
+                    string  => '"green"',
+                    bool    => false,
+                    null    => NULL,
+                    isFirst => 'Q',
                 ]),
-                SmartArray([   // Properties: isFirst => false, isLast => true,  position => 3
-                    html    => SmartString('<hr class=\'line\'>')
-                    int     => SmartString(1)
-                    float   => SmartString(-16.7)
-                    string  => SmartString('<blue>')
-                    bool    => SmartString(false)
-                    null    => SmartString(NULL)
-                    isFirst => SmartString('K')
+                SmartArray([   // Properties: isFirst => false, isLast => true,  position => 3, metadata => []
+                    html    => '<hr class=\'line\'>',
+                    int     => 1,
+                    float   => -16.7,
+                    string  => '<blue>',
+                    bool    => false,
+                    null    => NULL,
+                    isFirst => 'K',
                 ]),
             ]),
             __TEXT__;
@@ -214,14 +222,14 @@ class SmartArrayTest extends TestCase
     {
         $object   = new SmartArray($this->getTestRecord());
         $expected = <<<'__TEXT__'
-            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0
-                html    => SmartString('<p>"It\'s"</p>')
-                int     => SmartString(0)
-                float   => SmartString(1.23)
-                string  => SmartString('"green"')
-                bool    => SmartString(false)
-                null    => SmartString(NULL)
-                isFirst => SmartString('Q')
+            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0, metadata => []
+                html    => '<p>"It\'s"</p>',
+                int     => 0,
+                float   => 1.23,
+                string  => '"green"',
+                bool    => false,
+                null    => NULL,
+                isFirst => 'Q',
             ]),
             __TEXT__;
 
@@ -233,7 +241,7 @@ class SmartArrayTest extends TestCase
     {
         $object   = new SmartArray();
         $expected = <<<'__TEXT__'
-            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0
+            SmartArray([       // Properties: isFirst => false, isLast => false, position => 0, metadata => []
             ]),
             __TEXT__;
         $actual   = rtrim(self::compactVarExport($object));
@@ -1687,76 +1695,76 @@ class SmartArrayTest extends TestCase
     }
 
     /**
-     * @dataProvider joinProvider
+     * @dataProvider implodeProvider
      */
-    public function testJoin($input, $separator, $expected, $shouldThrowException = false): void
+    public function testImplode($input, $separator, $expected, $shouldThrowException = false): void
     {
         $smartArray = new SmartArray($input);
 
         if ($shouldThrowException) {
             $this->expectException(InvalidArgumentException::class);
-            $this->expectExceptionMessage("Expected a flat array, but got a nested SmartArray");
-            $smartArray->join($separator);
+            $this->expectExceptionMessage("Expected a flat array, but got a nested array");
+            $smartArray->implode($separator);
             return;
         }
 
-        $joined              = $smartArray->join($separator);
+        $joined              = $smartArray->implode($separator);
         $expectedSmartString = new SmartString($expected);
         $this->assertSame($expectedSmartString->value(), $joined->value());
     }
 
-    public function joinProvider(): array
+    public function implodeProvider(): array
     {
         return [
-            'empty array'                                => [
+            'empty array'                                   => [
                 'input'                => [],
                 'separator'            => ', ',
                 'expected'             => '',
                 'shouldThrowException' => false,
             ],
-            'flat array with primitives'                 => [
+            'flat array with primitives'                    => [
                 'input'                => ['apple', 'banana', 'cherry'],
                 'separator'            => ', ',
                 'expected'             => 'apple, banana, cherry',
                 'shouldThrowException' => false,
             ],
-            'join with comma separator'                  => [
+            'implode with comma separator'                  => [
                 'input'                => ['apple', 'banana', 'cherry'],
                 'separator'            => ', ',
                 'expected'             => 'apple, banana, cherry',
                 'shouldThrowException' => false,
             ],
-            'join with space separator'                  => [
+            'implode with space separator'                  => [
                 'input'                => ['apple', 'banana', 'cherry'],
                 'separator'            => ' ',
                 'expected'             => 'apple banana cherry',
                 'shouldThrowException' => false,
             ],
-            'join with hyphen separator'                 => [
+            'implode with hyphen separator'                 => [
                 'input'                => ['apple', 'banana', 'cherry'],
                 'separator'            => ' - ',
                 'expected'             => 'apple - banana - cherry',
                 'shouldThrowException' => false,
             ],
-            'join with special characters'               => [
+            'implode with special characters'               => [
                 'input'                => ['He said "Hello"', "It's a test", 'Line1\nLine2', 'Comma, separated'],
                 'separator'            => '; ',
                 'expected'             => 'He said "Hello"; It\'s a test; Line1\nLine2; Comma, separated',
                 'shouldThrowException' => false,
             ],
-            'join single element array'                  => [
+            'implode single element array'                  => [
                 'input'                => ['onlyOne'],
                 'separator'            => ', ',
                 'expected'             => 'onlyOne',
                 'shouldThrowException' => false,
             ],
-            'join with numeric elements'                 => [
+            'implode with numeric elements'                 => [
                 'input'                => [100, 200.5, 300],
                 'separator'            => '-',
                 'expected'             => '100-200.5-300',
                 'shouldThrowException' => false,
             ],
-            'join nested array (should throw exception)' => [
+            'implode nested array (should throw exception)' => [
                 'input'                => [
                     ['apple', 'banana'],
                     ['cherry', 'date'],
@@ -1923,7 +1931,7 @@ class SmartArrayTest extends TestCase
         $originalArray = $smartArray->toArray();
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage("Expected a nested SmartArray, but got a flat array");
+        $this->expectExceptionMessage("Expected a nested array, but got a flat array");
 
         $smartArray->pluck('name');
 
@@ -2094,10 +2102,10 @@ class SmartArrayTest extends TestCase
                 'expected' => <<<'__TEXT__'
                                   Itools\SmartArray\SmartArray Object
                                   (
-                                      [__DEBUG_INFO__] => // SmartArray debug view, call $var->help() for inline help
+                                      [__DEBUG_INFO__] => // Values are SmartArrays and SmartStrings unless specified otherwise, call $var->help() for inline help
                                   
-                                      SmartArray([        // Metadata: isFirst: false, isLast: false, position: 0
-                                      ]),
+                                      [
+                                      ],
                                   )
                                   __TEXT__
                 ,
@@ -2107,18 +2115,17 @@ class SmartArrayTest extends TestCase
                 'expected' => <<<'__TEXT__'
                                   Itools\SmartArray\SmartArray Object
                                   (
-                                      [__DEBUG_INFO__] => // SmartArray debug view, call $var->help() for inline help
+                                      [__DEBUG_INFO__] => // Values are SmartArrays and SmartStrings unless specified otherwise, call $var->help() for inline help
                                   
-                                      SmartArray([        // Metadata: isFirst: false, isLast: false, position: 0
-                                          SmartString(11),
-                                          SmartString("string"),
-                                          SmartString(TRUE),
-                                          SmartString(NULL),
-                                          SmartString(3.14),
-                                      ]),
+                                      [
+                                          [0] => 11,
+                                          [1] => 'string',
+                                          [2] => true,
+                                          [3] => NULL,
+                                          [4] => 3.14,
+                                      ],
                                   )
-                                  __TEXT__
-                ,
+                                  __TEXT__,
             ],
 
             'nested array' => [
@@ -2131,30 +2138,30 @@ class SmartArrayTest extends TestCase
                 'expected' => <<<'__TEXT__'
                                   Itools\SmartArray\SmartArray Object
                                   (
-                                      [__DEBUG_INFO__] => // SmartArray debug view, call $var->help() for inline help
+                                      [__DEBUG_INFO__] => // Values are SmartArrays and SmartStrings unless specified otherwise, call $var->help() for inline help
                                   
-                                      SmartArray([        // Metadata: isFirst: false, isLast: false, position: 0
-                                          SmartArray([    // Metadata: isFirst: true,  isLast: false, position: 1
-                                              name  => SmartString("John"),
-                                              city  => SmartString("New York"),
-                                              color => SmartString("blue"),
-                                          ]),
-                                          SmartArray([    // Metadata: isFirst: false, isLast: false, position: 2
-                                              name  => SmartString("Jane"),
-                                              city  => SmartString("Los Angeles"),
-                                              color => SmartString("red"),
-                                          ]),
-                                          SmartArray([    // Metadata: isFirst: false, isLast: false, position: 3
-                                              name  => SmartString("Jack"),
-                                              city  => SmartString("Chicago"),
-                                              color => SmartString("green"),
-                                          ]),
-                                          SmartArray([    // Metadata: isFirst: false, isLast: true,  position: 4
-                                              name  => SmartString("Jill"),
-                                              city  => SmartString("Miami"),
-                                              color => SmartString("green"),
-                                          ]),
-                                      ]),
+                                      [
+                                          [0] => [
+                                              'name'  => 'John',
+                                              'city'  => 'New York',
+                                              'color' => 'blue',
+                                          ],
+                                          [1] => [
+                                              'name'  => 'Jane',
+                                              'city'  => 'Los Angeles',
+                                              'color' => 'red',
+                                          ],
+                                          [2] => [
+                                              'name'  => 'Jack',
+                                              'city'  => 'Chicago',
+                                              'color' => 'green',
+                                          ],
+                                          [3] => [
+                                              'name'  => 'Jill',
+                                              'city'  => 'Miami',
+                                              'color' => 'green',
+                                          ],
+                                      ],
                                   )
                                   __TEXT__
                 ,
@@ -2177,42 +2184,42 @@ class SmartArrayTest extends TestCase
                 'expected' => <<<'__TEXT__'
                                   Itools\SmartArray\SmartArray Object
                                   (
-                                      [__DEBUG_INFO__] => // SmartArray debug view, call $var->help() for inline help
+                                      [__DEBUG_INFO__] => // Values are SmartArrays and SmartStrings unless specified otherwise, call $var->help() for inline help
                                   
-                                      SmartArray([        // Metadata: isFirst: false, isLast: false, position: 0
-                                          North America => SmartArray([        // Metadata: isFirst: true,  isLast: true,  position: 1
-                                              Canada        => SmartArray([        // Metadata: isFirst: true,  isLast: false, position: 1
-                                                  British Columbia => SmartArray([        // Metadata: isFirst: true,  isLast: false, position: 1
-                                                      SmartString("Vancouver"),
-                                                      SmartString("Victoria"),
-                                                      SmartString("Kelowna"),
-                                                      SmartString("Nanaimo"),
-                                                  ]),
-                                                  Alberta          => SmartArray([        // Metadata: isFirst: false, isLast: true,  position: 2
-                                                      SmartString("Calgary"),
-                                                      SmartString("Edmonton"),
-                                                      SmartString("Red Deer"),
-                                                  ]),
-                                              ]),
-                                              United States => SmartArray([        // Metadata: isFirst: false, isLast: true,  position: 2
-                                                  California => SmartArray([        // Metadata: isFirst: true,  isLast: false, position: 1
-                                                      SmartString("Los Angeles"),
-                                                      SmartString("San Francisco"),
-                                                      SmartString("San Diego"),
-                                                  ]),
-                                                  New York   => SmartArray([        // Metadata: isFirst: false, isLast: false, position: 2
-                                                      SmartString("New York City"),
-                                                      SmartString("Buffalo"),
-                                                      SmartString("Rochester"),
-                                                  ]),
-                                                  Florida    => SmartArray([        // Metadata: isFirst: false, isLast: true,  position: 3
-                                                      SmartString("Miami"),
-                                                      SmartString("Orlando"),
-                                                      SmartString("Tampa"),
-                                                  ]),
-                                              ]),
-                                          ]),
-                                      ]),
+                                      [
+                                          'North America' => [
+                                              'Canada'        => [
+                                                  'British Columbia' => [
+                                                      [0] => 'Vancouver',
+                                                      [1] => 'Victoria',
+                                                      [2] => 'Kelowna',
+                                                      [3] => 'Nanaimo',
+                                                  ],
+                                                  'Alberta'          => [
+                                                      [0] => 'Calgary',
+                                                      [1] => 'Edmonton',
+                                                      [2] => 'Red Deer',
+                                                  ],
+                                              ],
+                                              'United States' => [
+                                                  'California' => [
+                                                      [0] => 'Los Angeles',
+                                                      [1] => 'San Francisco',
+                                                      [2] => 'San Diego',
+                                                  ],
+                                                  'New York'   => [
+                                                      [0] => 'New York City',
+                                                      [1] => 'Buffalo',
+                                                      [2] => 'Rochester',
+                                                  ],
+                                                  'Florida'    => [
+                                                      [0] => 'Miami',
+                                                      [1] => 'Orlando',
+                                                      [2] => 'Tampa',
+                                                  ],
+                                              ],
+                                          ],
+                                      ],
                                   )
                                   __TEXT__
                 ,

@@ -1,9 +1,8 @@
-# SmartArray: PHP Arrays with Superpowers
+# SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
 
-SmartArray enhances PHP arrays to work as both traditional arrays and chainable objects.
-You get all the familiar array features you know, plus powerful new methods for filtering,
-mapping, grouping, and handling nested data - making array operations simpler while preserving
-normal array syntax.
+SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
+It preserves familiar array syntax while adding powerful features for filtering, mapping,
+and data manipulation - making common array operations simpler, safer, and more expressive.
 
 ## Table of Contents
 

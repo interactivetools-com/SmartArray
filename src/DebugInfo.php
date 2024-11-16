@@ -117,7 +117,16 @@ class DebugInfo
             $data         .= "// Metadata: Access with ->metadata()->key\n";
             $maxKeyLength = max(array_map('strlen', array_keys($metadata)));
             foreach ($metadata as $key => $value) {
-                $data .= sprintf("$indent->%-{$maxKeyLength}s = %s\n", $key, self::getPrettyVarValue($value));
+                $keyEquals = sprintf("$indent->%-{$maxKeyLength}s = ", $key);
+                $varValue  = self::prettyPrintR($value, 1, true);
+                if ($key === 'sqlQuery') {
+                    $varValue = str_replace("\r", "", $varValue); // remove carriage returns
+                    $varValue = preg_replace("/\n+/", "\n", $varValue); // remove double newlines
+                    $varValue = preg_replace("/^/m", str_pad("", $maxKeyLength+9), $varValue); // comment out SQL query
+                    $varValue = trim($varValue, " ',\n"); // remove leading space and quote
+                    $varValue .= "\n";
+                }
+                $data .= "$keyEquals$varValue";
             }
             $data .= "\n";
         }

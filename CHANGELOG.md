@@ -1,5 +1,8 @@
 # SmartArray Changelog
 
+TODO: 
+- document offsetExists($key) as if it's one of our own methods
+
 ## [Unreleased] - 2024-11-13
 
 - New experimental load() method (may change in future)

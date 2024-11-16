@@ -81,7 +81,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @param array $array The input array to convert into a SmartArray
      * @return SmartArray A new SmartArray instance
      */
-    public static function new(array $array, array $metadata = []): SmartArray
+    public static function new(array $array = [], array $metadata = []): SmartArray
     {
         return new self($array, $metadata);
     }
@@ -102,12 +102,12 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         // Future options: We could add a default arg $smartStringsToValues = true to allow SmartStrings to be returned as objects
         $array = [];
-        foreach ($this as $key => $value) {
+        foreach ($this->getArrayCopy() as $key => $value) {  // getArrayCopy so getIterator doesn't convert everything to SmartStrings
             $array[$key] = match (true) {
                 $value instanceof self             => $value->toArray(),   // Recursively convert nested SmartArrays
                 is_scalar($value), is_null($value) => $value,              // Scalars and nulls are returned as-is
                 $value instanceof SmartNull        => null,                // Convert SmartNull to null
-                default                            => throw new InvalidArgumentException("Unexpected value type encountered: " . get_debug_type($value)),
+                default                            => throw new InvalidArgumentException(__METHOD__ . ": Unexpected value type encountered: " . get_debug_type($value)),
             };
         }
 
@@ -284,8 +284,19 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @param int|string $key The key or offset of the element to retrieve.
      * @return SmartArray|SmartNull|SmartString|string|int|float|bool|null The value associated with the key. If the key doesn't exist, a SmartNull object is returned to allow further chaining.
      */
-    public function get(int|string $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    public function get(int|string $key, $default = null): SmartArray|SmartNull|SmartString|string|int|float|bool|null
     {
+        // return default if key not found
+        if (func_num_args() >= 2 && !$this->offsetExists($key)) {
+            return match (true) {
+                is_scalar($default), is_null($default) => $this->encodeIfNeeded($default),
+                is_array($default)                     => new SmartArray($default),
+                $default instanceof self               => $default,
+                $default instanceof SmartString        => $default,
+                default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
+            };
+        }
+
         // skip if empty
         if ($this->isEmpty()) {
             return new SmartNull();
@@ -428,6 +439,19 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         };
 
         parent::offsetSet($key, $newValue);
+    }
+
+    public function getIterator(): \Iterator
+    {
+        // Return an iterator that calls offsetGet for each element
+        foreach (array_keys($this->getArrayCopy()) as $key) {
+            $value = parent::offsetGet($key);
+            yield $key => match (true) {
+                $value instanceof self             => $value, // Return nested SmartArray objects as-is
+                is_scalar($value), is_null($value) => $this->encodeIfNeeded($value),
+                default                            => throw new InvalidArgumentException(__METHOD__ . ": SmartArray doesn't support '" . get_debug_type($value) . "' values. Key $key."),
+            };
+        }
     }
 
     #endregion
@@ -750,13 +774,13 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $this->assertNestedArray();
 
         $values = [];
-        foreach ($this as $row) {
+        foreach ($this->getArrayCopy() as $row) {
             $value = $row->nth($position);
             $values[] = match (true) {
                 $value instanceof self             => $value->toArray(),
                 $value instanceof SmartString      => $value->value(),  // nth() returns SmartString, convert to raw value
                 is_scalar($value), is_null($value) => $value,           // Scalars and nulls are returned as-is
-                default                            => throw new Error("Unexpected value type encountered: " . get_debug_type($value)),
+                default                            => throw new Error(__METHOD__ . ": Unexpected value type encountered: " . get_debug_type($value)),
             };
         }
         return $this->cloneWith($values);
@@ -904,12 +928,13 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
         $return = match (strtolower($method)) {
+            'column', 'getcolumn'  => self::logDeprecationAndReturn($this->col(...$args), "Replace ->$method() with ->col()"),
+            'exists'               => self::logDeprecationAndReturn($this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"),
             'firstrow', 'getfirst' => self::logDeprecationAndReturn($this->first(), "Replace ->$method() with ->first()"),
             'getvalues'            => self::logDeprecationAndReturn($this->values(), "Replace ->$method() with ->values()"),
-            'column', 'getcolumn'  => self::logDeprecationAndReturn($this->col(...$args), "Replace ->$method() with ->col()"),
             'item'                 => self::logDeprecationAndReturn($this->get(...$args), "Replace ->$method() with ->get()"),
-            'raw'                  => self::logDeprecationAndReturn($this->toArray(), "Replace ->$method() with ->toArray()"),
             'join'                 => self::logDeprecationAndReturn($this->implode(...$args), "Replace ->$method() with ->implode()"),
+            'raw'                  => self::logDeprecationAndReturn($this->toArray(), "Replace ->$method() with ->toArray()"),
             default                => null,
         };
         if (!is_null($return)) { // All methods should return objects
@@ -1120,7 +1145,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         } else {
             // But if it's not a method, show a list of valid keys in case they mistyped a property/offset name
             $validKeys = implode(', ', array_keys($this->getArrayCopy()));
-            $warning   .= "Valid keys are: $validKeys\n";
+            $warning   .= "Valid keys are: $validKeys (use ->offsetExists() or ->get() with a default value to avoid this warning)\n";
         }
 
 

@@ -1,17 +1,13 @@
-<?php /** @noinspection PhpUnusedPrivateFieldInspection */
-/** @noinspection PhpUnused */
+<?php
 
 declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use ArrayObject;
-use Error;
-use Exception;
-use InvalidArgumentException;
+
+use Throwable, Error, Exception, InvalidArgumentException, RuntimeException;
+use ArrayObject, Iterator, JsonSerializable, stdClass;
 use Itools\SmartString\SmartString;
-use JsonSerializable;
-use stdClass;
 
 /**
  * SmartArray - Represent an array as an ArrayObject with extra features and a fluent, chainable interface.
@@ -23,45 +19,23 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     /**
      * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
      * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the parent array.
+     * within the root array.
      *
      * @param array $array The input array to convert into a SmartArray.
      */
     public function __construct(array $array = [], array|stdClass $metadata = [])
     {
-        // create empty ArrayObject
-        parent::__construct([], ArrayObject::ARRAY_AS_PROPS);
+        parent::__construct([], ArrayObject::ARRAY_AS_PROPS);  // create empty ArrayObject
 
-        // Set metadata
-        $metadata = (array) $metadata; // Convert stdClass to array
-        if (!empty($metadata)) {
-            $this->setProp('metadata', $metadata);
-        }
-
-        // Get first and last keys for nested SmartArray properties
-        $firstKey = array_key_first($array);
-        $lastKey  = array_key_last($array);
-        $position = 0;  // Initialize position for nested SmartArrays within the parent array (1 is the first position)
-
-        // Populate array and set properties
+        // Add array elements to the SmartArray
         foreach ($array as $key => $value) {
-            $position++;                         // increment position for each element (do this here so mixed value arrays are handled correctly)
-            $this->offsetSet($key, $value);      // set values and convert to SmartString or SmartArray
-
-            // Nested SmartArrays, set isFirst(), isLast(), and position() and on child SmartArrays
-            if (is_array($value)) {
-                $childSmartArray = $this->offsetGet($key);  // retrieve the new value, which may be a SmartString or SmartArray
-                $childSmartArray->setProp('parent', $this);
-                $childSmartArray->setProp('position', $position);
-                // $childSmartArray->setProp('metadata', $metadata); // offsetSet() sets parents metadata to child, so no need to set it here
-                if ($key === $firstKey) {
-                    $childSmartArray->setProp('isFirst', true);
-                }
-                if ($key === $lastKey) {
-                    $childSmartArray->setProp('isLast', true);
-                }
-            }
+            $this->offsetSet($key, $value);  // set values and convert arrays to SmartArrays
         }
+
+        // Set properties for root and any nested SmartArrays
+        $this->setProperty('root', $this);
+        $this->setProperty('metadata', (array) $metadata); // Convert stdClass to array if needed
+        $this->updateChildProperties();  // Calculates position, isFirst, isLast, and copies root, metadata, and useSmartStrings
     }
 
     /**
@@ -69,7 +43,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      *
      * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
      * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the parent array.
+     * within the root array.
      *
      * This static method prevents syntax errors when chaining methods. Without it,
      *  developers must wrap 'new SmartArray()' in parentheses to chain methods inline:
@@ -80,11 +54,376 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      *
      * @param array $array The input array to convert into a SmartArray
      * @return SmartArray A new SmartArray instance
+     *
      */
-    public static function new(array $array = [], array $metadata = []): SmartArray
+    public static function new(array $array = [], array|stdClass $metadata = []): self
     {
         return new self($array, $metadata);
     }
+
+    /**
+     * Controls whether values are wrapped in SmartString objects for automatic HTML encoding.
+     *
+     * When enabled, values are wrapped in SmartString objects which provide automatic HTML encoding
+     * and other output formatting methods. The wrapping is done lazily on access, so it doesn't
+     * affect methods like toArray() that return raw values.
+     *
+     * TODO: UPDATE THIS DOC BLOCK
+     *
+     * @example
+     * $array->useSmartStrings(true);  // Convert values to SmartStrings with automatic html-encoding and helper methods
+     * echo $array->name;              // Output is HTML-encoded, e.g., "John &amp; Jane"
+     *
+     * $array->useSmartStrings(false); // Values stay as raw values
+     * echo $array->name;              // Output is raw value, e.g., "John & Jane"
+     */
+    public static function newSS(array $array = [], array|stdClass $metadata = []): self
+    {
+        $obj = new self($array, $metadata);
+        $obj->setProperty('useSmartStrings', true);
+        $obj->updateChildProperties();
+        return $obj;
+    }
+
+    /**
+     * Returns SmartArray or throws an exception load() handler is not available for column
+     *
+     * @param string $column
+     * @return SmartArray
+     * @throws Exception
+     */
+    public function load(string $column): SmartArray
+    {
+        // Require column value
+        if (empty($column)) {
+            throw new InvalidArgumentException("Column name is required for load() method.");
+        }
+
+        // check for load handler
+        $loadHandler = $this->metadata()->_loadHandler ?? '';
+        match (true) {
+            !$loadHandler              => throw new Exception("No load() handler is defined"),
+            !is_callable($loadHandler) => throw new Exception("Load handler is not callable"),
+            default                    => null,
+        };
+
+        // get handler output
+        $result = $loadHandler($this, $column);
+        if ($result === false) {
+            throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
+        }
+
+        // return new SmartArray
+        [$array, $metadata] = $result;
+        return new SmartArray($array, $metadata);
+    }
+
+    #endregion
+    #region Value Access
+
+    /**
+     * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
+     * If the key doesn't exist, a SmartNull object is returned to allow further chaining.
+     */
+    public function get(int|string $key, mixed $default = null): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    {
+        // return default if key not found
+        if (func_num_args() >= 2 && !$this->offsetExists($key)) {
+            $isSmartArrayOrSmartString = $default instanceof self || $default instanceof SmartString;
+            return match (true) {
+                is_scalar($default), is_null($default) => $this->encodeOutput($default),
+                is_array($default)                     => new SmartArray($default),
+                $isSmartArrayOrSmartString             => $default,
+                default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
+            };
+        }
+
+        // skip if empty
+        if ($this->isEmpty()) {
+            return new SmartNull($this->getProperty('useSmartStrings'));
+        }
+
+        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
+        if (is_int($key)) {
+            $firstEl  = $this->keys()->first();
+            $firstKey = is_object($firstEl) ? $firstEl->value() : $firstEl;
+            if (is_int($firstKey)) {
+                self::logDeprecation("Replace ->get($key) with ->nth($key) to access the nth element of on associative arrays.");
+                return $this->nth($key);
+            }
+        }
+
+        return $this->offsetGet($key);
+    }
+
+    /**
+     * Get first element in array, or SmartNull if array is empty (to allow for further chaining).
+     */
+    public function first(): SmartArray|SmartString|SmartNull|string|int|float|bool|null
+    {
+        return $this->nth(0);
+    }
+
+    /**
+     * Get last element in array, or SmartNull if array is empty (to allow for further chaining).
+     */
+    public function last(): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    {
+        return $this->nth(-1);
+    }
+
+    /**
+     * Get an element by its position in the array, ignoring keys.
+     *
+     * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
+     * Returns SmartNull if out of bounds.
+     *
+     * Useful for MySQL queries with unaliased columns:
+     * ```
+     * $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
+     * $max    = $result->first()->nth(0)->value(); // Get "MAX(`order`)" column
+     * ```
+     */
+    public function nth(int $index): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    {
+        $count  = count($this);
+        $index  = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
+        $keys   = array_keys($this->getArrayCopy());
+
+        if (array_key_exists($index, $keys)) {
+            return $this->offsetGet($keys[$index]);
+        }
+
+        return new SmartNull($this->getProperty('useSmartStrings'));
+    }
+
+    #endregion
+    #region Array Information
+
+    /**
+     * Check if array has no elements.
+     */
+    public function isEmpty(): bool
+    {
+        return $this->count() === 0;
+    }
+
+    /**
+     * Check if array has any elements.
+     */
+    public function isNotEmpty(): bool
+    {
+        return $this->count() !== 0;
+    }
+
+    /**
+     * Check if array has sequential numeric keys (0,1,2...). Same as PHP 8.1's array_is_list().
+     */
+    public function isList(): bool
+    {
+        $arrayCopy = $this->getArrayCopy();
+        return $arrayCopy === array_values($arrayCopy);
+    }
+
+    /**
+     * Check if array doesn't contain any nested arrays.
+     */
+    public function isFlat(): bool
+    {
+        return !$this->isNested();
+    }
+
+    /**
+     * Check if array contains any nested arrays.
+     */
+    public function isNested(): bool
+    {
+        foreach ($this->getArrayCopy() as $value) {
+            if ($value instanceof self) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get array metadata as a stdClass object. Metadata values are not HTML encoded or chainable.
+     */
+    public function metadata(): stdClass
+    {
+        return (object) $this->getProperty('metadata');
+    }
+
+    public function root(): SmartArray
+    {
+        return $this->getProperty('root');
+    }
+
+    #endregion
+    #region Position & Layout
+
+    /**
+     * Checks if first element in root, false if no root.
+     */
+    public function isFirst(): bool
+    {
+        return $this->getProperty('isFirst');
+    }
+
+    /**
+     * Checks if last element in root, false if no root.
+     */
+    public function isLast(): bool
+    {
+        return $this->getProperty('isLast');
+    }
+
+    /**
+     * Get position in root (starting at 1, unrelated to keys).  Returns 0 if no root.
+     */
+    public function position(): int
+    {
+        return $this->getProperty('position');
+    }
+
+    /**
+     * Returns true for every nth element (positions start at 1).
+     * For example, isMultipleOf(3) matches every 3rd element.
+     * Useful for creating grid layouts or other repeating patterns.
+     */
+    public function isMultipleOf(int $value): bool
+    {
+        if ($value <= 0) {
+            throw new InvalidArgumentException("Value must be greater than 0.");
+        }
+        return $this->position() % $value === 0;
+    }
+
+    /**
+     * Splits the SmartArray into smaller SmartArrays of a specified size.
+     *
+     * This method divides the current SmartArray into multiple SmartArrays, each containing
+     * at most the specified number of elements. The last chunk may contain fewer elements
+     * if the original SmartArray's count is not divisible by the chunk size.
+     *
+     * @param int $size The size of each chunk. Must be greater than 0.
+     * @return SmartArray A new SmartArray containing SmartArrays of the specified size.
+     * @throws InvalidArgumentException If the size is less than or equal to 0.
+     *
+     * @example
+     * $arr = new SmartArray([1, 2, 3, 4, 5, 6, 7]);
+     * $chunks = $arr->chunk(3); // $chunks is now a SmartArray containing:
+     * [
+     *     SmartArray([1, 2, 3]),
+     *     SmartArray([4, 5, 6]),
+     *     SmartArray([7])
+     * ]
+     */
+    public function chunk(int $size): SmartArray
+    {
+        if ($size <= 0) {
+            throw new InvalidArgumentException("Chunk size must be greater than 0.");
+        }
+
+        $chunks = array_chunk($this->toArray(), $size);
+        return $this->cloneWith($chunks);
+    }
+
+    #endregion
+    #region Sorting & Filtering
+
+    /**
+     * Returns a new array sorted by values, using PHP sort() function.
+     */
+    public function sort(int $flags = SORT_REGULAR): SmartArray
+    {
+        $this->assertFlatArray();
+
+        $sorted = $this->toArray();
+        sort($sorted, $flags);
+        return $this->cloneWith($sorted);
+    }
+
+    /**
+     * Returns a new SmartArray sorted by the specified column, using PHP array_multisort().
+     */
+    public function sortBy(string $column, int $type = SORT_REGULAR): SmartArray {
+
+        $this->assertNestedArray();
+        if ($this->first() instanceof self) {
+            $this->first()->warnIfMissing($column, 'argument');
+        }
+
+
+
+        // sort by key
+        $sorted       = $this->toArray();
+        $columnValues = array_column($sorted, $column);
+        array_multisort($columnValues, SORT_ASC, $type, $sorted);
+
+        return $this->cloneWith($sorted);
+    }
+
+    /**
+     * Returns a new array with duplicate values removed, keeping only the first
+     * occurrence of each unique value, and preserving keys.
+     */
+    public function unique(): SmartArray
+    {
+        $this->assertFlatArray();
+
+        $unique = array_unique($this->toArray());
+        return $this->cloneWith($unique);
+    }
+
+    /**
+     * Filters elements of the SmartArray using a callback function and returns a new SmartArray with the results.
+     *
+     * The callback function receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray objects,
+     * and should return a boolean indicating whether to include the element in the result.
+     *
+     * @param callable|null $callback A function that tests each element. Should return true to keep the element, false to remove it.
+     *
+     * @return self A new SmartArray containing only the elements that passed the callback test.
+     */
+    public function filter(?callable $callback = null): self
+    {
+        $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
+        return $this->cloneWith($values);
+    }
+
+    /**
+     * Returns a new SmartArray containing only the elements that satisfy the callback function.
+     *
+     * Note, this method doesn't require nested arrays but will skip any elements that are not arrays.
+     * This allows us to work with CMSB schema files.
+     *
+     * @param array $conditions
+     * @return SmartArray
+     */
+    public function where(array $conditions): SmartArray
+    {
+        // Filter rows that match all conditions
+        $filtered = array_filter($this->toArray(), static function($row) use ($conditions) {
+            // skip elements that are not arrays
+            if (!is_array($row)) {
+                return false;
+            }
+
+            // check if all conditions are met
+            foreach ($conditions as $key => $value) {
+                if (!array_key_exists($key, $row) || $row[$key] !== $value) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        return $this->cloneWith($filtered);
+    }
+
+    #endregion
+    #region Array Transformation
 
     /**
      * Recursively converts SmartArray back to a standard PHP array.
@@ -115,359 +454,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     /**
-     * Returns SmartArray or throws an exception load() handler is not available for column
-     *
-     * @param string $column
-     * @return SmartArray
-     */
-    public function load(string $column): SmartArray
-    {
-        // Require column value
-        if (empty($column)) {
-            throw new InvalidArgumentException("Column name is required for load() method.");
-        }
-
-        // check for load handler
-        $loadHandler = $this->metadata()->_loadHandler ?? '';
-        match (true) {
-            !$loadHandler              => throw new Exception("No load() handler is defined"),
-            !is_callable($loadHandler) => throw new Exception("Load handler is not callable"),
-            default                    => null,
-        };
-
-        // get handler output
-        $result = $loadHandler($this, $column);
-        if ($result === false) {
-            throw new Error("Load handler not available for '$column'");
-        }
-
-        // return new SmartArray
-        [$array, $metadata] = $result;
-        return new SmartArray($array, $metadata);
-    }
-
-    /**
-     * Alias for get().  Experimental alias name may stay or be removed in future
-     *
-     * @param string $column
-     * @return SmartArray
-     */
-    public function fetch(string $column): SmartArray
-    {
-        return $this->load($column);
-    }
-
-    /**
-     * Controls whether values are wrapped in SmartString objects for automatic HTML encoding.
-     *
-     * When enabled, values are wrapped in SmartString objects which provide automatic HTML encoding
-     * and other output formatting methods. The wrapping is done lazily on access, so it doesn't
-     * affect methods like toArray() that return raw values.
-     *
-     * @param bool $enabled Whether to enable SmartString wrapping (true) or return raw values (false)
-     *
-     * @example
-     * $array->useSmartStrings(true);  // Convert values to SmartStrings with automatic html-encoding and helper methods
-     * echo $array->name;              // Output is HTML-encoded, e.g., "John &amp; Jane"
-     *
-     * $array->useSmartStrings(false); // Values stay as raw values
-     * echo $array->name;              // Output is raw value, e.g., "John & Jane"
-     */
-    public function useSmartStrings(bool $enabled = true): self
-    {
-        // clone SmartArray
-        $clone = $this->cloneWith($this->toArray());
-
-        // set metadata
-        $metadata = $clone->getProp('metadata');
-        $metadata['_useSmartStrings'] = (bool) $enabled;
-        $clone->setProp('metadata', $metadata);
-
-        // recursively set on child SmartArrays
-        foreach ($clone as $key => $value) {
-            if ($value instanceof self) {
-                $value->useSmartStrings($enabled);
-            }
-        }
-
-        return $clone;
-    }
-
-    #endregion
-    #region Array Information
-
-    /**
-     * Returns the number of elements in the SmartArray.
-     *
-     * This method is a wrapper around the parent ArrayObject's count() method.
-     * It's included here for clarity and to remind users of its availability.
-     * You can use either PHP's count($obj) or $obj->count() syntax.
-     *
-     * @return int The number of elements in the SmartArray.
-     */
-    public function count(): int  // NOSONAR - Ignore S1185 "Overriding methods should do more than superclass", this is a wrapper method for clarity
-    {
-        return parent::count();
-    }
-
-    /**
-     * Checks if the SmartArray is empty.
-     *
-     * @return bool Returns true if the SmartArray contains no elements, false otherwise.
-     */
-    public function isEmpty(): bool
-    {
-        return $this->count() === 0;
-    }
-
-    /**
-     * Checks if the SmartArray is not empty.
-     *
-     * @return bool Returns true if the SmartArray contains at least one element, false otherwise.
-     */
-    public function isNotEmpty(): bool
-    {
-        return $this->count() !== 0;
-    }
-
-    /**
-     * Checks if this is the first element in a parent SmartArray.
-     *
-     * @return bool True if first in parent, false if not in a parent SmartArray.
-     */
-    public function isFirst(): bool
-    {
-        return $this->getProp('isFirst');
-    }
-
-    /**
-     * Checks if this is the last element in a parent SmartArray.
-     *
-     * @return bool True if last in parent, false if not in a parent SmartArray.
-     */
-    public function isLast(): bool
-    {
-        return $this->getProp('isLast');
-    }
-
-    /**
-     * Gets position in parent SmartArray (1-based, unrelated to keys/indexes).
-     *
-     * @return int Position in parent (1, 2, ...), or 0 if not in a parent SmartArray.
-     */
-    public function position(): int
-    {
-        return $this->getProp('position');
-    }
-
-    /**
-     * Checks if the element's position is a multiple of the given value, for creating grids.
-     *
-     * @param int $value The divisor to check against (must be > 0).
-     * @return bool True if the position is a multiple of $value, false otherwise.
-     * @throws InvalidArgumentException If $value is <= 0.
-     */
-    public function isMultipleOf(int $value): bool
-    {
-        if ($value <= 0) {
-            throw new InvalidArgumentException("Value must be greater than 0.");
-        }
-        return $this->position() % $value === 0;
-    }
-
-    #endregion
-    #region Value Access
-
-    /**
-     * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
-     *
-     * @param int|string $key The key or offset of the element to retrieve.
-     * @return SmartArray|SmartNull|SmartString|string|int|float|bool|null The value associated with the key. If the key doesn't exist, a SmartNull object is returned to allow further chaining.
-     */
-    public function get(int|string $key, $default = null): SmartArray|SmartNull|SmartString|string|int|float|bool|null
-    {
-        // return default if key not found
-        if (func_num_args() >= 2 && !$this->offsetExists($key)) {
-            return match (true) {
-                is_scalar($default), is_null($default) => $this->encodeIfNeeded($default),
-                is_array($default)                     => new SmartArray($default),
-                $default instanceof self               => $default,
-                $default instanceof SmartString        => $default,
-                default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
-            };
-        }
-
-        // skip if empty
-        if ($this->isEmpty()) {
-            return new SmartNull();
-        }
-
-        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
-        if (is_int($key) && !is_int($this->keys()->first()->value())) {
-            self::logDeprecation("Replace ->get($key) with ->nth($key) to access the nth element of on associative arrays.");
-            return $this->nth($key);
-        }
-
-        return $this->offsetGet($key);
-    }
-
-    /**
-     * Retrieves the first element from the SmartArray, or a SmartNull if the array is empty.
-     *
-     * @return SmartArray|SmartString|SmartNull The first element in the array. If the array is empty, a SmartNull object is returned to allow further chaining.
-     */
-    public function first(): SmartArray|SmartString|SmartNull|string|int|float|bool|null
-    {
-        // return first element of arrayobject or SmartNull if empty
-
-
-        return $this->nth(0);
-    }
-
-    /**
-     * Retrieves the last element from the SmartArray, or a SmartNull if the array is empty.
-     *
-     * @return SmartArray|SmartNull|SmartString|string|int|float|bool|null The last element in the array, or a SmartNull object if empty, allowing further chaining.
-     */
-    public function last(): SmartArray|SmartNull|SmartString|string|int|float|bool|null
-    {
-        return $this->nth(-1);
-    }
-
-    /**
-     * Retrieves an element at a specific position in the SmartArray, based on element order rather than keys or indexes.
-     *
-     * This method supports both positive and negative positions. Positive positions count from the start (0-based),
-     * while negative positions count from the end (-1 for the last element). Original array keys are ignored.
-     *
-     * Useful for MySQL queries where key names are unpredictable, like SHOW TABLES.
-     * $resultSet = DB::query("SELECT MAX(`order`) FROM `uploads`");
-     * $maxOrder  = $resultSet->first()->nth(0)->value();
-     *
-     * @param int $index The position of the element to retrieve (0-based or negative for counting from the end).
-     * @return SmartArray|SmartString|SmartNull The element at the specified position, or a SmartNull object if the position is out of bounds, allowing further chaining.
-     */
-    public function nth(int $index): SmartArray|SmartNull|SmartString|string|int|float|bool|null
-    {
-        $values = $this->values();
-        $count  = $values->count();
-        $index  = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
-
-        if ($index >= 0 && $index < $count) {
-            return $values->offsetGet($index);
-        }
-
-        return new SmartNull();
-    }
-
-    /**
-     * Retrieves a value from the SmartArray.
-     *
-     * This method is called in two scenarios:
-     * 1. When accessing the object using array syntax (e.g., $smartArray[16]).
-     * 2. When accessing properties (e.g., $smartArray->property), if the ArrayObject::ARRAY_AS_PROPS flag is set (default in SmartArray).
-     *
-     * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property access
-     * for all keys, whether they are defined or not, completely bypassing __get.
-     *
-     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
-     */
-    public function offsetGet(mixed $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
-    {
-        $key = $key instanceof SmartString ? $key->value() : $key; // Convert SmartString keys to raw values
-
-        // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
-        if (is_string($key) && ($this->isEmpty() || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
-            $return = match (strtolower(($key))) {
-                'affectedrows' => self::logDeprecationAndReturn($this->metadata()->affected_rows, "Replace ->$key with ->metadata()->affected_rows"),
-                'count'        => self::logDeprecationAndReturn($this->count(), "Replace ->$key with ->count() (add brackets)"),
-                'errno'        => self::logDeprecationAndReturn($this->metadata()->errno, "Replace ->$key with ->metadata()->errno"),
-                'error'        => self::logDeprecationAndReturn($this->metadata()->error, "Replace ->$key with ->metadata()->error"),
-                'first'        => self::logDeprecationAndReturn($this->first(), "Replace ->$key with ->first() (add brackets)"),
-                'insertid'     => self::logDeprecationAndReturn($this->metadata()->insert_id, "Replace ->$key with ->metadata()->insert_id"),
-                'isfirst'      => self::logDeprecationAndReturn($this->isFirst(), "Replace ->$key with ->isFirst() (add brackets)"),
-                'islast'       => self::logDeprecationAndReturn($this->isLast(), "Replace ->$key with ->isLast() (add brackets)"),
-                'raw'          => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray()"),
-                'toarray'      => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray() (add brackets)"),
-                'values'       => self::logDeprecationAndReturn($this->values(), "Replace ->$key with ->values() (add brackets)"),
-                default        => null,
-            };
-            if (!is_null($return)) {
-                return $return;
-            }
-        }
-
-        // Return value if key exists, or SmartNull if not found
-        if ($this->offsetExists($key)) {
-            $value       = parent::offsetGet($key);
-            $typeOrClass = basename(get_debug_type($value)); // Returns SmartArray instead of \Itools\SmartArray\SmartArray
-
-            // return value
-            return match (true) {
-                $value instanceof self             => $value, // Return nested SmartArray objects as-is
-                is_scalar($value), is_null($value) => $this->encodeIfNeeded($value),
-                default                            => throw new InvalidArgumentException(__METHOD__ . ": SmartArray doesn't support '$typeOrClass' values. Key $key."),
-            };
-        }
-        $this->warnIfMissing($key, 'offset');
-        return new SmartNull();
-    }
-
-    /**
-     * Sets a value in the SmartArray, converting it to SmartString or nested SmartArray.
-     *
-     * This method is called in two scenarios:
-     * 1. When setting a value using array syntax (e.g., $smartArray['key'] = $value).
-     * 2. When setting properties (e.g., $smartArray->property = $value), if the ArrayObject::ARRAY_AS_PROPS flag is set (default in SmartArray).
-     *
-     * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property assignment,
-     * completely bypassing __set for all keys, whether they are defined or not.
-     *
-     * @param mixed $key The key or property name to set. If null, the value is appended to the array.
-     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
-     *
-     * @throws InvalidArgumentException If an unsupported value type is provided.
-     */
-    public function offsetSet(mixed $key, mixed $value): void
-    {
-        $typeOrClass = get_debug_type($value); // Returns SmartArray instead of \Itools\SmartArray\SmartArray
-        $quotedKey   = is_numeric($key) ? $key : "'$key'";
-        $newValue    = match ($typeOrClass) {
-            'array' => new SmartArray($value, $this->metadata()),                 // Convert nested arrays to SmartArrays
-            'string', 'int', 'float', 'bool', 'null' => $value,                   // Allow scalars and nulls as-is (encoded on access by offsetGet)
-            default => throw new InvalidArgumentException(__METHOD__ . ": SmartArray doesn't support '$typeOrClass' values. Key $quotedKey"),
-        };
-
-        parent::offsetSet($key, $newValue);
-    }
-
-    public function getIterator(): \Iterator
-    {
-        // Return an iterator that calls offsetGet for each element
-        foreach (array_keys($this->getArrayCopy()) as $key) {
-            $value = parent::offsetGet($key);
-            yield $key => match (true) {
-                $value instanceof self             => $value, // Return nested SmartArray objects as-is
-                is_scalar($value), is_null($value) => $this->encodeIfNeeded($value),
-                default                            => throw new InvalidArgumentException(__METHOD__ . ": SmartArray doesn't support '" . get_debug_type($value) . "' values. Key $key."),
-            };
-        }
-    }
-
-    #endregion
-    #region Array Transformation
-
-    /**
-     * Returns a new SmartArray containing all the keys of the current SmartArray.
-     *
-     * This method is a shortcut for PHP's array_keys() function, returning the result
-     * as a new SmartArray object.
-     *
-     * @return SmartArray A new SmartArray containing all the keys from the current SmartArray.
-     *
-     * @example
-     * $arr = new SmartArray(['a' => 1, 'b' => 2, 'c' => 3]);
-     * $keys = $arr->keys(); // Returns SmartArray(['a', 'b', 'c'])
+     * Returns a new array of keys
      */
     public function keys(): SmartArray
     {
@@ -476,16 +463,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     /**
-     * Returns a new SmartArray containing all the values of the current SmartArray.
-     *
-     * This method is a shortcut for PHP's array_values() function, returning the result
-     * as a new SmartArray object. It re-indexes the array numerically.
-     *
-     * @return SmartArray A new SmartArray containing all the values from the current SmartArray.
-     *
-     * @example
-     * $arr = new SmartArray(['a' => 25, 'b' => 16, 'c' => 71]);
-     * $values = $arr->values(); // Returns SmartArray([25, 16, 71])
+     * Returns a new array of values
      */
     public function values(string|int|null $key = null): SmartArray
     {
@@ -507,54 +485,6 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         return $this->cloneWith($values);
     }
 
-    /**
-     * Returns a new SmartArray instance with unique values, preserving keys.  Just like array_unique().
-     *
-     * This method removes duplicate values from the SmartArray, preserving the original keys.
-     * The first occurrence of each unique value is preserved.
-     *
-     * @return SmartArray A new instance of SmartArray with duplicate values removed,
-     *                    keeping only the first occurrence of each unique value.
-     */
-    public function unique(): SmartArray
-    {
-        $this->assertFlatArray();
-
-        $unique = array_unique($this->toArray());
-        return $this->cloneWith($unique);
-    }
-
-    /**
-     * Returns a new SmartArray instance sorted by values, uses PHP sort() function.
-     */
-    public function sort(int $flags = SORT_REGULAR): SmartArray
-    {
-        $this->assertFlatArray();
-
-        $sorted = $this->toArray();
-        sort($sorted, $flags);
-        return $this->cloneWith($sorted);
-    }
-
-    /**
-     * Returns a new SmartArray sorted by the specified column, uses PHP array_multisort().
-     *
-     * @param string $column
-     * @param int $type
-     * @return SmartArray
-     */
-    public function sortBy(string $column, int $type = SORT_REGULAR): SmartArray {
-
-        $this->assertNestedArray();
-        $this->first()->warnIfMissing($column, 'argument');
-
-        // sort by key
-        $sorted       = $this->toArray();
-        $columnValues = array_column($sorted, $column);
-        array_multisort($columnValues, SORT_ASC, $type, $sorted);
-
-        return $this->cloneWith($sorted);
-    }
 
     /**
      * Creates a new SmartArray indexed by the specified column.
@@ -592,7 +522,9 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     public function indexBy(string $column, bool $asList = false): SmartArray
     {
         $this->assertNestedArray();
-        $this->first()->warnIfMissing($column, 'argument');
+        if ($this->first() instanceof self) {
+            $this->first()->warnIfMissing($column, 'argument');
+        }
 
         // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
         if ($asList === true) {
@@ -637,15 +569,78 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      */
     public function groupBy(string $column): SmartArray
     {
-        $values = [];
         $this->assertNestedArray();
-        $this->first()->warnIfMissing($column, 'argument');
+        if ($this->first() instanceof self) {
+            $this->first()->warnIfMissing($column, 'argument');
+        }
 
+        $values = [];
         foreach ($this->toArray() as $row) {
             $key = $row[$column];
             $values[$key][] = $row;
         }
 
+        return $this->cloneWith($values);
+    }
+
+    /**
+     * Extracts a single column from a nested SmartArray.
+     *
+     * This method retrieves the values of a specified key from all elements in the nested SmartArray,
+     * returning them as a new SmartArray. It's particularly useful for extracting a specific field
+     * from a collection of records.
+     *
+     * @param string|int $valueColumn The key of the column to extract from each nested element.
+     * @return SmartArray A new SmartArray containing the extracted values.
+     * @example
+     * $users = new SmartArray([
+     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
+     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
+     * ]);
+     * $userEmails = $users->pluck('email');                         // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
+     * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
+     */
+    public function pluck(string|int $valueColumn, ?string $keyColumn = null): SmartArray
+    {
+        $this->assertNestedArray();
+        if ($this->first() instanceof self) {
+            $this->first()->warnIfMissing($valueColumn, 'argument');
+        }
+
+        $values = array_column($this->toArray(), $valueColumn, $keyColumn);
+        return $this->cloneWith($values);
+    }
+
+    /**
+     * Extracts values at a specific position from each row in a nested SmartArray, ignoring key names.
+     * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
+     *
+     * @param int $index
+     * @return SmartArray A new SmartArray containing the extracted values.
+     *
+     * @example MySQL `SHOW TABLES LIKE 'cms_%'` returns:
+     *
+     * [
+     *   ['Tables_in_yourDbName (cms_%)' => 'cms_accounts'],
+     *   ['Tables_in_yourDbName (cms_%)' => 'cms_settings']
+     *   ['Tables_in_yourDbName (cms_%)' => 'cms_pages'],
+     * ]
+     *
+     * $tables = $resultSet->pluckNth(0);   // Position 0 (first value): Returns ["cms_accounts", "cms_settings", "cms_pages"]
+     */
+    public function pluckNth(int $index): SmartArray
+    {
+        $this->assertNestedArray();
+
+        $values = [];
+        foreach ($this->toArray() as $row) {
+            $count    = count($row);
+            $rowIndex = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
+
+            if ($rowIndex >= 0 && $rowIndex < $count) {
+                $values[] = array_values($row)[$rowIndex];
+            }
+        }
         return $this->cloneWith($values);
     }
 
@@ -671,8 +666,9 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $values = array_map('strval', array_values($this->toArray()));
         $value  = implode($separator, $values);
 
-        return $this->encodeIfNeeded($value);
+        return $this->encodeOutput($value);
     }
+
 
     /**
      * Applies a callback function to each element of the SmartArray and returns a new SmartArray with the results.
@@ -710,183 +706,289 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         return $this->cloneWith($newArray);
     }
 
-    /**
-     * Filters elements of the SmartArray using a callback function and returns a new SmartArray with the results.
-     *
-     * The callback function receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray objects,
-     * and should return a boolean indicating whether to include the element in the result.
-     *
-     * @param callable $callback A function that tests each element. Should return true to keep the element, false to remove it.
-     *
-     * @return self A new SmartArray containing only the elements that passed the callback test.
-     */
-    public function filter(?callable $callback = null): self
-    {
-        $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
-        return $this->cloneWith($values);
-    }
-
-    /**
-     * Extracts a single column from a nested SmartArray.
-     *
-     * This method retrieves the values of a specified key from all elements in the nested SmartArray,
-     * returning them as a new SmartArray. It's particularly useful for extracting a specific field
-     * from a collection of records.
-     *
-     * @param string|int $valueColumn The key of the column to extract from each nested element.
-     * @return SmartArray A new SmartArray containing the extracted values.
-     * @example
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
-     * ]);
-     * $userEmails = $users->pluck('email');                         // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
-     * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
-     */
-    public function pluck(string|int $valueColumn, ?string $keyColumn = null): SmartArray
-    {
-        $this->assertNestedArray();
-        $this->first()->warnIfMissing($valueColumn, 'argument');
-
-        $values = array_column($this->toArray(), $valueColumn, $keyColumn);
-        return $this->cloneWith($values);
-    }
-
-    /**
-     * Extracts values at a specific position from each row in a nested SmartArray, ignoring key names.
-     * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
-     *
-     * @param int $position The position of the value to extract (0-based, default 0).
-     * @return SmartArray A new SmartArray containing the extracted values.
-     *
-     * @example MySQL `SHOW TABLES LIKE 'cms_%'` returns:
-     *
-     * [
-     *   ['Tables_in_yourdbname (cms_%)' => 'cms_accounts'],
-     *   ['Tables_in_yourdbname (cms_%)' => 'cms_settings']
-     *   ['Tables_in_yourdbname (cms_%)' => 'cms_pages'],
-     * ]
-     *
-     * $tables = $resultSet->pluckNth(0);   // Position 0 (first value): Returns ["cms_accounts", "cms_settings", "cms_pages"]
-     */
-    public function pluckNth(int $position): SmartArray
-    {
-        $this->assertNestedArray();
-
-        $values = [];
-        foreach ($this->getArrayCopy() as $row) {
-            $value = $row->nth($position);
-            $values[] = match (true) {
-                $value instanceof self             => $value->toArray(),
-                $value instanceof SmartString      => $value->value(),  // nth() returns SmartString, convert to raw value
-                is_scalar($value), is_null($value) => $value,           // Scalars and nulls are returned as-is
-                default                            => throw new Error(__METHOD__ . ": Unexpected value type encountered: " . get_debug_type($value)),
-            };
-        }
-        return $this->cloneWith($values);
-    }
-
-    /**
-     * Splits the SmartArray into smaller SmartArrays of a specified size.
-     *
-     * This method divides the current SmartArray into multiple SmartArrays, each containing
-     * at most the specified number of elements. The last chunk may contain fewer elements
-     * if the original SmartArray's count is not divisible by the chunk size.
-     *
-     * @param int $size The size of each chunk. Must be greater than 0.
-     * @return SmartArray A new SmartArray containing SmartArrays of the specified size.
-     * @throws InvalidArgumentException If the size is less than or equal to 0.
-     *
-     * @example
-     * $arr = new SmartArray([1, 2, 3, 4, 5, 6, 7]);
-     * $chunks = $arr->chunk(3); // $chunks is now a SmartArray containing:
-     * [
-     *     SmartArray([1, 2, 3]),
-     *     SmartArray([4, 5, 6]),
-     *     SmartArray([7])
-     * ]
-     */
-    public function chunk(int $size): SmartArray
-    {
-        if ($size <= 0) {
-            throw new InvalidArgumentException("Chunk size must be greater than 0.");
-        }
-
-        $chunks = array_chunk($this->toArray(), $size);
-        return $this->cloneWith($chunks);
-    }
-
-    /**
-     * Returns a new SmartArray containing only the elements that satisfy the callback function.
-     *
-     * Note, this method doesn't require nested arrays but will skip any elements that are not arrays.
-     * This allows us to work with CMSB schema files.
-     *
-     * @param array $conditions
-     * @return SmartArray
-     */
-    public function where(array $conditions): SmartArray
-    {
-        // Filter rows that match all conditions
-        $filtered = array_filter($this->toArray(), static function($row) use ($conditions) {
-            // skip elements that are not arrays
-            if (!is_array($row)) {
-                return false;
-            }
-
-            // check if all conditions are met
-            foreach ($conditions as $key => $value) {
-                if (!array_key_exists($key, $row) || $row[$key] !== $value) {
-                    return false;
-                }
-            }
-            return true;
-        });
-
-        return $this->cloneWith($filtered);
-    }
-
     #endregion
     #region Debugging and Help
 
     /**
      * Displays help information about available methods and properties.
      *
-     * @return void
+     * @return string
      */
-    public function help(): void
+    public static function help(): string
     {
-        echo DebugInfo::help();
+        $output = <<<'__TEXT__'
+            SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
+            ==========================================================================================
+            SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods. 
+            It preserves familiar array syntax while adding powerful features for filtering, mapping,
+            and data manipulation - making common array operations simpler, safer, and more expressive.
+            
+            Core Concepts
+            -------------------             
+            $arr                = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
+            $arr['columnName']  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
+            $arr->columnName    = Itools\SmartString\SmartString  // Optional object syntax makes code cleaner and more readable
+            
+            Accessing Elements
+            -------------------             
+            foreach ($users as $user) {          // Foreach over a SmartArray just like a regular array
+                echo "Name: $user->name\n";      // SmartString output is automatically HTML-encoded, no need for htmlspecialchars()
+            
+                // For more complex expressions, curly braces are still required
+                echo "Bio: {$user->bio->textOnly()->maxChars(120, '...')}\n";  // Chain SmartString methods on column values 
+            }
+            
+            Original Values
+            -------------------
+            $arr->toArray()                      // Get original array with raw values
+            $arr->columnName->value()            // Get original unencoded field value  
+            "Bio: {$user->wysiwyg->noEncode()}"  // Alias for value(), clearer when handling WYSIWYG/HTML content
+            
+            Creating SmartArrays
+            -------------------
+            $ids   = SmartArray::new([1, 2, 3]);
+            $user  = SmartArray::new(['name' => 'John', 'age' => 30]);
+            $users = SmartArray::new(DB::select('users'));  // Nested SmartArray of SmartStrings
+            
+            Value Access
+            -------------
+            $arr[key]               Get values by key using array syntax
+            $arr->key               Get values by key using object syntax
+            ->get(key, default)     Get element by key with optional default value
+            ->first()               Get first element in array
+            ->last()                Get last element in array
+            ->nth(position)         Get element by position (1 is first, -1 is last)
+            
+            Array Information
+            ------------------
+            ->count()               Get number of elements in array
+            ->isEmpty()             Check if array has no elements
+            ->isNotEmpty()          Check if array has any elements
+            ->isList()              Check if array has sequential numeric keys (0,1,2...)
+            ->isFlat()              Check if array contains no nested arrays
+            ->isNested()            Check if array contains any nested arrays
+            ->metadata()            Get SmartArray metadata as stdClass object
+            ->root()                Get root SmartArray if nested, otherwise self
+            
+            Position & Layout
+            ------------------
+            ->isFirst()             Check if first in root array
+            ->isLast()              Check if last in root array 
+            ->position()            Get position in root array (starting at 1)
+            ->isMultipleOf(n)       Check if position is multiple of n (3 for every 3rd element)
+            ->chunk(size)           Split array into smaller arrays of specified size
+            
+            Sorting & Filtering
+            --------------------
+            ->sort()                Sort elements by value, reindexing keys
+            ->sortBy(column)        Sort nested array by column value, reindexing keys
+            ->unique()              Remove duplicate values, keeping first occurrence
+            ->filter(callback)      Keep elements where callback returns true, using raw values
+            ->where(conditions)     Keep elements matching [column => value] conditions 
+            
+            Array Transformation
+            ------------------
+            ->toArray()             Convert SmartArray/SmartString structure back to array/values
+            ->keys()                Get array of just the keys
+            ->values()              Get array of just the values
+            ->map(callback)         Transform each element using callback that receives raw values
+            ->pluck(column)         Extract single column from nested array
+            ->pluckNth(position)    Get array containing nth element from each row
+            ->indexBy(column)       Get array using column as keys to single rows (duplicates overwrite) 
+            ->groupBy(column)       Get array using column as keys to arrays of rows (duplicates group)
+            ->implode(separator)    Join elements with separator into string
+            
+            Debugging
+            ----------
+            print_r($arr)           Show array values and debug information
+            $arr->help()            Display this help information
+            
+            For more details see SmartArray readme.md, and SmartString docs for chainable string methods. 
+            __TEXT__;
+
+        return self::xmpWrap($output);
     }
 
     /**
      * Displays help information about available methods and properties.
-     *
-     * @return SmartArray
      */
-    public function debug(): SmartArray
+    public function debug($debugLevel = 0): void
     {
-        echo get_debug_type($this) . " Object ";
-        $r = DebugInfo::debugInfo($this);
-        print_r($r);
+        // show data header
+        $className = self::class;
+        echo match ($this->getProperty('useSmartStrings')) {
+            true  => "$className - Values are returned as **SmartStrings** on access\n\n",
+            false => "$className - Values are returned **as-is** on access (no extra encoding)\n\n",
+        };
 
-        return $this;
+        // show data
+        echo self::getFormattedStorage($this, $debugLevel);
+
+        // show metadata
+        if ($this->metadata()) {
+            echo "\nMetadata\n";
+            foreach ($this->metadata() as $key => $value) {
+                echo "    $key = $value\n";
+            }
+        }
+
+        echo "\n";
+    }
+
+
+    public static function getFormattedStorage(mixed $var, int $debugLevel = 0, int $depth = 0, string $keyPrefix = '', string $loadComment = ""): array|string|null
+    {
+        $indent        = $depth ? '    ' : '';
+        $commentOffset = $debugLevel > 0 ? 81 - (strlen($indent) * $depth) : 0;
+
+        // get var type
+        $debugType   = basename(get_debug_type($var));
+        $comment     = $debugLevel > 0 ? " // $debugType" : "";
+
+        // get output
+        if ($var instanceof self) {
+            $arrayCopy    = $var->getArrayCopy();
+            $maxKeyLength = max(array_map('strlen', array_filter(array_keys($arrayCopy), 'is_string')) + [0]) + 2; // skip numeric keys
+
+            if ($debugLevel > 1) {
+                $self    = $var === $var->root() ? " (self)" : "";
+                $comment = rtrim($comment) . sprintf(" #%s, Root #%s%s", spl_object_id($var), spl_object_id($var->root()), $self);
+            }
+
+            $output = sprintf("%-{$commentOffset}s%s\n", $keyPrefix . "[", $comment);
+            foreach ($arrayCopy as $key => $value) {
+                $wrappedKey    = is_int($key) ? "[$key]" : "'$key'";
+                $thisKeyPrefix = str_pad($wrappedKey, $maxKeyLength) ." => ";
+
+                // add load comment
+                $loadResult = false;
+                try {
+                    $loadResult = $var->load($key);
+                } catch (Throwable) {
+                }
+                $loadComment = $loadResult ? " // ->load('$key') for more" : "";
+
+                // get output
+                $output .= self::getFormattedStorage($value, $debugLevel, $depth + 1, $thisKeyPrefix, $loadComment);
+            }
+            $output = preg_replace("|,(\s*//.*?)?$|", " $1", $output); // Remove trailing commas
+            $output .= $depth ? "],\n" : "]\n"; // skip trailing comma on top level
+        } elseif (is_scalar($var) || is_null($var)) {
+            $hasTabs = is_string($var) && str_contains($var, "\t");
+            $varExport = match (true) {
+                $hasTabs => '"' . addcslashes($var, "\t\"\0\$\\") . '"',  // Show tabs as \t for readability
+                default  => var_export($var, true),
+            };
+            $output    = str_pad("$keyPrefix$varExport,$loadComment", $commentOffset) . "$comment\n";
+        } elseif ($var instanceof SmartNull) {
+            $varExport = 'SmartNull()';
+            $output    = str_pad("$keyPrefix$varExport,", $commentOffset) . "$comment\n";
+        } else {
+            throw new RuntimeException("Unsupported type: $debugType");
+        }
+
+        // Indent each line
+        return preg_replace("/^/m", $indent, $output);
     }
 
     /**
-     * Show data and debug information when print_r() is used to examine object.
-     *
-     * @return array An associative array containing debugging information.
+     * Wrap output in <xmp> tag if text/html and not called from a function that already added <xmp>
+     * @noinspection SpellCheckingInspection // ignore all lowercase strtolower function name
+     */
+    public static function xmpWrap($output): string
+    {
+        $output             = "\n" . trim($output, "\n") . "\n";
+        $isTextHtml         = (bool)preg_match('|^\s*Content-Type:\s*text/html\b|im', implode("\n", headers_list())); // match: text/html or ...;charset=utf-8
+        $backtraceFunctions = array_map('strtolower',array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'));
+        $wrapInXmp          = $isTextHtml && !in_array('showme', $backtraceFunctions);
+        return $wrapInXmp ? "\n<xmp>$output</xmp>\n" : $output;
+    }
+
+    /**
+     * Show internal array data print_r() is used to examine object.
      */
     public function __debugInfo(): array
     {
-        // Return array for debug sessions
-        if (array_key_exists('XDEBUG_SESSION', $_COOKIE)) {
-            return $this->toArray();
+        return $this->getArrayCopy();
+    }
+
+    #endregion
+    #region Error Handling
+
+    /**
+     * @return void
+     */
+    private function assertFlatArray(): void
+    {
+        if ($this->count() > 0 && $this->isNested()) {
+            $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+            $error    = "$function(): Expected a flat array, but got a nested array";
+            throw new InvalidArgumentException($error);
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function assertNestedArray(): void
+    {
+        if ($this->count() > 0 && !$this->isNested()) {
+            $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+            $error    = "$function(): Expected a nested array, but got a flat array";
+            throw new InvalidArgumentException($error);
+        }
+    }
+
+    /**
+     * Throws a PHP warning if the specified key isn't in the list of keys, but only if the array isn't empty.
+     * Throws PHP warning if the column is missing in the array to help debugging, but only if the array is not empty
+     *
+     * @param string|int $key
+     * @param string $warningType
+     * @return void
+     */
+    public function warnIfMissing(string|int $key, string $warningType): void
+    {
+        // Skip warning if the array is empty or key exists
+        if ($this->count() === 0 || $this->offsetExists($key)) {
+            return;
         }
 
-        // Otherwise, return a summary of the object
-        return DebugInfo::debugInfo($this);
+        // If array isn't empty and key doesn't exist, throw warning to help debugging
+        // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
+        $caller       = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+        $function     = $caller['function'] ?? "unknownFunction";
+        $inFileOnLine = sprintf("in %s:%s", $caller['file'] ?? 'unknown', $caller['line'] ?? 'unknown'); //
+
+        $warning = match ($warningType) {
+            'offset'   => "Undefined property or array key '$key' $inFileOnLine\n", // ArrayObject treats properties as offsets
+            'argument' => "$function(): '$key' doesn't exist $inFileOnLine\n",
+            default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
+        };
+
+        // Catch if user tried to call a method in a double-quoted string without braces
+        if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
+            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"\n";
+        } else {
+            // But if it's not a method, show a list of valid keys in case they mistyped a property/offset name
+            $validKeys = implode(', ', array_keys($this->getArrayCopy()));
+            $warning   .= "\nValid keys are: $validKeys (or use ->offsetExists() or ->get() with a default value to avoid this warning)\n";
+        }
+
+        $warning .= "\nFor more info: \$var->help()";
+
+        // output warning and trigger PHP warning (for logging)
+        echo "\nWarning: $warning\n\n";           // Output with echo so PHP doesn't add the filename and line number of this function on the end
+        @trigger_error($warning, E_USER_WARNING); // Trigger a PHP warning but hide output with @ so it will still get logged
+    }
+
+    private static function logDeprecation($error): void {
+        @user_error($error, E_USER_DEPRECATED);  // Trigger a silent deprecation notice for logging purposes
+    }
+
+    private static function logDeprecationAndReturn($returnOrCallback, $error) {
+        self::logDeprecation($error);
+        return is_callable($returnOrCallback) ? $returnOrCallback() : $returnOrCallback;
     }
 
     /**
@@ -944,11 +1046,25 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $baseClass = basename(self::class);
-        $caller    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[0];
         $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
-        $error     .= "Occurred in {$caller['file']}:{$caller['line']}\n";
-        $error     .= "Reported"; // PHP will append " in file:line" to the error
-        throw new Error($error);
+        throw new Error($error . $this->occurredInFile());
+    }
+
+    /**
+     * Add "Occurred in file:line" to the end of the error messages with the first non-SmartArray file and line number.
+     */
+    private function occurredInFile(): string
+    {
+        $file = "unknown";
+        $line = "unknown";
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $caller) {
+            if (empty($caller['file']) || $caller['file'] !== __FILE__) {
+                $file = $caller['file'] ?? $file;
+                $line = $caller['line'] ?? $line;
+                break;
+            }
+        }
+        return "Occurred in $file:$line\nReported"; // PHP will append " in file:line" to end of the error
     }
 
     #endregion
@@ -970,7 +1086,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         // Skip processing if the array is empty
         if ($this->isEmpty()) {
             self::logDeprecation("Replace ->col() with another method.  Can't determine replacement method because array is empty.");
-            return new SmartNull();
+            return new SmartNull($this->getProperty('useSmartStrings'));
         }
 
         // Determine if the lookup is by position
@@ -1002,46 +1118,154 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     #region Internal Methods
 
     /**
-     * Determines if the SmartArray is a list (sequential numeric keys starting from 0).  Same as PHP array_is_list().
+     * Update properties on child SmartArrays recursively.  Don't pass $root, it's only used internally for recursive calls.
      *
-     * @return bool
+     * Calculates position, isFirst, isLast, and copies root, metadata, and useSmartStrings
      */
-    public function isList(): bool
-    {
-        $arrayCopy = $this->getArrayCopy();
-        return $arrayCopy === array_values($arrayCopy);
+    private function updateChildProperties(?self $root = null): void {
+
+        // Recalculate position properties of nested SmartArrays
+        $keys     = array_keys($this->getArrayCopy());
+        $count    = count($keys);
+        $position = 0;
+        foreach ($keys as $key) {
+            $position++;
+
+            // Skip for all but child SmartArrays (rows)
+            $row = $this->offsetGetRaw($key);
+            if (!$row instanceof self) {
+                continue;
+            }
+
+            // ArrayObject: Switch property access to actual properties
+            $row->setFlags(ArrayObject::STD_PROP_LIST);
+
+            // Update position properties
+            $row->position = $position;
+            $row->isFirst  = $position === 1;
+            $row->isLast   = $position === $count;
+
+            // Set root property, and copy root metadata and SmartString setting
+            $root ??= $this; // If no previous root, use current array as root (which it will be for the first call)
+            $row->root            = $root;
+            $row->metadata        = $root->metadata;
+            $row->useSmartStrings = $root->useSmartStrings;
+
+            // ArrayObject: Switch property access back to array values
+            $row->setFlags(ArrayObject::ARRAY_AS_PROPS);
+
+            // Update child properties recursively
+            $row->updateChildProperties($root);
+        }
     }
 
     /**
-     * Check if the current SmartArray contains nested SmartArrays, e.g., a list of rows.
-     *
-     * @return bool
+     * Convert internally store ArrayObject values to expected output types.
      */
-    public function isNested(): bool
+    private function encodeOutput(mixed $value, string|int $key = ''): mixed
     {
-        return $this->getIterator()->current() instanceof self; // check if first element is a SmartArray
-    }
+        if (is_scalar($value) || is_null($value)) {
+            return $this->getProperty('useSmartStrings') ? new SmartString($value) : $value;
+        }
+        if ($value instanceof self) {
+            return $value;
+        }
 
-
-    public function parent(): SmartArray|SmartNull
-    {
-        return $this->getProp('parent') ?? new SmartArray();
+        // throw error if value is not supported
+        $error = __METHOD__ . ": SmartArray doesn't support '" . get_debug_type($value) . "' values.";
+        if (func_num_args() >= 2) {
+          $error .= " Key '$key'.";
+        }
+        throw new InvalidArgumentException($error);
     }
 
     /**
-     * Return the metadata as a stdClass object.  Values are not html encoded or chainable.
+     * Retrieves a value from the SmartArray.
      *
-     * @return stdClass The metadata as a stdClass object.
+     * This method is called in two scenarios:
+     * 1. When accessing the object using array syntax (e.g., $smartArray[16]).
+     * 2. When accessing properties (e.g., $smartArray->property), if the ArrayObject::ARRAY_AS_PROPS flag is set (default in SmartArray).
+     *
+     * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property access
+     * for all keys, whether they are defined or not, completely bypassing __get.
+     *
+     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
-    public function metadata(): stdClass
+    public function offsetGet(mixed $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
     {
-        return (object) $this->getProp('metadata');
+        $key = $key instanceof SmartString ? $key->value() : $key; // Convert SmartString keys to raw values
+
+        // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
+        if (is_string($key) && ($this->isEmpty() || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
+            $return = match (strtolower(($key))) {
+                'affectedrows' => self::logDeprecationAndReturn($this->metadata()->affected_rows, "Replace ->$key with ->metadata()->affected_rows"),
+                'count'        => self::logDeprecationAndReturn($this->count(), "Replace ->$key with ->count() (add brackets)"),
+                'errno'        => self::logDeprecationAndReturn($this->metadata()->errno, "Replace ->$key with ->metadata()->errno"),
+                'error'        => self::logDeprecationAndReturn($this->metadata()->error, "Replace ->$key with ->metadata()->error"),
+                'first'        => self::logDeprecationAndReturn($this->first(), "Replace ->$key with ->first() (add brackets)"),
+                'insertid'     => self::logDeprecationAndReturn($this->metadata()->insert_id, "Replace ->$key with ->metadata()->insert_id"),
+                'isfirst'      => self::logDeprecationAndReturn($this->isFirst(), "Replace ->$key with ->isFirst() (add brackets)"),
+                'islast'       => self::logDeprecationAndReturn($this->isLast(), "Replace ->$key with ->isLast() (add brackets)"),
+                'raw'          => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray()"),
+                'toarray'      => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray() (add brackets)"),
+                'values'       => self::logDeprecationAndReturn($this->values(), "Replace ->$key with ->values() (add brackets)"),
+                default        => null,
+            };
+            if (!is_null($return)) {
+                return $return;
+            }
+        }
+
+        // Return value if key exists, or SmartNull if not found
+        if ($this->offsetExists($key)) {
+            $value = parent::offsetGet($key);
+            return $this->encodeOutput($value, $key);
+        }
+        $this->warnIfMissing($key, 'offset');
+        return new SmartNull($this->getProperty('useSmartStrings'));
     }
 
-    private function encodeIfNeeded(string|int|float|bool|null $value): SmartString|string|int|float|bool|null
+    private function offsetGetRaw(mixed $key): SmartArray|SmartNull|string|int|float|bool|null
     {
-        $useSmartStrings = $this->metadata()->_useSmartStrings ?? false;
-        return $useSmartStrings ? new SmartString($value) : $value;
+        return parent::offsetGet($key);
+    }
+
+    /**
+     * Sets a value in the SmartArray, converting it to SmartString or nested SmartArray.
+     *
+     * This method is called in two scenarios:
+     * 1. When setting a value using array syntax (e.g., $smartArray['key'] = $value).
+     * 2. When setting properties (e.g., $smartArray->property = $value), if the ArrayObject::ARRAY_AS_PROPS flag is set (default in SmartArray).
+     *
+     * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property assignment,
+     * completely bypassing __set for all keys, whether they are defined or not.
+     *
+     * @param mixed $key The key or property name to set. If null, the value is appended to the array.
+     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
+     *
+     * @throws InvalidArgumentException If an unsupported value type is provided.
+     */
+    public function offsetSet(mixed $key, mixed $value): void
+    {
+        $typeOrClass = get_debug_type($value);
+        $quotedKey   = is_numeric($key) ? $key : "'$key'";
+        $newMethod   = $this->getProperty('useSmartStrings') ? 'newSS' : 'new';
+        $newValue    = match ($typeOrClass) {
+            'array' => self::$newMethod($value, $this->metadata()),                 // Convert nested arrays to SmartArrays
+            'string', 'int', 'float', 'bool', 'null' => $value,                     // Allow scalars and nulls as-is (encoded on access by offsetGet)
+            default => throw new InvalidArgumentException(__METHOD__ . ": SmartArray doesn't support '$typeOrClass' values. Key $quotedKey"),
+        };
+
+        parent::offsetSet($key, $newValue);
+    }
+
+    public function getIterator(): Iterator
+    {
+        // Return an iterator that calls offsetGet for each element
+        foreach (array_keys($this->getArrayCopy()) as $key) {
+            $value = parent::offsetGet($key);
+            yield $key => $this->encodeOutput($value, $key);
+        }
     }
 
     /**
@@ -1069,8 +1293,12 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @param bool|int $value
      * @return void
      */
-    private function setProp(string $name, bool|int|array|SmartArray $value): void
+    private function setProperty(string $name, bool|int|array|SmartArray $value): void
     {
+        if (!property_exists($this, $name)) {
+            throw new InvalidArgumentException("Property '$name' does not exist.");
+        }
+
         $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
         $this->{$name} = $value;
         $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
@@ -1078,91 +1306,18 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     /**
      * @param string $name
-     * @return bool|int|array
+     * @return bool|int|array|SmartArray|null
      */
-    private function getProp(string $name): bool|int|array|SmartArray|null
+    public function getProperty(string $name): bool|int|array|SmartArray|null
     {
+        if (!property_exists($this, $name)) {
+            throw new InvalidArgumentException("Property '$name' does not exist.");
+        }
+
         $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
-        $value = isset($this->{$name}) ? $this->{$name} : null;
+        $value = $this->{$name} ?? null;
         $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
         return $value;
-    }
-
-    /**
-     * @return void
-     */
-    private function assertFlatArray(): void
-    {
-        if ($this->count() > 0 && $this->isNested()) {
-            $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
-            $error    = "$function(): Expected a flat array, but got a nested array";
-            throw new InvalidArgumentException($error);
-        }
-    }
-
-    /**
-     * @return void
-     */
-    private function assertNestedArray(): void
-    {
-        if ($this->count() > 0 && !$this->isNested()) {
-            $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
-            $error    = "$function(): Expected a nested array, but got a flat array";
-            throw new InvalidArgumentException($error);
-        }
-    }
-
-    /**
-     * Throws a PHP warning if the specified key isn't in the list of keys, but only if the array isn't empty.
-     * Throws PHP warning if the column is missing in the array to help debugging, but only if the array is not empty
-     *
-     * @param string|int $key
-     * @param string $warningType
-     * @return void
-     */
-    public function warnIfMissing(string|int $key, string $warningType): void
-    {
-        // Skip warning if the array is empty or key exists
-        if ($this->count() === 0 || $this->offsetExists($key)) {
-            return;
-        }
-
-        // If array isn't empty and key doesn't exist, throw warning to help debugging
-        // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
-        $caller       = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-        $function     = $caller['function'] ?? "unknownFunction";
-        $inFileOnLine = sprintf("in %s on line %s", $caller['file'] ?? 'unknown', $caller['line'] ?? 'unknown'); //
-
-        $warning = match ($warningType) {
-            'offset'   => "Undefined property or array key '$key' $inFileOnLine.\n", // ArrayObject treats properties as offsets
-            'argument' => "$function(): '$key' doesn't exist $inFileOnLine.\n",
-            default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
-        };
-
-        // Catch if user tried to call a method in a double-quoted string without braces
-        if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
-            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"\n";
-        } else {
-            // But if it's not a method, show a list of valid keys in case they mistyped a property/offset name
-            $validKeys = implode(', ', array_keys($this->getArrayCopy()));
-            $warning   .= "Valid keys are: $validKeys (use ->offsetExists() or ->get() with a default value to avoid this warning)\n";
-        }
-
-
-        $warning .= "\nFor more info: \$var->help()";
-
-        // output warning and trigger PHP warning (for logging)
-        echo "\nWarning: $warning\n\n";           // Output with echo so PHP doesn't add the filename and line number of this function on the end
-        @trigger_error($warning, E_USER_WARNING); // Trigger a PHP warning but hide output with @ so it will still get logged
-    }
-
-    private static function logDeprecation($error): void {
-        @user_error($error, E_USER_DEPRECATED);  // Trigger a silent deprecation notice for logging purposes
-    }
-
-    private static function logDeprecationAndReturn($returnOrCallback, $error) {
-        self::logDeprecation($error);
-        return is_callable($returnOrCallback) ? $returnOrCallback() : $returnOrCallback;
     }
 
     /**
@@ -1172,7 +1327,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @return self A new SmartArray instance with the same properties but different content
      *
      * @internal This method is used internally by transformation methods to create
-     *           new instances while preserving the object's position in its parent.
+     *           new instances while preserving the object's position in its root.
      */
     public function cloneWith(array $array): self
     {
@@ -1182,13 +1337,14 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $this->setFlags(ArrayObject::STD_PROP_LIST);
         $copy->setFlags(ArrayObject::STD_PROP_LIST);
 
-        // Copy properties - these can only be set by our parent SmartArray
+        // Copy properties - these can only be set by our root SmartArray
         $copy->isFirst  = $this->isFirst;
         $copy->isLast   = $this->isLast;
         $copy->position = $this->position;
-        if (isset($this->parent)) {
-            $copy->parent = $this->parent;
-        }
+        $copy->root     = $this->root;
+
+        // update root on any nested SmartArrays
+        $copy->updateChildProperties($this->root);
 
         // ArrayObject: Switch property access back to actual properties
         $this->setFlags(ArrayObject::ARRAY_AS_PROPS);
@@ -1197,6 +1353,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         // return copy
         return $copy;
     }
+
 
     #endregion
     #region Internal Properties
@@ -1209,14 +1366,18 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * To maintain separation, internal properties must be private and accessed via getProp() and setProp()
      */
 
-    // These properties are calculated when the SmartArray is created
-    private bool $isFirst  = false;                                                                                                                                                                                                                                                  // Is this ArrayObject the first child element of a parent ArrayObject? // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
-    private bool $isLast   = false;                                                                                                                                                                                                                                                  // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
-    private int  $position = 0;                                                                                                                                                                                                                                                      // Is this ArrayObject the last child element of a parent ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
-    private self $parent;
+    // This is a note to developers that will be displayed when calling print_r() on the object
+    private string $readme  = "\n\nDEVELOPERS: Call \$var->help() for usage information or ->debug() for debug info.\n";  // NOSONAR - Ignore S1068 Unused private fields should be removed
 
-    // These properties are set by the user
-    private array $metadata       = [];
+    // These properties are calculated when the SmartArray is created or modified
+    private bool $isFirst  = false;
+    private bool $isLast   = false;
+    private int  $position = 0;      // Is this ArrayObject the last child element of a root ArrayObject?  // NOSONAR - Ignore S1068 false-positive Unused private fields should be removed
+
+    // These properties are set on creation and carried forward during array transformations
+    private self  $root;           // The root SmartArray, set on nested SmartArrays and self
+    private array $metadata        = [];
+    private bool  $useSmartStrings = false; // Is this ArrayObject a nested array?
 
     #endregion
 }

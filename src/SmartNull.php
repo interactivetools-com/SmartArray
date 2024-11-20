@@ -12,7 +12,18 @@ use Itools\SmartString\SmartString;
  */
 class SmartNull implements Iterator, ArrayAccess
 {
+    #region Constructor
+    private bool $useSmartStrings; // Is this ArrayObject a nested array?
+
+    public function __construct($useSmartStrings = false)
+    {
+        $this->useSmartStrings = $useSmartStrings;
+    }
+
+    #endregion
     #region Debugging and Help
+
+
 
     /**
      * Provides debug information about the object.
@@ -130,8 +141,9 @@ class SmartNull implements Iterator, ArrayAccess
      */
     public function __call($name, array $arguments): mixed
     {
+        $newMethod = $this->useSmartStrings ? 'newSS' : 'new';
         return match (true) {
-            method_exists(SmartArray::class, $name)  => (new SmartArray([]))->$name(...$arguments),
+            method_exists(SmartArray::class, $name)  => SmartArray::$newMethod([])->$name(...$arguments),
             method_exists(SmartString::class, $name) => SmartString::new(null)->$name(...$arguments),
             default                                  => throw new InvalidArgumentException("Method '$name' not found"),
         };

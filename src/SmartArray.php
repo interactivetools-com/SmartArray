@@ -113,9 +113,15 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
         }
 
-        // return new SmartArray
+        // Get new array data
         [$array, $metadata] = $result;
-        return new SmartArray($array, $metadata);
+        $metadata += ['_loadHandler' => $this->metadata()->_loadHandler]; // persist load handler if it's not defined
+
+        // return new SmartArray
+        return match($this->getProperty('useSmartStrings')) {
+            true  => self::newSS($array, $metadata),
+            false => self::new($array, $metadata),
+        };
     }
 
     #endregion
@@ -906,9 +912,17 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     /**
      * Show internal array data print_r() is used to examine object.
+     *
+     * You can temporarily comment out this function to get
      */
     public function __debugInfo(): array
     {
+        // return raw object when debugging
+        if (isset($_COOKIE['XDEBUG_SESSION']) && $this->getProperty('useSmartStrings')) {
+            // For future use
+        }
+
+        // otherwise show just data for print_r
         return $this->getArrayCopy();
     }
 

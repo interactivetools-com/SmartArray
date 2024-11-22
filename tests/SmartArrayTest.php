@@ -109,19 +109,21 @@ class SmartArrayTest extends TestCase
 
         // Check for correct root property
         $rootProperty = $obj->root();
-        if ($weAreRoot && $rootProperty !== $obj) {
+        if ($weAreRoot && $rootProperty !== $obj) { // check root references self
             throw new InvalidArgumentException("\$rootArray->root() should reference self, got " .get_debug_type($rootProperty). " instead.");
         }
-
+        if ($weAreRoot && !is_null($actualRoot)) { // check no actualRoot provided
+            throw new InvalidArgumentException("No actualRoot should be provided when \$rootArray->root() is called.  Path: $path");
+        }
         if (!$weAreRoot && $rootProperty !== $actualRoot) { // child
             $expected = basename(get_debug_type($actualRoot)) . " #" . spl_object_id($actualRoot);
             $actual   = !is_object($rootProperty) ? $rootProperty : basename(get_debug_type($rootProperty)) . " #" . spl_object_id($rootProperty);
             throw new InvalidArgumentException("Invalid property at $path->"."root(). Expected $expected, got $actual instead.");
         }
 
-        // Check metadata
-        if (!$weAreRoot && (array) $obj->metadata() !== (array) $actualRoot->metadata()) {
-            throw new InvalidArgumentException("Invalid metadata at $path. Expected " . var_export($actualRoot->metadata(), true) . ", got " . var_export($obj->metadata(), true) . " instead.");
+        // Check mysqli metadata
+        if (!$weAreRoot && (array) $obj->mysqli() !== (array) $actualRoot->mysqli()) {
+            throw new InvalidArgumentException("Invalid mysqli metadata at $path. Expected " . var_export($actualRoot->mysqli(), true) . ", got " . var_export($obj->mysqli(), true) . " instead.");
         }
 
         // Check useSmartArrays
@@ -1300,12 +1302,13 @@ class SmartArrayTest extends TestCase
     }
 
     /**
-     * @dataProvider metadataProvider
+     * @dataProvider mysqliProvider
      */
-    public function testMetadata($input, $metadata, $operation, $expected): void
+    public function testMysqli($input, $mysqliInfo, $operation, $expected): void
     {
         // Create initial SmartArray with metadata
-        $smartArray = new SmartArray($input, $metadata);
+        $properties = ['mysqli' => $mysqliInfo];
+        $smartArray = new SmartArray($input, $properties);
 
         // Perform operation if specified
         if ($operation) {
@@ -1313,19 +1316,20 @@ class SmartArrayTest extends TestCase
         }
 
         // Verify metadata
-        $actualMetadata = (array) $smartArray->metadata();
-        $this->assertEquals($expected, $actualMetadata);
+        $actualMysqli = (array) $smartArray->mysqli();
+        $this->assertEquals($expected, $actualMysqli);
 
-        // Test nested arrays also have same metadata
+        // Test nested arrays also have same mysqli info
         foreach ($smartArray as $value) {
             if ($value instanceof SmartArray) {
-                $this->assertEquals($expected, (array) $value->metadata());
+                $this->assertEquals($expected, (array) $value->mysqli());
             }
         }
     }
 
-    public function metadataProvider(): array
+    public function mysqliProvider(): array
     {
+        // Note: This was converted from the old metadata test, but should work fine for testing mysqli info
         $baseMetadata = ['database' => 'test_db', 'table' => 'users'];
 
         return [
@@ -1377,13 +1381,6 @@ class SmartArrayTest extends TestCase
             'empty array with metadata' => [
                 'input' => [],
                 'metadata' => $baseMetadata,
-                'operation' => null,
-                'expected' => $baseMetadata
-            ],
-
-            'metadata with stdClass' => [
-                'input' => ['name' => 'John'],
-                'metadata' => (object) $baseMetadata,
                 'operation' => null,
                 'expected' => $baseMetadata
             ],
@@ -2763,7 +2760,7 @@ class SmartArrayTest extends TestCase
         $output  = ob_get_clean();
 
         // Assert that the output contains the expected warning message
-        $expectedWarningPattern = "/Warning: .*pluck\(\): 'city' doesn't exist .*Valid keys are:/s";
+        $expectedWarningPattern = "/Warning: pluck\(\): 'city' doesn't exist.*Valid keys are:/s";
         $this->assertMatchesRegularExpression($expectedWarningPattern, $output, "Expected warning message not found in output.");
 
         // Assert that the plucked SmartArray matches the expected output
@@ -3110,7 +3107,7 @@ class SmartArrayTest extends TestCase
         $output = ob_get_clean();
 
         // Build the expected warning message pattern
-        $expectedWarningPattern = "/Warning: .*'age' doesn't exist .*Valid keys are: id, name/s";
+        $expectedWarningPattern = "/Warning: .*'age' doesn't exist.*Valid keys are: id, name/s";
 
         // Assert that the output contains the expected warning message
         $this->assertMatchesRegularExpression($expectedWarningPattern, $output, "Expected warning message not found in output.");

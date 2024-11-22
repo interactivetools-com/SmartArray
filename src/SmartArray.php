@@ -96,20 +96,17 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * Returns SmartArray or throws an exception load() handler is not available for column
      *
      * @param string $column
-     * @return SmartArray
+     * @return SmartArray|false
      * @throws Exception
      */
-    public function load(string $column): SmartArray
+    public function load(string $column): SmartArray|false
     {
-        // Require column value
-        if (empty($column)) {
-            throw new InvalidArgumentException("Column name is required for load() method.");
-        }
-
-        // check for load handler
         $loadHandler = $this->getProperty('loadHandler');
+
+        // error checking
         match (true) {
-            !$loadHandler              => throw new Exception("No load() handler is defined"),
+            empty($column)             => throw new InvalidArgumentException("Column name is required for load() method."),
+            !$loadHandler              => throw new Exception("No loadHandler property is defined"),
             !is_callable($loadHandler) => throw new Exception("Load handler is not callable"),
             default                    => null,
         };
@@ -120,8 +117,13 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
         }
 
-        // Get new array data
-        [$array, $mysqliProperties] = $result;
+        // output error checking
+        [$array, $mysqliProperties] = $result; // Get new array data
+        match (true) {
+            !is_array($array)            => throw new Error("Load handler must return an array as the first argument"),
+            !is_array($mysqliProperties) => throw new Error("Load handler must return an array as the second argument"),
+            default                      => null,
+        };
 
         // return new SmartArray
         return new self($array, [
@@ -764,7 +766,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @param string $name
      * @return bool|int|array|SmartArray|null
      */
-    public function getProperty(string $name): bool|int|array|SmartArray|null
+    public function getProperty(string $name): mixed
     {
         if (!property_exists($this, $name)) {
             throw new InvalidArgumentException("Property '$name' does not exist.");
@@ -926,11 +928,12 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $comment     = $debugLevel > 0 ? " // $debugType" : "";
 
         // get output
+
         if ($var instanceof self || is_array($var)) {
             $arrayCopy    = is_array($var) ? $var : $var->getArrayCopy();
             $maxKeyLength = max(array_map('strlen', array_filter(array_keys($arrayCopy), 'is_string')) + [0]) + 2; // skip numeric keys
 
-            if ($debugLevel > 1) {
+            if ($debugLevel > 1 && $var instanceof self) {
                 $self    = $var === $var->root() ? " (self)" : "";
                 $comment = rtrim($comment) . sprintf(" #%s, Root #%s%s", spl_object_id($var), spl_object_id($var->root()), $self);
             }

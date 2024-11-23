@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
+use JetBrains\PhpStorm\Deprecated;
 use Throwable, Error, Exception, InvalidArgumentException, RuntimeException;
 use ArrayObject, Iterator, JsonSerializable, Closure;
 use Itools\SmartString\SmartString;
@@ -337,7 +338,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         }
 
         $chunks = array_chunk($this->toArray(), $size);
-        return $this->cloneWith($chunks);
+        return new self($chunks, get_object_vars($this));
     }
 
     #endregion
@@ -352,7 +353,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
         $sorted = $this->toArray();
         sort($sorted, $flags);
-        return $this->cloneWith($sorted);
+        return new self($sorted, get_object_vars($this));
     }
 
     /**
@@ -372,7 +373,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $columnValues = array_column($sorted, $column);
         array_multisort($columnValues, SORT_ASC, $type, $sorted);
 
-        return $this->cloneWith($sorted);
+        return new self($sorted, get_object_vars($this));
     }
 
     /**
@@ -384,7 +385,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $this->assertFlatArray();
 
         $unique = array_unique($this->toArray());
-        return $this->cloneWith($unique);
+        return new self($unique, get_object_vars($this));
     }
 
     /**
@@ -400,7 +401,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     public function filter(?callable $callback = null): self
     {
         $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
     /**
@@ -430,7 +431,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             return true;
         });
 
-        return $this->cloneWith($filtered);
+        return new self($filtered, get_object_vars($this));
     }
 
     #endregion
@@ -470,7 +471,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     public function keys(): SmartArray
     {
         $keys = array_keys($this->getArrayCopy());
-        return $this->cloneWith($keys);
+        return new self($keys, get_object_vars($this));
     }
 
     /**
@@ -493,7 +494,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         }
 
         $values = array_values($this->toArray());
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
 
@@ -545,7 +546,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
         // Index by column
         $values = array_column($this->toArray(), null, $column);
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
     /**
@@ -591,7 +592,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             $values[$key][] = $row;
         }
 
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
     /**
@@ -619,7 +620,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         }
 
         $values = array_column($this->toArray(), $valueColumn, $keyColumn);
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
     /**
@@ -652,7 +653,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
                 $values[] = array_values($row)[$rowIndex];
             }
         }
-        return $this->cloneWith($values);
+        return new self($values, get_object_vars($this));
     }
 
     /**
@@ -720,7 +721,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $newArray  = array_combine($oldKeys, $newValues);
 
         // return new SmartArray
-        return $this->cloneWith($newArray);
+        return new self($newArray, get_object_vars($this));
     }
 
     #endregion
@@ -1387,41 +1388,6 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         return $this->getArrayCopy();
     }
-
-    /**
-     * Creates a new SmartArray instance with the given array while preserving properties.
-     *
-     * @param array $rawArray
-     * @return self A new SmartArray instance with the same properties but different content
-     *
-     * @internal This method is used internally by transformation methods to create
-     *           new instances while preserving the object's position in its root.
-     */
-    public function cloneWith(array $rawArray): self
-    {
-        $copy = new self($rawArray, get_object_vars($this));
-
-        // ArrayObject: switch property access to actual properties
-        $this->setFlags(ArrayObject::STD_PROP_LIST);
-        $copy->setFlags(ArrayObject::STD_PROP_LIST);
-
-        // Copy properties - these can only be set by our root SmartArray
-        $copy->isFirst  = $this->isFirst;
-        $copy->isLast   = $this->isLast;
-        $copy->position = $this->position;
-        $copy->root     = $this->root;
-
-        // update root on any nested SmartArrays
-        $copy->updateChildProperties(get_object_vars($this));
-
-        // ArrayObject: Switch property access back to actual properties
-        $this->setFlags(ArrayObject::ARRAY_AS_PROPS);
-        $copy->setFlags(ArrayObject::ARRAY_AS_PROPS);
-
-        // return copy
-        return $copy;
-    }
-
 
     #endregion
     #region Internal Properties

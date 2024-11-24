@@ -93,51 +93,6 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         return new self($array, $properties);
     }
 
-    /**
-     * Returns SmartArray or throws an exception load() handler is not available for column
-     *
-     * @param string $column
-     * @return SmartArray|false
-     * @throws Exception
-     */
-    public function load(string $column): SmartArray|false
-    {
-        $loadHandler = $this->getProperty('loadHandler');
-
-        // error checking
-        match (true) {
-            empty($column)             => throw new InvalidArgumentException("Column name is required for load() method."),
-            !$loadHandler              => throw new Exception("No loadHandler property is defined"),
-            !is_callable($loadHandler) => throw new Exception("Load handler is not callable"),
-            default                    => null,
-        };
-
-        // get handler output
-        $result = $loadHandler($this, $column);
-        if ($result === false) {
-            throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
-        }
-
-        // output error checking
-        [$array, $mysqliProperties] = $result; // Get new array data
-        match (true) {
-            !is_array($array)            => throw new Error("Load handler must return an array as the first argument"),
-            !is_array($mysqliProperties) => throw new Error("Load handler must return an array as the second argument"),
-            default                      => null,
-        };
-
-        // return new SmartArray
-        return new self($array, [
-            'useSmartStrings' => $this->getProperty('useSmartStrings'), // persist smart strings setting
-            'loadHandler'     => $this->getProperty('loadHandler'),     // persist load handler
-            'mysqli'          => $mysqliProperties ?? [],
-            //'root'          => // skipped, set by constructor to self
-            //'isFirst'       => // skipped, instance defaults are accurate for root array
-            //'isLast'        => // skipped, instance defaults are accurate for root array
-            //'position'      => // skipped, instance defaults are accurate for root array
-        ]);
-    }
-
     #endregion
     #region Value Access
 
@@ -237,35 +192,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     /**
-     * Check if array has sequential numeric keys (0,1,2...). Same as PHP 8.1's array_is_list().
+     * Return the root SmartArray object for nested arrays, or the current object if not nested.
      */
-    public function isList(): bool
-    {
-        $arrayCopy = $this->getArrayCopy();
-        return $arrayCopy === array_values($arrayCopy);
-    }
-
-    /**
-     * Check if array doesn't contain any nested arrays.
-     */
-    public function isFlat(): bool
-    {
-        return !$this->isNested();
-    }
-
-    /**
-     * Check if array contains any nested arrays.
-     */
-    public function isNested(): bool
-    {
-        foreach ($this->getArrayCopy() as $value) {
-            if ($value instanceof self) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public function root(): SmartArray
     {
         return $this->getProperty('root');
@@ -725,7 +653,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     #endregion
-    #region Property Access
+    #region Database
 
     /**
      * Get mysqli result information for the last database query.
@@ -743,40 +671,50 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         return $resultInfo[$property] ?? null;
     }
 
-    /**
-     * Set object property value or throw an exception if property does not exist.
-     *
-     * @param string $name
-     * @param bool|int $value
-     * @return void
-     */
-    public function setProperty(string $name, bool|int|array|SmartArray $value): void
-    {
-        if (!property_exists($this, $name)) {
-            throw new InvalidArgumentException("Property '$name' does not exist.");
-        }
-
-        $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
-        $this->{$name} = $value;
-        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
-    }
 
     /**
-     * Return object property value or throw an exception if property does not exist.
+     * Returns SmartArray or throws an exception load() handler is not available for column
      *
-     * @param string $name
-     * @return bool|int|array|SmartArray|null
+     * @param string $column
+     * @return SmartArray|false
+     * @throws Exception
      */
-    public function getProperty(string $name): mixed
+    public function load(string $column): SmartArray|false
     {
-        if (!property_exists($this, $name)) {
-            throw new InvalidArgumentException("Property '$name' does not exist.");
+        $loadHandler = $this->getProperty('loadHandler');
+
+        // error checking
+        match (true) {
+            empty($column)             => throw new InvalidArgumentException("Column name is required for load() method."),
+            !$loadHandler              => throw new Exception("No loadHandler property is defined"),
+            !is_callable($loadHandler) => throw new Exception("Load handler is not callable"),
+            default                    => null,
+        };
+
+        // get handler output
+        $result = $loadHandler($this, $column);
+        if ($result === false) {
+            throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
         }
 
-        $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
-        $value = $this->{$name} ?? null;
-        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
-        return $value;
+        // output error checking
+        [$array, $mysqliProperties] = $result; // Get new array data
+        match (true) {
+            !is_array($array)            => throw new Error("Load handler must return an array as the first argument"),
+            !is_array($mysqliProperties) => throw new Error("Load handler must return an array as the second argument"),
+            default                      => null,
+        };
+
+        // return new SmartArray
+        return new self($array, [
+            'useSmartStrings' => $this->getProperty('useSmartStrings'), // persist smart strings setting
+            'loadHandler'     => $this->getProperty('loadHandler'),     // persist load handler
+            'mysqli'          => $mysqliProperties ?? [],
+            //'root'          => // skipped, set by constructor to self
+            //'isFirst'       => // skipped, instance defaults are accurate for root array
+            //'isLast'        => // skipped, instance defaults are accurate for root array
+            //'position'      => // skipped, instance defaults are accurate for root array
+        ]);
     }
 
     #endregion
@@ -1027,7 +965,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      */
     private function assertNestedArray(): void
     {
-        if ($this->count() > 0 && !$this->isNested()) {
+        if ($this->count() > 0 && $this->isFlat()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a nested array, but got a flat array";
             throw new InvalidArgumentException($error);
@@ -1222,6 +1160,37 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     #endregion
     #region Internal Methods
 
+
+    /**
+     * Check if array has sequential numeric keys (0,1,2...). Same as PHP 8.1's array_is_list().
+     */
+    public function isList(): bool
+    {
+        $arrayCopy = $this->getArrayCopy();
+        return $arrayCopy === array_values($arrayCopy);
+    }
+
+    /**
+     * Check if array doesn't contain any nested arrays.
+     */
+    public function isFlat(): bool
+    {
+        return !$this->isNested();
+    }
+
+    /**
+     * Check if array contains any nested arrays.  Does not check if all values are arrays, only if any are.
+     */
+    public function isNested(): bool
+    {
+        foreach ($this->getArrayCopy() as $value) {
+            if ($value instanceof self) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Update properties on child SmartArrays recursively.
      *
@@ -1391,6 +1360,35 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     #endregion
     #region Internal Properties
+
+    /**
+     * Set the load handler for lazy-loading nested arrays.
+     */
+    private function setLoadHandler(callable $customLoadHandler): void
+    {
+        $this->setFlags(ArrayObject::STD_PROP_LIST); // ArrayObject: Switch properties to allow standard property access
+        $this->loadHandler = $customLoadHandler;
+        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // ArrayObject: Switch properties back to refer to internal array keys
+    }
+
+    /**
+     * Return object property value or throw an exception if property does not exist.
+     *
+     * @param string $name
+     * @return bool|int|array|SmartArray|null
+     */
+    public function getProperty(string $name): mixed
+    {
+        if (!property_exists($this, $name)) {
+            throw new InvalidArgumentException("Property '$name' does not exist.");
+        }
+
+        $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
+        $value = $this->{$name} ?? null;
+        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
+        return $value;
+    }
+
 
     /**
      * PROPERTIES NOTICE:

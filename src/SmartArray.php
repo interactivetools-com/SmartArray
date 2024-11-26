@@ -878,7 +878,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      *
      * @return string
      */
-    public static function help(): string
+    public static function help(): void
     {
         $output = <<<'__TEXT__'
             SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
@@ -889,9 +889,9 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             
             Core Concepts
             -------------------
-            $arr                = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
-            $arr['columnName']  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
-            $arr->columnName    = Itools\SmartString\SmartString  // Optional object syntax makes code cleaner and more readable
+            $obj                = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
+            $obj['columnName']  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
+            $obj->columnName    = Itools\SmartString\SmartString  // Optional object syntax makes code cleaner and more readable
             
             Accessing Elements
             -------------------
@@ -904,8 +904,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             
             Original Values
             -------------------
-            $arr->toArray()                      // Get original array with raw values
-            $arr->columnName->value()            // Get original unencoded field value
+            $obj->toArray()                      // Get original array with raw values
+            $obj->columnName->value()            // Get original unencoded field value
             "Bio: {$user->wysiwyg->noEncode()}"  // Alias for value(), clearer when handling WYSIWYG/HTML content
             
             Creating SmartArrays
@@ -916,23 +916,19 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             
             Value Access
             -------------
-            $arr[key]               Get values by key using array syntax
-            $arr->key               Get values by key using object syntax
-            ->get(key, default)     Get element by key with optional default value
-            ->first()               Get first element in array
-            ->last()                Get last element in array
-            ->nth(position)         Get element by position (1 is first, -1 is last)
+            $obj[key]               Get a value using array syntax
+            $obj->key               Get a value using object syntax      
+            ->get(key)              Get a value using method syntax
+            ->get(key, default)     Get a value with optional default if key not found
+            ->first()               Get the first element
+            ->last()                Get the last element
+            ->nth(position)         Get element by position, ignoring keys (0 is first, -1 is last)
             
             Array Information
             ------------------
-            ->count()               Get number of elements in array
-            ->isEmpty()             Check if array has no elements
-            ->isNotEmpty()          Check if array has any elements
-            ->isList()              Check if array has sequential numeric keys (0,1,2...)
-            ->isFlat()              Check if array contains no nested arrays
-            ->isNested()            Check if array contains any nested arrays
-            ->mysqli()              Get array of info from the last mysqli result (query, errno, error, etc) if set
-            ->root()                Get root SmartArray if nested, otherwise self
+            ->count()               Get the number of elements
+            ->isEmpty()             Returns true if array has no elements
+            ->isNotEmpty()          Returns true if array has any elements
             
             Position & Layout
             ------------------
@@ -951,26 +947,33 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             ->where(conditions)     Keep elements matching [column => value] conditions
             
             Array Transformation
-            ------------------
+            ---------------------
             ->toArray()             Convert SmartArray/SmartString structure back to array/values
             ->keys()                Get array of just the keys
             ->values()              Get array of just the values
-            ->map(callback)         Transform each element using callback that receives raw values
-            ->pluck(column)         Extract single column from nested array
-            ->pluckNth(position)    Get array containing nth element from each row
             ->indexBy(column)       Get array using column as keys to single rows (duplicates overwrite)
             ->groupBy(column)       Get array using column as keys to arrays of rows (duplicates group)
+            ->pluck(column)         Extract single column from nested array
+            ->pluckNth(position)    Get array containing nth element from each row
             ->implode(separator)    Join elements with separator into string
+            ->map(callback)         Transform each element using callback that receives raw values
+            ->merge(...$arrays)      Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
+            
+            Database Operations
+            --------------------
+            ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result) 
+            ->mysqli(key)           Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)     
+            ->load()                Loads related record(s) if available for column
             
             Debugging
             ----------
-            print_r($arr)           Show array values and debug information
-            $arr->help()            Display this help information
+            print_r($obj)           Show array values and debug information
+            $obj->help()            Display this help information
             
             For more details see SmartArray readme.md, and SmartString docs for chainable string methods.
             __TEXT__;
 
-        return self::xmpWrap($output);
+        echo self::xmpWrap($output);
     }
 
     /**
@@ -1071,29 +1074,35 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      */
     private static function xmpWrap($output): string
     {
-        $output             = "\n" . trim($output, "\n") . "\n";
+        $output             = trim($output, "\n");
         $headersList        = implode("\n", headers_list());
         $hasContentType     = (bool)preg_match('|^\s*Content-Type:\s*|im', $headersList);  // assume no content type will default to html
         $isTextHtml         = !$hasContentType || preg_match('|^\s*Content-Type:\s*text/html\b|im', $headersList); // match: text/html or ...;charset=utf-8
         $backtraceFunctions = array_map('strtolower',array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'));
         $wrapInXmp          = $isTextHtml && !in_array('showme', $backtraceFunctions);
-        return $wrapInXmp ? "\n<xmp>$output</xmp>\n" : $output;
+        return $wrapInXmp ? "\n<xmp>\n$output\n</xmp>\n" : "\n$output\n";
     }
 
     /**
      * Show internal array data print_r() is used to examine object.
      *
-     * You can temporarily comment out this function to get
+     * You can temporarily comment out this function to see the properties while debugging.
      */
     public function __debugInfo(): array
     {
-        // return raw object when debugging
-//        if (isset($_COOKIE['XDEBUG_SESSION']) && $this->getProperty('useSmartStrings')) {
-//            // For future use
-//        }
+        // show help information for root array
+        $output = [];
+        if ($this === $this->root()) {
+            $output["README:SmartArray:private"] = "Call \$obj->help() for more information and method examples";
+            $output["*useSmartStrings*:private"] = match($this->getProperty('useSmartStrings')) {
+              true  => "true, // Values are returned as SmartString objects on access\n",
+              false => "false, // Values are returned **as-is** on access (no extra encoding)\n",
+            };
+        }
 
-        // otherwise show just data for print_r
-        return $this->getArrayCopy();
+        // show array data
+        $output += $this->getArrayCopy();
+        return $output;
     }
 
     #endregion

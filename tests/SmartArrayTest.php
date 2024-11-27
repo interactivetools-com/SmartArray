@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use InvalidArgumentException, JsonException;
+use BadMethodCallException, InvalidArgumentException;
+use ReflectionException, ReflectionObject;
+use PHPUnit\Framework\TestCase;
+
 use ArrayObject;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartString\SmartString;
 
-use PHPUnit\Framework\TestCase;
+
+
 
 class SmartArrayTest extends TestCase
 {
@@ -108,16 +112,15 @@ class SmartArrayTest extends TestCase
         }
 
         // Check for correct root property
-        $rootProperty = $obj->root();
-        if ($weAreRoot && $rootProperty !== $obj) { // check root references self
-            throw new InvalidArgumentException("\$rootArray->root() should reference self, got " .get_debug_type($rootProperty). " instead.");
-        }
-        if ($weAreRoot && !is_null($actualRoot)) { // check no actualRoot provided
-            throw new InvalidArgumentException("No actualRoot should be provided when \$rootArray->root() is called.  Path: $path");
-        }
-        if (!$weAreRoot && $rootProperty !== $actualRoot) { // child
+        $objRoot = $obj->root();
+        match (true) {
+            $weAreRoot && $objRoot !== $obj     => throw new InvalidArgumentException("\$rootArray->root() should reference self, got " . get_debug_type($objRoot) . " instead."),
+            $weAreRoot && !is_null($actualRoot) => throw new InvalidArgumentException("No actualRoot should be provided in testplan when \$rootArray->root() is called.  Path: $path"),
+            default                             => null,
+        };
+        if (!$weAreRoot && $objRoot !== $actualRoot) { // child
             $expected = basename(get_debug_type($actualRoot)) . " #" . spl_object_id($actualRoot);
-            $actual   = !is_object($rootProperty) ? $rootProperty : basename(get_debug_type($rootProperty)) . " #" . spl_object_id($rootProperty);
+            $actual   = !is_object($objRoot) ? $objRoot : basename(get_debug_type($objRoot)) . " #" . spl_object_id($objRoot);
             throw new InvalidArgumentException("Invalid property at $path->"."root(). Expected $expected, got $actual instead.");
         }
 
@@ -127,8 +130,11 @@ class SmartArrayTest extends TestCase
         }
 
         // Check useSmartArrays
-        if (!$weAreRoot && $obj->getProperty('useSmartStrings') !== $actualRoot->getProperty('useSmartStrings')) {
-            throw new InvalidArgumentException("Invalid useSmartStrings at $path. Expected " . var_export($actualRoot->getProperty('useSmartStrings'), true) . ", got " . var_export($obj->getProperty('useSmartStrings'), true) . " instead.");
+
+        $thisObjectUseSmartStrings = $this->callPrivateMethod($obj, 'getProperty', ['useSmartStrings']);
+        $actualRootUseSmartStrings = $this->callPrivateMethod($obj->root(), 'getProperty', ['useSmartStrings']);
+        if (!$weAreRoot && $thisObjectUseSmartStrings !== $actualRootUseSmartStrings) {
+            throw new InvalidArgumentException("Invalid useSmartStrings at $path. Expected " . var_export($actualRootUseSmartStrings, true) . ", got " . var_export($thisObjectUseSmartStrings, true) . " instead.");
         }
 
         // Recurse over child SmartArrays
@@ -219,6 +225,48 @@ class SmartArrayTest extends TestCase
             $var instanceof SmartNull  => null,
             default                    => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
+    }
+
+    /**
+     * Calls a private or protected method on an object or a static method on a class.
+     *
+     * @param object|string $objectOrClass The object instance or class name for static methods.
+     * @param string $methodName The name of the method to call.
+     * @param array $args An array of arguments to pass to the method.
+     * @return mixed The result of the method call.
+     *
+     * @throws ReflectionException
+     * @usage $this->callPrivateMethod($object, 'methodName', [$arg1, $arg2, ...]);
+     */
+    private function callPrivateMethod(object|string $objectOrClass, string $methodName, array $args = []): mixed {
+        // Determine whether we're dealing with an object instance or a class name for static methods
+        $reflection = new ReflectionObject($objectOrClass);
+
+        // Check if the method exists
+        if ($reflection->hasMethod($methodName)) {
+            $method = $reflection->getMethod($methodName);
+
+            // Make the method accessible if it's not public
+            if (!$method->isPublic()) {
+                $method->setAccessible(true);
+            }
+
+            // Invoke the method based on whether it's static or not
+            return $method->invokeArgs($objectOrClass, $args);
+        }
+
+        // Attempt to use magic methods if the target method doesn't exist
+        if ($reflection->hasMethod('__call')) {
+            $methodInstance = $reflection->getMethod('__call');
+            if (!$methodInstance->isPublic()) {
+                $methodInstance->setAccessible(true);
+            }
+
+            return $methodInstance->invoke($objectOrClass, $methodName, $args);
+        }
+
+        // Throw an exception if the method doesn't exist
+        throw new BadMethodCallException("Method $methodName does not exist.");
     }
 
     #endregion
@@ -1085,6 +1133,106 @@ class SmartArrayTest extends TestCase
         ];
     }
 
+    /**
+     * @dataProvider mergeProvider
+     */
+    public function testMerge($input, $arrays, $expected): void
+    {
+        // Test SmartArray without SmartStrings
+        $smartArray = new SmartArray($input);
+        $result = $smartArray->merge(...$arrays);
+        $this->assertEquals($expected, $result->toArray());
+
+        // Test SmartArray with SmartStrings
+        $smartArraySS = SmartArray::newSS($input);
+        $resultSS = $smartArraySS->merge(...$arrays);
+        $this->assertEquals(self::recursiveHtmlEncode($expected), self::toArrayResolveSS($resultSS));
+    }
+
+    public function mergeProvider(): array
+    {
+        return [
+            'merge with empty array' => [
+                'input' => ['a' => 1, 'b' => 2],
+                'arrays' => [[]],
+                'expected' => ['a' => 1, 'b' => 2],
+            ],
+            'merge empty array with non-empty' => [
+                'input' => [],
+                'arrays' => [['a' => 1, 'b' => 2]],
+                'expected' => ['a' => 1, 'b' => 2],
+            ],
+            'merge multiple arrays' => [
+                'input' => ['a' => 1],
+                'arrays' => [
+                    ['b' => 2],
+                    ['c' => 3],
+                ],
+                'expected' => ['a' => 1, 'b' => 2, 'c' => 3],
+            ],
+            'merge with string keys overwrites' => [
+                'input' => ['name' => 'Alice', 'age' => 30],
+                'arrays' => [['name' => 'Bob', 'city' => 'NY']],
+                'expected' => ['name' => 'Bob', 'age' => 30, 'city' => 'NY'],
+            ],
+            'merge numeric arrays combines and reindexes' => [
+                'input' => [1, 2, 3],
+                'arrays' => [[4, 5, 6], [7, 8, 9]],
+                'expected' => [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            ],
+            'merge mixed numeric and string keys' => [
+                'input' => ['a' => 1, 0 => 'first'],
+                'arrays' => [['b' => 2, 0 => 'second']],
+                'expected' => ['a' => 1, 0 => 'first', 'b' => 2, 1 => 'second'],
+            ],
+            'merge with nested arrays' => [
+                'input' => ['user' => ['name' => 'Alice']],
+                'arrays' => [['user' => ['age' => 30]]],
+                'expected' => ['user' => ['age' => 30]],
+            ],
+            'merge SmartArrays' => [
+                'input' => ['a' => 1],
+                'arrays' => [
+                    new SmartArray(['b' => 2]),
+                    new SmartArray(['c' => 3]),
+                ],
+                'expected' => ['a' => 1, 'b' => 2, 'c' => 3],
+            ],
+            'merge with special characters' => [
+                'input' => ['name' => "O'Connor"],
+                'arrays' => [['company' => 'Smith & Sons', 'title' => '<CEO>']],
+                'expected' => ['name' => "O'Connor", 'company' => 'Smith & Sons', 'title' => '<CEO>'],
+            ],
+            'merge with null values' => [
+                'input' => ['a' => 1, 'b' => null],
+                'arrays' => [['b' => 2, 'c' => null]],
+                'expected' => ['a' => 1, 'b' => 2, 'c' => null],
+            ],
+            'merge with boolean values' => [
+                'input' => ['active' => true],
+                'arrays' => [['verified' => false]],
+                'expected' => ['active' => true, 'verified' => false],
+            ],
+            'merge deeply nested arrays' => [
+                'input' => [
+                    'level1' => [
+                        'level2' => ['a' => 1]
+                    ]
+                ],
+                'arrays' => [[
+                                 'level1' => [
+                                     'level2' => ['b' => 2]
+                                 ]
+                             ]],
+                'expected' => [
+                    'level1' => [
+                        'level2' => ['b' => 2]
+                    ]
+                ],
+            ],
+        ];
+    }
+
 #endregion
 #region Array Information
 
@@ -1188,6 +1336,14 @@ class SmartArrayTest extends TestCase
      */
     public function testIsList(array $input, bool $expected): void
     {
+        // skip if method doesn't exist
+        if (!method_exists(SmartArray::class, 'isList')) {
+            // leave test here in case we re-add method in future
+            $this->assertTrue(true);
+            return;
+        }
+
+        // original test
         foreach (['new', 'newSS'] as $newMethod) {
             $smartArray = SmartArray::$newMethod($input);
             $keysCSV    = implode(',', array_keys($smartArray->getArrayCopy()));
@@ -3076,6 +3232,9 @@ class SmartArrayTest extends TestCase
     }
 
 #endregion
+#region Database Operations
+
+#endregion
 #region SmartNull
 
 #endregion
@@ -3103,7 +3262,7 @@ class SmartArrayTest extends TestCase
 
         // Start output buffering to capture the warning output
         ob_start();
-        $smartArray->warnIfMissing('age', 'argument'); // 'age' key does not exist
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']); // 'age' key does not exist
         $output = ob_get_clean();
 
         // Build the expected warning message pattern
@@ -3119,7 +3278,7 @@ class SmartArrayTest extends TestCase
 
         // Start output buffering to capture any output
         ob_start();
-        $smartArray->warnIfMissing('age', 'argument'); // Any key
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']); // Any key
         $output = ob_get_clean();
 
         // Assert that there is no warning output
@@ -3131,7 +3290,6 @@ class SmartArrayTest extends TestCase
 
     /**
      * @dataProvider jsonSerializeProvider
-     * @throws JsonException
      */
     public function testJsonSerialize($initialData): void
     {

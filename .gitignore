@@ -2,6 +2,7 @@
 .phpunit.result.cache
 composer*.phar
 composer.bat
+composer.*.json
 composer.lock
 test.php
 vendor/

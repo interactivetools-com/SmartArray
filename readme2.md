@@ -1,4 +1,4 @@
-# SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
+# SmartArray: Enhanced Arrays with Chainable Methods and Automatic HTML Encoding
 
 SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
 It preserves familiar array syntax while adding powerful features for filtering, mapping,
@@ -43,7 +43,7 @@ $records = [
     ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
 ];
 
-$users = SmartArray::new($records); // Convert to SmartArray (values get converted to SmartStrings)
+$users = SmartArray::newSS($records); // Convert to SmartArray of SmartStrings (use new() for regular values)
 
 // Foreach over a SmartArray just like a regular array 
 foreach ($users as $user) {

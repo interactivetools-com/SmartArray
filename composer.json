@@ -1,6 +1,6 @@
 {
   "name": "itools/smartarray",
-  "description": "PHP Arrays with Superpowers",
+  "description": "Enhanced Arrays with Chainable Methods and Automatic HTML Encoding",
   "keywords": ["smartarray", "array", "collection", "php", "fluent", "chainable", "helpers", "utils", "utf"],
   "type": "library",
   "homepage": "https://github.com/interactivetools-com/SmartArray",

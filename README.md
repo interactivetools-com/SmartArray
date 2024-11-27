@@ -456,8 +456,8 @@ $users->help();  // Displays comprehensive documentation and examples
 |----------------------|-----------------------------:|-----------------------------------------------------------------------------------------------------------|
 | Basic Usage          |      SmartArray::new($array) | Create a new SmartArray. Values stay as-is, nested arrays become SmartArrays                              |
 |                      |    SmartArray::newSS($array) | Create a new SmartArray. Values become HTML-encoded SmartStrings, nested arrays become SmartArrays        |                                 |
-| Value Access         |                        [key] | Get a value using array syntax, e.g., `$array['key']`                                                     |
-|                      |                        ->key | Get a value using object syntax, e.g., `$array->key`                                                      |
+| Value Access         |                  $obj['key'] | Get a value using array syntax                                                                            |
+|                      |                    $obj->key | Get a value using object syntax                                                                           |
 |                      |                    get($key) | Get a value using method syntax                                                                           |
 |                      |          get($key, $default) | Get a value with optional default if key not found                                                        |
 |                      |                      first() | Get the first element                                                                                     |
@@ -467,7 +467,6 @@ $users->help();  // Displays comprehensive documentation and examples
 | Array Information    |                      count() | Get the number of elements                                                                                |                                                                                                                                                             
 |                      |                    isEmpty() | Returns true if array has no elements                                                                     |
 |                      |                 isNotEmpty() | Returns true if array has any elements                                                                    |
-|                      |                       root() | Get original parent SmartArray or self if root                                                            |
 | Position & Layout    |                    isFirst() | Returns true if first element in parent array                                                             |
 |                      |                     isLast() | Returns true if last element in parent array                                                              |
 |                      |                   position() | Gets position in parent array (starting from 1)                                                           |
@@ -492,7 +491,7 @@ $users->help();  // Displays comprehensive documentation and examples
 | Database Operations  |                              | The following optional methods may be available when using SmartArray with database results               |
 |                      |                     mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                       |
 |                      |                 mysqli($key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                         |
-|                      |                       load() | Loads related records if available for column                                                             |
+|                      |                       load() | Loads related record(s) if available for column                                                          |
 |                      |       **Debugging and Help** |                                                                                                           |
 |                      |                       help() | Displays help information about available methods                                                         |
 |                      |                      debug() | Show content of object as well as properties                                                              |                                                                                                                                                                       

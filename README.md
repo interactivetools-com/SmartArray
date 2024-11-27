@@ -6,17 +6,23 @@ and data manipulation - making common array operations simpler, safer, and more 
 
 ## Table of Contents
 
-* [Quick Start](#quick-start)
-* [Usage Examples](#usage-examples)
-    * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
-    * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
-    * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
-    * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
-    * [Building Safe MySQL ID Lists with pluck(), map(), and join()](#building-safe-mysql-id-lists-with-pluck-map-and-join)
-    * [Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()](#creating-grid-layouts-with-isfirst-islast-ismultipleof-and-chunk)
-    * [Debugging and Help](#debugging-and-help)
-* [Method Reference](#method-reference)
-* [Questions?](#questions)
+<!-- TOC -->
+
+* [SmartArray](#smartarray-enhanced-arrays-with-chainable-methods-and-automatic-html-encoding)
+    * [Table of Contents](#table-of-contents)
+    * [Quick Start](#quick-start)
+    * [Usage Examples](#usage-examples)
+        * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
+        * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
+        * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
+        * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
+        * [Building Safe MySQL ID Lists with pluck(), map(), and implode()](#building-safe-mysql-id-lists-with-pluck-map-and-implode)
+        * [Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()](#creating-grid-layouts-with-isfirst-islast-ismultipleof-and-chunk)
+        * [Debugging and Help](#debugging-and-help)
+    * [Method Reference](#method-reference)
+    * [Questions?](#questions)
+
+<!-- TOC -->
 
 ## Quick Start
 
@@ -452,6 +458,8 @@ $users->help();  // Displays comprehensive documentation and examples
 
 ## Method Reference
 
+Note: All methods return a new `SmartArray` object unless otherwise specified.
+
 | Category             |                       Method | Description                                                                                               |
 |----------------------|-----------------------------:|-----------------------------------------------------------------------------------------------------------|
 | Basic Usage          |      SmartArray::new($array) | Create a new SmartArray. Values stay as-is, nested arrays become SmartArrays                              |
@@ -491,14 +499,11 @@ $users->help();  // Displays comprehensive documentation and examples
 | Database Operations  |                              | The following optional methods may be available when using SmartArray with database results               |
 |                      |                     mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                       |
 |                      |                 mysqli($key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                         |
-|                      |                       load() | Loads related record(s) if available for column                                                          |
+|                      |                       load() | Loads related record(s) if available for column                                                           |
 |                      |       **Debugging and Help** |                                                                                                           |
 |                      |                       help() | Displays help information about available methods                                                         |
 |                      |                      debug() | Show content of object as well as properties                                                              |                                                                                                                                                                       
 |                      |                print_r($obj) | Show array contents of object (useful for debugging)                                                      |     
-
-Transforms each element using callbackDatabaseload($column)
-Loads related records if available for column
 
 **See Also:** For working with `SmartArray` values, check out the included companion
 library `SmartString`, all `SmartArray` values are `SmartString` objects with

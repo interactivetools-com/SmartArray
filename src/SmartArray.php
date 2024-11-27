@@ -87,20 +87,29 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     /**
-     * Controls whether values are wrapped in SmartString objects for automatic HTML encoding.
+     * Creates a SmartArray that converts values to SmartString objects on access.
      *
-     * When enabled, values are wrapped in SmartString objects which provide automatic HTML encoding
-     * and other output formatting methods. The wrapping is done lazily on access, so it doesn't
-     * affect methods like toArray() that return raw values.
+     * When created with newSS(), scalar values are automatically wrapped in SmartString objects
+     * when accessed. These SmartString objects provide automatic HTML encoding and chainable
+     * formatting methods. The conversion is done lazily on access, so methods like toArray()
+     * still return raw values.
      *
-     * TODO: UPDATE THIS DOC BLOCK
+     * @param array $array The input array to convert into a SmartArray
+     * @param array $properties Optional properties to set on the SmartArray
+     * @return self A new SmartArray instance that converts values to SmartStrings
      *
      * @example
-     * $array->useSmartStrings(true);  // Convert values to SmartStrings with automatic html-encoding and helper methods
-     * echo $array->name;              // Output is HTML-encoded, e.g., "John &amp; Jane"
+     * // Create array with SmartString conversion
+     * $users = SmartArray::newSS([
+     *     ['name' => "John O'Connor", 'city' => 'New York'],
+     *     ['name' => 'Tom & Jerry',   'city' => 'Vancouver']
+     * ]);
      *
-     * $array->useSmartStrings(false); // Values stay as raw values
-     * echo $array->name;              // Output is raw value, e.g., "John & Jane"
+     * echo $users->first()->name;  // Output is HTML-encoded: John O&apos;Connor
+     * $rawName = $users->first()->name->value();  // Get original value: John O'Connor
+     *
+     * // Values stay as SmartArrays/SmartStrings until converted back
+     * $array = $users->toArray();  // Convert back to regular PHP array with raw values
      */
     public static function newSS(array $array = [], array $properties = []): self
     {
@@ -875,8 +884,6 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     /**
      * Displays help information about available methods and properties.
-     *
-     * @return string
      */
     public static function help(): void
     {
@@ -917,7 +924,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             Value Access
             -------------
             $obj[key]               Get a value using array syntax
-            $obj->key               Get a value using object syntax      
+            $obj->key               Get a value using object syntax
             ->get(key)              Get a value using method syntax
             ->get(key, default)     Get a value with optional default if key not found
             ->first()               Get the first element
@@ -961,8 +968,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             
             Database Operations
             --------------------
-            ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result) 
-            ->mysqli(key)           Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)     
+            ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
+            ->mysqli(key)           Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)
             ->load()                Loads related record(s) if available for column
             
             Debugging

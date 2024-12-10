@@ -256,8 +256,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             $return = match (strtolower(($key))) {
                 'affectedrows' => self::logDeprecationAndReturn($this->mysqli('affected_rows'), "Replace ->$key with ->mysqli('affected_rows')"),
                 'insertid'     => self::logDeprecationAndReturn($this->mysqli('insert_id'), "Replace ->$key with ->mysqli('insert_id')"),
-                'errno'        => self::logDeprecationAndReturn($this->mysqli('errno'), "Replace ->$key with ->mysqli('errno')"),
-                'error'        => self::logDeprecationAndReturn($this->mysqli('error'), "Replace ->$key with ->mysqli('error')"),
+                'errno'        => self::logDeprecationAndReturn(0, "Replace ->$key with a try/catch block around the query"),
+                'error'        => self::logDeprecationAndReturn('', "Replace ->$key with a try/catch block around the query"),
                 'count'        => self::logDeprecationAndReturn($this->count(), "Replace ->$key with ->count() (add brackets)"),
                 'first'        => self::logDeprecationAndReturn($this->first(), "Replace ->$key with ->first() (add brackets)"),
                 'isfirst'      => self::logDeprecationAndReturn($this->isFirst(), "Replace ->$key with ->isFirst() (add brackets)"),
@@ -800,7 +800,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     /**
      * Get mysqli result information for the last database query.
-     * Returns specified property (errno, error, affected_rows, insert_id) or array of all properties if no property specified.
+     * Returns specified property (affected_rows, insert_id) or array of all properties if no property specified.
      */
     public function mysqli(?string $property = null): int|string|null|array
     {
@@ -969,12 +969,13 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             Database Operations
             --------------------
             ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
-            ->mysqli(key)           Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)
+            ->mysqli(key)           Get specific mysqli result metadata (affected_rows, insert_id, etc)
             ->load()                Loads related record(s) if available for column
             
             Debugging
             ----------
-            print_r($obj)           Show array values and debug information
+            print_r($obj)           Show array values
+            $obj->debug()           Show array values, mysqli metadata, and available load() handlers
             $obj->help()            Display this help information
             
             For more details see SmartArray readme.md, and SmartString docs for chainable string methods.
@@ -995,21 +996,29 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             false => "$className - Values are returned **as-is** on access (no extra encoding)\n\n",
         };
 
+        // Show mysqli query
+        if ($this->mysqli('query')) {
+            $query  = preg_replace("/^/m", "    ", $this->mysqli('query')); // indent query
+            $output .= "MySQL Query:\n$query\n\nArray ";
+        }
+
         // show data
         $output .= self::prettyPrintR($this, $debugLevel);
 
-        // Show mysqli data
+        // Show mysqli metadata
         if ($this->mysqli()) {
-            $output .= "\nMySQLi Metadata\n";
-            $output .= self::prettyPrintR($this->mysqli(), $debugLevel);
+            $output            .= "\n";
+            $metadata          = $this->mysqli();
+            $metadata['query'] = preg_replace("/\s+/", " ", trim($metadata['query'])); // remove extra spaces
+            $output            .= self::prettyPrintR($metadata, $debugLevel, 0, "MySQLi Metadata ");
         }
 
         // show properties
         if ($debugLevel > 0) {
-            $output             .= "\nObject Properties\n";
+            $output             .= "\n";
             $properties         = get_object_vars($this); // gets public properties
             $properties['root'] = get_debug_type($properties['root']) . " #" . spl_object_id($properties['root']);
-            $output             .= self::prettyPrintR($properties, $debugLevel);
+            $output             .= self::prettyPrintR($properties, $debugLevel, 0, "Object Properties");
             $output             = preg_replace("/^(\s+'root'\s+=> ).*?(\d+).*?$/m", "$1SmartArray #$2", $output); // format root property as: SmartArray #123
         }
 
@@ -1058,12 +1067,17 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             $output = preg_replace("|,(\s*//.*)?$|", " $1", $output); // Remove trailing commas
             $output .= $depth ? "],\n" : "]\n"; // skip trailing comma on top level
         } elseif (is_scalar($var) || is_null($var)) {
-            $hasTabs = is_string($var) && str_contains($var, "\t");
-            $varExport = match (true) {
-                $hasTabs => '"' . addcslashes($var, "\t\"\0\$\\") . '"',  // Show tabs as \t for readability
-                default  => var_export($var, true),
+            $hasTabs     = is_string($var) && str_contains($var, "\t");
+            $varExport   = match (true) {
+                is_null($var) => "null",
+                is_bool($var) => $var ? "true" : "false",
+                !$debugLevel  => "$var",                                       // Show raw values without quotes for compact mode
+                $hasTabs      => '"' . addcslashes($var, "\t\"\0\$\\") . '"',  // Show tabs as \t for readability
+                default       => var_export($var, true),
             };
-            $output    = str_pad("$keyPrefix$varExport,$loadComment", $commentOffset) . "$comment\n";
+            $varExport  .= $debugLevel ? "," : ""; // add trailing comma for debug mode > 0
+            $loadComment = str_repeat(" ", max(12 - strlen($varExport), 0)) . $loadComment; // line up after common short value lengths
+            $output      = str_pad("$keyPrefix$varExport$loadComment", $commentOffset) . "$comment\n";
         } elseif ($var instanceof SmartNull) {
             $varExport = 'SmartNull()';
             $output    = str_pad("$keyPrefix$varExport,", $commentOffset) . "$comment\n";
@@ -1100,7 +1114,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         // show help information for root array
         $output = [];
         if ($this === $this->root()) {
-            $output["README:SmartArray:private"] = "Call \$obj->help() for more information and method examples";
+            // Call ->help() for usage examples and documentation, or ->debug() to view metadata
+            $output["README:SmartArray:private"] = "Call \$obj->help() for documentation, or ->debug() to view metadata";
             $output["*useSmartStrings*:private"] = match($this->getProperty('useSmartStrings')) {
               true  => "true, // Values are returned as SmartString objects on access\n",
               false => "false, // Values are returned **as-is** on access (no extra encoding)\n",
@@ -1259,25 +1274,32 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $line = "unknown";
         $inMethod = "";
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-        foreach ($backtrace as $caller) {
+
+        // Add Occurred in file:line
+        foreach ($backtrace as $index => $caller) {
             if (empty($caller['file']) || $caller['file'] !== __FILE__) {
                 $file = $caller['file'] ?? $file;
                 $line = $caller['line'] ?? $line;
+                $prevCaller =  $backtrace[$index + 1] ?? [];
                 $inMethod = match (true) {
-                    !empty($backtrace[1]['class'])    => " in {$backtrace[1]['class']}{$backtrace[1]['type']}{$backtrace[1]['function']}()",
-                    !empty($backtrace[1]['function']) => " in {$backtrace[1]['function']}()",
+                    !empty($prevCaller['class'])    => " in {$prevCaller['class']}{$prevCaller['type']}{$prevCaller['function']}()",
+                    !empty($prevCaller['function']) => " in {$prevCaller['function']}()",
                     default                           => "",
                 };
                 break;
             }
         }
         $output = "Occurred in $file:$line$inMethod\nReported";
+
+        // Add Reported in file:line (if requested)
         if ($addReportedFileLine) {
             $method       = basename($backtrace[1]['class']) . $backtrace[1]['type'] . $backtrace[1]['function'];
             $reportedFile = $backtrace[0]['file'] ?? "unknown";
             $reportedLine = $backtrace[0]['line'] ?? "unknown";
             $output .= " in $reportedFile:$reportedLine in $method()\n";
         }
+
+        // return output
         return $output;
     }
 
@@ -1397,7 +1419,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     private bool  $useSmartStrings = false;  // NOSONAR Is this ArrayObject a nested array?
     private mixed $loadHandler;              // The handler for lazy-loading nested arrays, e.g. '\Your\Class\SmartArrayLoadHandler::load', receives $smartArray, $fieldName
-    private array $mysqli          = [];     // NOSONAR Metadata from last mysqli result, e.g. $result->mysqli('error')
+    private array $mysqli          = [];     // NOSONAR Metadata from last mysqli result, e.g. $result->mysqli('affected_rows')
     private self  $root;                     // The root SmartArray, set on nested SmartArrays and self
 
     // These properties are calculated when the SmartArray is created or modified

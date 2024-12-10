@@ -1,5 +1,11 @@
 # SmartArray Changelog
 
+## [2.0.1] - 2024-12-09
+
+### Changed
+- ZenDB support: Removed references to ->mysqli('error') and ->mysqli('errno') as try/catch is now used for error handling
+- Code and text formatting updates
+
 ## [2.0.0] - 2024-11-26
 
 ### Changed

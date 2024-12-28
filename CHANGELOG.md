@@ -1,5 +1,17 @@
 # SmartArray Changelog
 
+
+## [2.0.2] - 2024-12-27
+
+### Added
+- `orDie()`: Terminates execution with message if value is blank (empty string, null or false)
+- `or404()`: Terminates execution with 404 header and message if value is blank (empty string, null or false)
+- `orThrow()`: Throws an exception with message if value is blank (empty string, null or false)
+- SmartNull objects now support mysqli() method so you can reference the original query that created them
+
+### Changed
+- Internal code organization and optimization improvements
+
 ## [2.0.1] - 2024-12-09
 
 ### Changed

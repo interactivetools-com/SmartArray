@@ -13,27 +13,19 @@ use Itools\SmartString\SmartString;
 class SmartNull implements Iterator, ArrayAccess
 {
     #region Constructor
-    private bool $useSmartStrings; // Is this ArrayObject a nested array?
 
-    public function __construct($useSmartStrings = false)
+    public function __construct(array $properties = [])
     {
-        $this->useSmartStrings = $useSmartStrings;
+        // Set properties
+        foreach ($properties as $property => $value) {
+            if (property_exists($this, $property)) {
+                $this->{$property} = $value;
+            }
+        }
     }
 
     #endregion
     #region Debugging and Help
-
-
-
-    /**
-     * Provides debug information about the object.
-     *
-     * @return array An associative array containing debugging information.
-     */
-    public function __debugInfo(): array
-    {
-        return ["__DEBUG_INFO__" => '// Chainable Null object for missing elements, returns SmartArray([]) or SmartString(NULL) based on context'];
-    }
 
     /**
      * Displays help information about this object
@@ -115,6 +107,25 @@ class SmartNull implements Iterator, ArrayAccess
     }
 
     #endregion
+    #region Database Operations
+
+    /**
+     * Get mysqli result information for the last database query.
+     * Returns specified property (affected_rows, insert_id) or array of all properties if no property specified.
+     */
+    public function mysqli(?string $property = null): int|string|null|array
+    {
+        // return array of all mysqli properties
+
+        if (is_null($property)) {
+            return get_object_vars($this)['mysqli'] ?? [];
+        }
+
+        // return specific mysqli property
+        return get_object_vars($this)['mysqli'][$property] ?? null;
+    }
+
+    #endregion
     #region Object Methods
 
     /**
@@ -153,6 +164,12 @@ class SmartNull implements Iterator, ArrayAccess
     {
         return SmartString::new(null)->__toString();
     }
+
+    #endregion
+    #region Internal Properties
+
+    private bool  $useSmartStrings;          // Is this ArrayObject a nested array?
+    private array $mysqli = [];              // NOSONAR Metadata from last mysqli result, e.g. $result->mysqli('affected_rows')
 
     #endregion
 }

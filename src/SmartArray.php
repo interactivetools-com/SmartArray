@@ -1111,7 +1111,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      */
     public function __debugInfo(): array
     {
-        // show help information for root array
+        // show help information for root array (but not for every child array)
         $output = [];
         if ($this === $this->root()) {
             // Call ->help() for usage examples and documentation, or ->debug() to view metadata
@@ -1129,6 +1129,51 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
     #endregion
     #region Error Handling
+
+    /**
+     * Sends a 404 header and message if the array is empty, then exits.
+     *
+     * @param string $message The message to display when sending 404.
+     */
+    public function or404(string $message = "404 Not Found"): self
+    {
+        if ($this->count() === 0) {
+            http_response_code(404);
+            header("Content-Type: text/html; charset=utf-8");
+            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            die($message);
+        }
+        return $this;
+    }
+
+    /**
+     * Dies with a message if the array is empty
+     *
+     * @param string $message Error message to show
+     * @return self Returns $this for method chaining if not empty
+     */
+    public function orDie(string $message): self {
+        if ($this->count() === 0) {
+            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            die($message);
+        }
+        return $this;
+    }
+
+    /**
+     * Throws RuntimeException if the array is empty
+     *
+     * @param string $message Error message to show
+     * @return self Returns $this for method chaining if not empty
+     * @throws RuntimeException If array is empty
+     */
+    public function orThrow(string $message): self {
+        if ($this->count() === 0) {
+            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            throw new RuntimeException($message);
+        }
+        return $this;
+    }
 
     /**
      * Assert that array has no nested arrays
@@ -1331,7 +1376,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      */
     public function newSmartNull(): SmartNull
     {
-        return new SmartNull($this->getProperty('useSmartStrings'));
+        return new SmartNull(get_object_vars($this));
     }
 
     /**

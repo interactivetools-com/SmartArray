@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use Iterator, ArrayAccess;
-use RuntimeException, InvalidArgumentException;
+use Exception, InvalidArgumentException;
 use Itools\SmartString\SmartString;
+use stdClass;
 
 /**
  * NullSmartArray - A SmartArray|SmartString object that can be used as a placeholder for null values.
  */
-class SmartNull implements Iterator, ArrayAccess
+class SmartNull extends stdClass implements Iterator, ArrayAccess // extend stdClass to avoid IDE warnings related to undefined properties
 {
     #region Constructor
 
@@ -93,7 +94,7 @@ class SmartNull implements Iterator, ArrayAccess
 
     public function offsetSet($offset, $value): void
     {
-        throw new RuntimeException('Cannot set values on SmartNull');
+        throw new Exception('Cannot set values on SmartNull');
     }
 
     public function offsetExists($offset): bool

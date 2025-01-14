@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use Throwable, Error, Exception, InvalidArgumentException, RuntimeException;
+use Throwable, Error, Exception, InvalidArgumentException;
 use ArrayObject, Iterator, JsonSerializable, Closure;
 use Itools\SmartString\SmartString;
 
@@ -277,7 +277,6 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             $value = parent::offsetGet($key);
             return $this->encodeOutput($value, $key);
         }
-        $this->warnIfMissing($key, 'offset');
         return $this->newSmartNull();
     }
 
@@ -408,7 +407,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
         $this->assertNestedArray();
         if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column, 'argument');
+            $this->first()->warnIfMissing($column);
         }
 
 
@@ -582,7 +581,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         $this->assertNestedArray();
         if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column, 'argument');
+            $this->first()->warnIfMissing($column);
         }
 
         // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
@@ -630,7 +629,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         $this->assertNestedArray();
         if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column, 'argument');
+            $this->first()->warnIfMissing($column);
         }
 
         $values = [];
@@ -663,7 +662,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     {
         $this->assertNestedArray();
         if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($valueColumn, 'argument');
+            $this->first()->warnIfMissing($valueColumn);
         }
 
         $values = array_column($this->toArray(), $valueColumn, $keyColumn);
@@ -1082,7 +1081,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             $varExport = 'SmartNull()';
             $output    = str_pad("$keyPrefix$varExport,", $commentOffset) . "$comment\n";
         } else {
-            throw new RuntimeException("Unsupported type: $debugType");
+            throw new Exception("Unsupported type: $debugType");
         }
 
         // Indent each line
@@ -1161,16 +1160,16 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     }
 
     /**
-     * Throws RuntimeException if the array is empty
+     * Throws Exception if the array is empty
      *
      * @param string $message Error message to show
      * @return self Returns $this for method chaining if not empty
-     * @throws RuntimeException If array is empty
+     * @throws Exception If array is empty
      */
     public function orThrow(string $message): self {
         if ($this->count() === 0) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
-            throw new RuntimeException($message);
+            throw new Exception($message);
         }
         return $this;
     }
@@ -1202,10 +1201,8 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     /**
      * Throws a PHP warning if the specified key isn't in the list of keys, but only if the array isn't empty.
      * Throws PHP warning if the column is missing in the array to help debugging, but only if the array is not empty
-     *
-     * @param string $warningType 'offset' for properties, 'argument' for method arguments
      */
-    private function warnIfMissing(string|int $key, string $warningType): void
+    private function warnIfMissing(string|int $key): void
     {
         // Skip warning if the array is empty or key exists
         if ($this->count() === 0 || $this->offsetExists($key)) {
@@ -1214,16 +1211,10 @@ class SmartArray extends ArrayObject implements JsonSerializable                
 
         // If array isn't empty and key doesn't exist, throw warning to help debugging
         // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
-        $caller       = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-        $function     = $caller['function'] ?? "unknownFunction";
+        $caller   = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+        $function = $caller['function'] ?? "unknownFunction";
         //$inFileOnLine = sprintf("in %s:%s", $caller['file'] ?? 'unknown', $caller['line'] ?? 'unknown'); //
-
-        $warning = match ($warningType) {
-            'offset'   => "Undefined property or array key '$key', use ->offsetExists() or ->get() with a default value to avoid this warning.", // ArrayObject treats properties as offsets
-            'argument' => "$function(): '$key' doesn't exist",
-            default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
-        };
-        $warning .= "\n\n";
+        $warning = "$function(): '$key' doesn't exist\n\n";
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces

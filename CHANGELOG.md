@@ -1,5 +1,11 @@
 # SmartArray Changelog
 
+## [2.0.3] - 2025-01-13
+
+### Changed
+- Removed warnings for undefined properties when using offsetGet(), ->property, or array syntax []
+- Updated SmartNull to extend stdClass to prevent dynamic property warnings
+- Changed RuntimeExceptions to base Exception class
 
 ## [2.0.2] - 2024-12-27
 

@@ -1,5 +1,10 @@
 # SmartArray Changelog
 
+## [2.0.4] - 2025-01-15
+
+### Changed
+- Misc code optimizations and other minor improvements
+
 ## [2.0.3] - 2025-01-13
 
 ### Changed

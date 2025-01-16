@@ -11,7 +11,7 @@ use Itools\SmartString\SmartString;
 /**
  * SmartArray - Represent an array as an ArrayObject with extra features and a fluent, chainable interface.
  */
-class SmartArray extends ArrayObject implements JsonSerializable                                                                                                                                                                                                                    // NOSONAR - Ignore S1448 "Too many methods"
+class SmartArray extends ArrayObject implements JsonSerializable
 {
     #region Creation and Conversion
 
@@ -138,7 +138,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         }
 
         // skip if empty
-        if ($this->isEmpty()) {
+        if ($this->count() === 0) {
             return $this->newSmartNull();
         }
 
@@ -252,7 +252,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         $key = self::rawValue($key); // Convert SmartString keys to raw values
 
         // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
-        if (is_string($key) && ($this->isEmpty() || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
+        if (is_string($key) && ($this->count() === 0 || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
             $return = match (strtolower(($key))) {
                 'affectedrows' => self::logDeprecationAndReturn($this->mysqli('affected_rows'), "Replace ->$key with ->mysqli('affected_rows')"),
                 'insertid'     => self::logDeprecationAndReturn($this->mysqli('insert_id'), "Replace ->$key with ->mysqli('insert_id')"),
@@ -820,9 +820,14 @@ class SmartArray extends ArrayObject implements JsonSerializable                
      * @return SmartArray|false
      * @throws Exception
      */
-    public function load(string $column): SmartArray|false
+    public function load(string $column): SmartArray|SmartNull
     {
         $loadHandler = $this->getProperty('loadHandler');
+
+        // return SmartNull if array is empty
+        if ($this->count() === 0) {
+            return self::newSmartNull();
+        }
 
         // error checking
         match (true) {
@@ -912,7 +917,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
             -------------------
             $obj->toArray()                      // Get original array with raw values
             $obj->columnName->value()            // Get original unencoded field value
-            "Bio: {$user->wysiwyg->noEncode()}"  // Alias for value(), clearer when handling WYSIWYG/HTML content
+            "Bio: {$user->wysiwyg->rawHtml()}"   // Alias for value(), clearer when handling trusted WYSIWYG/HTML content
             
             Creating SmartArrays
             -------------------
@@ -1008,7 +1013,9 @@ class SmartArray extends ArrayObject implements JsonSerializable                
         if ($this->mysqli()) {
             $output            .= "\n";
             $metadata          = $this->mysqli();
-            $metadata['query'] = preg_replace("/\s+/", " ", trim($metadata['query'])); // remove extra spaces
+            if (array_key_exists('query', $metadata)) {
+                $metadata['query'] = preg_replace("/\s+/", " ", trim((string) $metadata['query'])); // remove extra spaces
+            }
             $output            .= self::prettyPrintR($metadata, $debugLevel, 0, "MySQLi Metadata ");
         }
 
@@ -1052,13 +1059,16 @@ class SmartArray extends ArrayObject implements JsonSerializable                
                 $thisKeyPrefix = str_pad($wrappedKey, $maxKeyLength) ." => ";
 
                 // add load comment
+                $loadComment = "";
                 $loadResult = false;
                 try {
                     $loadResult = $var->load($key);
                 } catch (Throwable) {
                     // ignore errors
                 }
-                $loadComment = $loadResult ? " // ->load('$key') for more" : "";
+                if ($loadResult !== false && !$loadResult instanceof SmartNull) {
+                    $loadComment = " // ->load('$key') for more";
+                }
 
                 // get output
                 $output .= self::prettyPrintR($value, $debugLevel, $depth + 1, $thisKeyPrefix, $loadComment);
@@ -1480,7 +1490,7 @@ class SmartArray extends ArrayObject implements JsonSerializable                
     public function col(string|int $key): SmartArray|SmartNull|SmartString
     {
         // Skip processing if the array is empty
-        if ($this->isEmpty()) {
+        if ($this->count() === 0) {
             self::logDeprecation("Replace ->col() with another method.  Can't determine replacement method because array is empty.");
             return $this->newSmartNull();
         }

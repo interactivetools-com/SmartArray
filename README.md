@@ -7,21 +7,19 @@ and data manipulation - making common array operations simpler, safer, and more 
 ## Table of Contents
 
 <!-- TOC -->
-
 * [SmartArray](#smartarray-enhanced-arrays-with-chainable-methods-and-automatic-html-encoding)
-    * [Table of Contents](#table-of-contents)
-    * [Quick Start](#quick-start)
-    * [Usage Examples](#usage-examples)
-        * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
-        * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
-        * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
-        * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
-        * [Building Safe MySQL ID Lists with pluck(), map(), and implode()](#building-safe-mysql-id-lists-with-pluck-map-and-implode)
-        * [Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()](#creating-grid-layouts-with-isfirst-islast-ismultipleof-and-chunk)
-        * [Debugging and Help](#debugging-and-help)
-    * [Method Reference](#method-reference)
-    * [Questions?](#questions)
-
+  * [Table of Contents](#table-of-contents)
+  * [Quick Start](#quick-start)
+  * [Usage Examples](#usage-examples)
+    * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
+    * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
+    * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
+    * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
+    * [Building Safe MySQL ID Lists with pluck(), map(), and implode()](#building-safe-mysql-id-lists-with-pluck-map-and-implode)
+    * [Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()](#creating-grid-layouts-with-isfirst-islast-ismultipleof-and-chunk)
+    * [Debugging and Help](#debugging-and-help)
+  * [Method Reference](#method-reference)
+  * [Questions?](#questions)
 <!-- TOC -->
 
 ## Quick Start

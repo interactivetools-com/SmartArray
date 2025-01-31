@@ -1,5 +1,15 @@
 # SmartArray Changelog
 
+##[2.0.5] - 2025-01-31
+
+### Added
+- contains($value): Check if the array contains a specific value.
+- withSmartStrings() & noSmartStrings(): Dynamically toggle SmartString wrapping on/off for the current array.
+
+### Changed
+- Renamed: rawValue() → getRawValue().  Previous method name now logs a deprecation warning and calls getRawValue().
+- Misc code optimizations and other minor improvements
+
 ## [2.0.4] - 2025-01-15
 
 ### Changed

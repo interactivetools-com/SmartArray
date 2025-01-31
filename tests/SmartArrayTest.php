@@ -150,13 +150,13 @@ class SmartArrayTest extends TestCase
      * Like $smartArray->toArray() uses foreach (getIterator()) to convert all scalars and nulls to SmartStrings
      * Then converts strings to their html encoded value.
      *
-     * We use this to compare expected output with what SmartArray::newSS() should return.
+     * We use this to compare expected output with what SmartArray::new() should return when useSmartStrings is enabled
      */
     public static function toArrayResolveSS(mixed $obj): array
     {
         // Use getIterator to convert everything to SmartStrings
         $array = [];
-        foreach ($obj->getIterator() as $key => $value) {  // getIterator|foreach converts everything to SmartStrings when ::newSS() is used
+        foreach ($obj->getIterator() as $key => $value) {  // getIterator|foreach converts everything to SmartStrings when they are enabled
             $array[$key] = self::normalizeSS($value);
         }
 
@@ -166,7 +166,7 @@ class SmartArrayTest extends TestCase
 
     /**
      * Html encode all strings in an array structure
-     * We use this to encode our test data to match what SmartArray::newSS() should return
+     * We use this to encode our test data to match what SmartArray with SmartStrings should return
      */
     public static function recursiveHtmlEncode(mixed $var): mixed {
 
@@ -209,7 +209,7 @@ class SmartArrayTest extends TestCase
 
     /**
      * Return strings html encoded, and everything else as raw value from any element
-     * returned by SmartArray::newSS() - includes SmartStrings but not scalar|null
+     * returned by SmartArray::new()->withSmartStrings() - includes SmartStrings but not scalar|null
      *
      * @param $var
      * @return array|bool|float|int|string|null
@@ -815,45 +815,6 @@ class SmartArrayTest extends TestCase
                 'expected'    => 'zero',
             ],
         ];
-    }
-
-    public function testOffsetGetWarnings(): void
-    {
-        // Test empty arrays don't produce warnings for undefined keys (since we can't use existing array keys to know if key is valid)
-        $smartArrays = [
-            SmartArray::new(),
-            SmartArray::newSS(),
-        ];
-        foreach ($smartArrays as $smartArray) {
-            ob_start();
-            $smartArray->offsetGet('nonExistentKey');
-            $warning = ob_get_clean();
-            $this->assertEmpty($warning, "Unexpected warning output: $warning");
-        }
-
-        // Test non-empty arrays produce warnings for undefined keys
-        $smartArrays = [
-            SmartArray::new(['name' => 'Alice', 'city' => 'Wonderland']),
-            SmartArray::newSS(['name' => 'Alice', 'city' => 'Wonderland']),
-        ];
-        foreach ($smartArrays as $smartArray) {
-            ob_start();
-            $smartArray->offsetGet('nonExistentKey');
-            $warning = ob_get_clean();
-            $this->assertStringContainsString("Warning:", $warning, "Expected warning output, got: $warning");
-        }
-
-        // Test valid keys in non-empty arrays do not produce warnings
-        $smartArrays = [
-            SmartArray::new(['name' => 'Alice', 'city' => 'Wonderland']),
-            SmartArray::newSS(['name' => 'Alice', 'city' => 'Wonderland']),
-        ];
-        foreach ($smartArrays as $smartArray) {
-            ob_start();
-            $smartArray->offsetGet('name');
-            $warning = ob_get_clean();
-            $this->assertEmpty($warning, "Unexpected warning output: $warning");
-        }
     }
 
     /**

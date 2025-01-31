@@ -153,9 +153,8 @@ class SmartNull extends stdClass implements Iterator, ArrayAccess // extend stdC
      */
     public function __call($name, array $arguments): mixed
     {
-        $newMethod = $this->useSmartStrings ? 'newSS' : 'new';
         return match (true) {
-            method_exists(SmartArray::class, $name)  => SmartArray::$newMethod([])->$name(...$arguments),
+            method_exists(SmartArray::class, $name)  => SmartArray::new([], ['useSmartStrings' => $this->useSmartStrings])->$name(...$arguments),
             method_exists(SmartString::class, $name) => SmartString::new(null)->$name(...$arguments),
             default                                  => throw new InvalidArgumentException("Method '$name' not found"),
         };

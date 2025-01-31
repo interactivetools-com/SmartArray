@@ -87,23 +87,18 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     /**
-     * Creates a SmartArray that converts values to SmartString objects on access.
+     * Enables SmartStrings, modifying the array in place.
      *
-     * When created with newSS(), scalar values are automatically wrapped in SmartString objects
-     * when accessed. These SmartString objects provide automatic HTML encoding and chainable
-     * formatting methods. The conversion is done lazily on access, so methods like toArray()
-     * still return raw values.
-     *
-     * @param array $array The input array to convert into a SmartArray
-     * @param array $properties Optional properties to set on the SmartArray
-     * @return self A new SmartArray instance that converts values to SmartStrings
+     * When SmartStrings are enabled values are wrapped in SmartString objects on access.
+     * These SmartString objects provide automatic HTML encoding and chainable formatting methods.
+     * The conversion is done lazily on access, so methods like toArray() still return raw values.
      *
      * @example
      * // Create array with SmartString conversion
-     * $users = SmartArray::newSS([
+     * $users = SmartArray::new([
      *     ['name' => "John O'Connor", 'city' => 'New York'],
      *     ['name' => 'Tom & Jerry',   'city' => 'Vancouver']
-     * ]);
+     * ])->withSmartStrings();
      *
      * echo $users->first()->name;  // Output is HTML-encoded: John O&apos;Connor
      * $rawName = $users->first()->name->value();  // Get original value: John O'Connor
@@ -111,10 +106,33 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * // Values stay as SmartArrays/SmartStrings until converted back
      * $array = $users->toArray();  // Convert back to regular PHP array with raw values
      */
-    public static function newSS(array $array = [], array $properties = []): self
+    public function withSmartStrings(): self
     {
-        $properties['useSmartStrings'] = true;
-        return new self($array, $properties);
+        $this->setProperty('useSmartStrings', true);
+
+        foreach ($this->getArrayCopy() as $value) {
+            if ($value instanceof self) {
+                $value->{__FUNCTION__}();
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Disables SmartStrings, modifying the array in place
+     */
+    public function noSmartStrings(): self
+    {
+        $this->setProperty('useSmartStrings', false);
+
+        foreach ($this->getArrayCopy() as $value) {
+            if ($value instanceof self) {
+                $value->{__FUNCTION__}();
+            }
+        }
+
+        return $this;
     }
 
     #endregion
@@ -249,7 +267,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function offsetGet(mixed $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
     {
-        $key = self::rawValue($key); // Convert SmartString keys to raw values
+        $key = self::getRawValue($key); // Convert SmartString keys to raw values
 
         // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
         if (is_string($key) && ($this->count() === 0 || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
@@ -284,14 +302,14 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * Converts Smart* objects to their original values while leaving other types unchanged,
      * useful if you don't know the type but want the original value.
      */
-    public static function rawValue(mixed $value): mixed
+    public static function getRawValue(mixed $value): mixed
     {
         return match (true) {
             $value instanceof SmartString      => $value->value(),
             $value instanceof self             => $value->toArray(),
             $value instanceof SmartNull        => null,
             is_scalar($value), is_null($value) => $value,
-            is_array($value)                   => array_map([self::class, 'rawValue'], $value), // for manually passed in arrays
+            is_array($value)                   => array_map([self::class, 'getRawValue'], $value), // for manually passed in arrays
             default                            => throw new InvalidArgumentException("Unsupported value type: " . get_debug_type($value)),
         };
     }
@@ -313,6 +331,14 @@ class SmartArray extends ArrayObject implements JsonSerializable
     public function isNotEmpty(): bool
     {
         return $this->count() !== 0;
+    }
+
+    /**
+     * Check if array contains a specific value.
+     */
+    public function contains(mixed $value): bool
+    {
+        return in_array(self::getRawValue($value), $this->toArray());
     }
 
     #endregion
@@ -788,7 +814,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function merge(array|SmartArray ...$arrays): self
     {
-        $arrays = array_map([self::class, 'rawValue'], $arrays); // convert SmartArrays to arrays
+        $arrays = array_map([self::class, 'getRawValue'], $arrays); // convert SmartArrays to arrays
         $merged = array_merge($this->toArray(), ...$arrays);
         return new self($merged, get_object_vars($this));
     }
@@ -842,7 +868,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // get handler output
         $result = $loadHandler($this, $column);
         if ($result === false) {
-            throw new Error("Load handler not available for '$column'\n" . $this->occurredInFile());
+            throw new Error("Load handler not available for '$column'\n" . self::occurredInFile());
         }
 
         // output error checking
@@ -870,9 +896,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function setLoadHandler(callable $customLoadHandler): void
     {
-        $this->setFlags(ArrayObject::STD_PROP_LIST); // ArrayObject: Switch properties to allow standard property access
-        $this->loadHandler = $customLoadHandler;
-        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // ArrayObject: Switch properties back to refer to internal array keys
+        $this->setProperty('loadHandler', $customLoadHandler);
     }
 
     /**
@@ -924,6 +948,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $ids   = SmartArray::new([1, 2, 3]);
             $user  = SmartArray::new(['name' => 'John', 'age' => 30]);
             $users = SmartArray::new(DB::select('users'));  // Nested SmartArray of SmartStrings
+            ->withSmartStrings()    Enable SmartStrings for array values
+            ->noSmartStrings()      Disable SmartStrings for array values
             
             Value Access
             -------------
@@ -934,12 +960,14 @@ class SmartArray extends ArrayObject implements JsonSerializable
             ->first()               Get the first element
             ->last()                Get the last element
             ->nth(position)         Get element by position, ignoring keys (0 is first, -1 is last)
+            SmartArray::getRawValue($value)  Convert Smart* objects to original values, leave other types unchanged
             
             Array Information
             ------------------
             ->count()               Get the number of elements
             ->isEmpty()             Returns true if array has no elements
             ->isNotEmpty()          Returns true if array has any elements
+            ->contains(value)       Check if array contains a specific value
             
             Position & Layout
             ------------------
@@ -975,6 +1003,12 @@ class SmartArray extends ArrayObject implements JsonSerializable
             ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
             ->mysqli(key)           Get specific mysqli result metadata (affected_rows, insert_id, etc)
             ->load()                Loads related record(s) if available for column
+            
+            Error Handling
+            ---------------
+            ->or404(message)        Returns 404 with message if array is empty (default message: "404 Not Found")
+            ->orDie(message)        Exits with message if array is empty
+            ->orThrow(exception)    Throws exception if array is empty
             
             Debugging
             ----------
@@ -1136,6 +1170,20 @@ class SmartArray extends ArrayObject implements JsonSerializable
         return $output;
     }
 
+    /**
+     * Type hint for IDEs to enable property autocomplete. Never actually called at runtime.
+     *
+     * Properties are handled by ArrayObject::offsetGet() instead of __get() due to the
+     * ARRAY_AS_PROPS flag. This means $obj->property behaves the same as $obj['property'].
+     */
+    public function __get(string $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    {
+        throw new Exception(
+            "Property access on SmartArray is handled by ArrayObject::offsetGet() due to ARRAY_AS_PROPS flag. " .
+            "If you see this error, something has gone wrong with ArrayObject property handling."
+        );
+    }
+
     #endregion
     #region Error Handling
 
@@ -1235,7 +1283,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $warning   .= wordwrap("Valid keys are: $validKeys", 120);
         }
         $warning .= "\n\n";
-        $warning .= $this->occurredInFile(true);
+        $warning .= self::occurredInFile(true);
 
 
         // output warning and trigger PHP warning (for logging)
@@ -1308,13 +1356,36 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $baseClass = basename(self::class);
         $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
-        throw new Error($error . $this->occurredInFile());
+        throw new Error($error . self::occurredInFile());
+    }
+
+    /**
+     * @noinspection PhpDeprecationInspection
+     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
+     */
+    public static function __callStatic($method, $args): self
+    {
+        // Deprecated/renamed methods
+        $return = match ($method) {
+            'rawValue' => self::logDeprecationAndReturn(self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"),
+            'newSS'    => new self($args[0] ?? [], ['useSmartStrings' => true] + ($args[1] ?? [])), // args: $array, $properties
+            default    => null,
+        };
+        if (!is_null($return)) { // All methods should return objects
+            return $return;
+        }
+
+        // throw unknown method exception
+        // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
+        $baseClass = basename(self::class);
+        $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
+        throw new Error($error . self::occurredInFile());
     }
 
     /**
      * Add "Occurred in file:line" to the end of the error messages with the first non-SmartArray file and line number.
      */
-    private function occurredInFile($addReportedFileLine = false): string
+    private static function occurredInFile($addReportedFileLine = false): string
     {
         $file = "unknown";
         $line = "unknown";
@@ -1451,6 +1522,19 @@ class SmartArray extends ArrayObject implements JsonSerializable
         return $value;
     }
 
+    /**
+     * Set object property value or throw an exception if property does not exist.
+     */
+    private function setProperty(string $name, mixed $value): void
+    {
+        if (!property_exists($this, $name)) {
+            throw new InvalidArgumentException("Property '$name' does not exist.");
+        }
+
+        $this->setFlags(ArrayObject::STD_PROP_LIST); // Allow access to private/protected properties
+        $this->{$name} = $value;
+        $this->setFlags(ArrayObject::ARRAY_AS_PROPS); // Hide private/protected properties
+    }
 
     /**
      * PROPERTIES NOTICE:

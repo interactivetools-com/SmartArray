@@ -1190,17 +1190,33 @@ class SmartArray extends ArrayObject implements JsonSerializable
     /**
      * Sends a 404 header and message if the array is empty, then exits.
      *
-     * @param string $message The message to display when sending 404.
+     * @param string|null $message The message to display when sending 404.
      */
-    public function or404(string $message = "404 Not Found"): self
+    public function or404(?string $message = null): self
     {
-        if ($this->count() === 0) {
-            http_response_code(404);
-            header("Content-Type: text/html; charset=utf-8");
-            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
-            die($message);
+        if ($this->count() > 0) {
+            return $this;
         }
-        return $this;
+
+        // Send 404 header and message
+        http_response_code(404);
+        header("Content-Type: text/html; charset=utf-8");
+        $message ??= "The requested URL was not found on this server.";
+        $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+
+        echo <<<__HTML__
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Not Found</title>
+            </head>
+            <body>
+                <h1>Not Found</h1>
+                <p>$message</p>
+            </body>
+            </html>
+            __HTML__;
+        exit;
     }
 
     /**

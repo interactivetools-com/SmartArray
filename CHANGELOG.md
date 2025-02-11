@@ -1,5 +1,10 @@
 # SmartArray Changelog
 
+## [2.0.6] - 2025-02-11
+
+### Changed
+- `or404()` now returns a traditional 404 error page instead of a plain text message
+
 ##[2.0.5] - 2025-01-31
 
 ### Added

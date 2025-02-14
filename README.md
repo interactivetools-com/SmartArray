@@ -497,6 +497,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                      |                  pluckNth($key) | Gets array of values at position from rows                                                                |
 |                      |             implode($separator) | Joins elements with separator into string                                                                 |
 |                      |                  map($callback) | Transforms each element using callback (callback receives raw values)                                     |
+|                      |             smartMap($callback) | Transforms each element as a SmartString or nested SmartArray                                             |
+|                      |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.              |
 |                      |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values. |
 | Database Operations  |                                 | The following optional methods may be available when using SmartArray with database results               |
 |                      |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                       |

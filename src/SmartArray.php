@@ -21,13 +21,18 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * within the root array.
      *
      * @param array $array The input array to convert into a SmartArray.
+     * @param bool|array $properties either a boolean to enable/disable SmartStrings, or an associative array of custom internal properties.
+     *
      */
-    public function __construct(array $array = [], array $properties = [])
+    public function __construct(array $array = [], bool|array $properties = [])
     {
         // Create new empty ArrayObject with object property writing enabled (STD_PROP_LIST)
         parent::__construct([], ArrayObject::STD_PROP_LIST);
 
         // Set properties
+        if (is_bool($properties)) {
+            $properties = ['useSmartStrings' => $properties];
+        }
         foreach ($properties as $property => $value) {
             $this->{$property} = $value;
         }
@@ -63,26 +68,18 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     /**
-     * Creates a new SmartArray object - an alias for `(new SmartArray($array))`
+     * Alias for `new SmartArray()` that enables cleaner method chaining without extra parentheses.
      *
-     * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
-     * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the root array.
-     *
-     * This static method prevents syntax errors when chaining methods. Without it,
-     *  developers must wrap 'new SmartArray()' in parentheses to chain methods inline:
      * ```
-     *  $usersById = (new SmartArray($records))->indexBy('id'); // Additional parentheses
-     *  $usersById = SmartArray::new($records)->indexBy('id');  // Cleaner chaining
+     * // Before PHP 8.4 (requires parentheses):
+     * $users = (new SmartArray($records))->indexBy('id');
+     *
+     * // Clean syntax (all versions):
+     * $users = SmartArray::new($records)->indexBy('id');
      * ```
-     *
-     * @param array $array The input array to convert into a SmartArray
-     * @return SmartArray A new SmartArray instance
-     *
      */
-    public static function new(array $array = [], array $properties = []): self
+    public static function new(array $array = [], bool|array $properties = []): self
     {
-        $properties['useSmartStrings'] = false;
         return new self($array, $properties);
     }
 
@@ -148,7 +145,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         if (func_num_args() >= 2 && !$this->offsetExists($key)) {
             $isDefaultSmartObject = $default instanceof self || $default instanceof SmartString;
             return match (true) {
-                is_scalar($default), is_null($default) => $this->encodeOutput($default),
+                is_scalar($default), is_null($default) => $this->encodeOutput($default, $key, $this->getProperty('useSmartStrings')),
                 is_array($default)                     => new SmartArray($default),
                 $isDefaultSmartObject                  => $default,
                 default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
@@ -265,9 +262,10 @@ class SmartArray extends ArrayObject implements JsonSerializable
      *
      * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
-    public function offsetGet(mixed $key): SmartArray|SmartNull|SmartString|string|int|float|bool|null
+    public function offsetGet(mixed $key, ?bool $useSmartStrings = null): SmartArray|SmartNull|SmartString|string|int|float|bool|null
     {
-        $key = self::getRawValue($key); // Convert SmartString keys to raw values
+        $key             = self::getRawValue($key); // Convert SmartString keys to raw values
+        $useSmartStrings ??= $this->getProperty('useSmartStrings');
 
         // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
         if (is_string($key) && ($this->count() === 0 || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
@@ -293,7 +291,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Return value if key exists, or SmartNull if not found
         if ($this->offsetExists($key)) {
             $value = parent::offsetGet($key);
-            return $this->encodeOutput($value, $key);
+            return $this->encodeOutput($value, $key, $useSmartStrings);
         }
         return $this->newSmartNull();
     }
@@ -750,52 +748,117 @@ class SmartArray extends ArrayObject implements JsonSerializable
         $values = array_map('strval', array_values($this->toArray()));
         $value  = implode($separator, $values);
 
-        return $this->encodeOutput($value);
+        return $this->encodeOutput($value, null, $this->getProperty('useSmartStrings'));
     }
 
 
     /**
-     * Applies a callback function to each element of the SmartArray and returns a new SmartArray with the results.
+     * Applies a callback to each element *as raw PHP values* (i.e., unwrapped scalars/arrays)
+     * and returns a new SmartArray with the results.
      *
-     * The callback function receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray objects.
+     * The callback receives two parameters if it is a Closure:
+     *   - $value (the raw element from ->toArray())
+     *   - $key   (integer or string)
      *
-     * Note: Keys are preserved in all cases, and the callback function receives both the value and the key. e.g., fn($value, $key) =>
+     * If it's a built-in function or a non-closure callable, only the $value is passed to avoid
+     * accidental interpretation of $key as an extra parameter. For example, calling `intval($value, $key)`
+     * might parse the key as the base argument, leading to unexpected results.
      *
-     * @param callable $callback A function to apply to each element. It receives a raw value and should return a transformed value.
+     * Preserves array keys in the returned SmartArray.
+     *
+     * @param callable $callback A function/callable to transform each element.
+     *                           Signature if Closure: fn($value, $key) => mixed
+     *                           Signature if non-Closure: fn($value) => mixed
      *
      * @return self A new SmartArray containing the transformed elements.
      *
      * @example
-     * $arr = new SmartArray(['apple', 'banana', 'cherry']);
-     * $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
-     * // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
+     *  $arr = new SmartArray(['apple', 'banana', 'cherry']);
+     *  $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
+     *  // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
      *
-     * $nested = new SmartArray([['a' => 1], ['a' => 2]]);
-     * $values = $nested->map(fn(array $item) => $item['a']);
-     * // $values is now a SmartArray: [1, 2]
+     * @example
+     *  $nested = new SmartArray([['a' => 1], ['a' => 2]]);
+     *  $values = $nested->map(fn(array $item) => $item['a']);
+     *  // $values is now a SmartArray: [1, 2]
      */
     public function map(callable $callback): self
     {
-        $oldArray  = $this->toArray();
-        $oldKeys   = array_keys($oldArray);
-        $oldValues = array_values($oldArray);
-
-        // Pass both $value and $key to closures, e.g., fn($value, $key) => ...
-        if ($callback instanceof Closure) {
-            $newValues = array_map($callback, $oldValues, $oldKeys);
-        } else {
-            // Pass only $value for non-closure callbacks to avoid unexpected behavior
-            // e.g., intval($value, $base) would misinterpret $key as $base, so [1] => 2 would returns 0 from intval(2, 1)
-            $newValues = array_map($callback, $oldValues);
+        $newArray  = [];
+        $isClosure = $callback instanceof Closure;
+        foreach ($this->toArray() as $key => $rawValue) {
+            // For closures, pass both $value and $key, but not for non-Closure callbacks to avoid unexpected behavior, e.g., intval($value, $base) would misinterpret $key as $base
+            $newArray[$key] = $isClosure ? $callback($rawValue, $key) : $callback($rawValue);
         }
 
-        // combine modified values with original keys
-        $newArray  = array_combine($oldKeys, $newValues);
-
-        // return new SmartArray
         return new self($newArray, get_object_vars($this));
     }
 
+    /**
+     * Applies a callback to each element *as Smart objects* (i.e., SmartString or nested SmartArray),
+     * and returns a new SmartArray with the results.
+     *
+     * The callback receives two parameters:
+     *   - $value SmartString|SmartArray
+     *   - $key   (int|string, the array key)
+     *
+     * Because built-in PHP functions may not expect these Smart objects (and could fail or behave
+     * unpredictably), this method restricts to Closures, which can handle them safely.
+     *
+     * Preserves array keys in the returned SmartArray.
+     *
+     * Note: When using arrow functions (fn()), use print instead of echo for output.
+     * Echo cannot be used in arrow function expressions.
+     *
+     * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
+     *
+     * @return self A new SmartArray containing the transformed elements.
+     *
+     * @example
+     *  $arr = new SmartArray(['hello', 'world'], true); // with SmartStrings
+     *  $exclaimed = $arr->smartMap(fn($str, $k) => $str->upper()->append('!'));
+     *  // $exclaimed -> ['HELLO!', 'WORLD!']
+     */
+    public function smartMap(closure $callback): self
+    {
+        $newArray        = [];
+        $useSmartStrings = $this->getProperty('useSmartStrings');
+
+        foreach (array_keys($this->getArrayCopy()) as $key) {
+            $smartValue     = $this->offsetGet($key, $useSmartStrings);
+            $newArray[$key] = $callback($smartValue, $key);
+        }
+
+        return new self($newArray, get_object_vars($this));
+    }
+
+    /**
+     * Calls the given callback on each element in the SmartArray (as SmartString or nested SmartArray),
+     * primarily for side effects. Returns $this for chaining.
+     *
+     * @param closure $callback A callback with the signature: fn(SmartString|SmartArray $value, int|string $key): void
+     * @return $this
+     *
+     * Example:
+     *  $users = new SmartArray($results, true);
+     *  $users->each(function($user, $key) {
+     *      echo "$user->num - $user->name\n";
+     *  });
+     *
+     * If you need to transform or collect results, consider ->map() or ->smartMap() instead.
+     */
+    public function each(Closure $callback): self
+    {
+        $useSmartStrings = $this->getProperty('useSmartStrings');
+
+        // Iterate over keys so we can call offsetGet($key, $useSmartStrings) for Smart values
+        foreach (array_keys($this->getArrayCopy()) as $key) {
+            $smartValue = $this->offsetGet($key, $useSmartStrings);
+            $callback($smartValue, $key);
+        }
+
+        return $this;
+    }
 
     /**
      * Merges the SmartArray with one or more arrays or SmartArrays.
@@ -841,10 +904,6 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
     /**
      * Returns SmartArray or throws an exception load() handler is not available for column
-     *
-     * @param string $column
-     * @return SmartArray|false
-     * @throws Exception
      */
     public function load(string $column): SmartArray|SmartNull
     {
@@ -996,7 +1055,9 @@ class SmartArray extends ArrayObject implements JsonSerializable
             ->pluckNth(position)    Get array containing nth element from each row
             ->implode(separator)    Join elements with separator into string
             ->map(callback)         Transform each element using callback that receives raw values
-            ->merge(...$arrays)      Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
+            ->smartMap(callback)    Transform each element using callback that receives Smart objects
+            ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
+            ->merge(...$arrays)     Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
             
             Database Operations
             --------------------
@@ -1442,21 +1503,15 @@ class SmartArray extends ArrayObject implements JsonSerializable
     /**
      * Return SmartArrays as is, and raw values as SmartStrings if that's enabled, otherwise as raw
      */
-    private function encodeOutput(mixed $value, string|int $key = ''): mixed
+    private function encodeOutput(mixed $value, string|int|null $key = null, bool $useSmartStrings = false): mixed
     {
-        if (is_scalar($value) || is_null($value)) {
-            return $this->getProperty('useSmartStrings') ? new SmartString($value) : $value;
-        }
-        if ($value instanceof self) {
-            return $value;
-        }
+        static $errorFormat = __METHOD__ .": SmartArray doesn't support '%s' values.%s";
 
-        // throw error if value is not supported
-        $error = __METHOD__ . ": SmartArray doesn't support '" . get_debug_type($value) . "' values.";
-        if (func_num_args() >= 2) {
-            $error .= " Key '$key'.";
-        }
-        throw new InvalidArgumentException($error);
+        return match (true) {
+            is_scalar($value) || is_null($value) => $useSmartStrings ? new SmartString($value) : $value,
+            $value instanceof self               => $value,
+            default                              => throw new InvalidArgumentException(sprintf($errorFormat, get_debug_type($value), !is_null($key) ? " Key '$key'." : "")),
+        };
     }
 
     /**
@@ -1495,7 +1550,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Return an iterator that calls offsetGet for each element
         foreach (array_keys($this->getArrayCopy()) as $key) {
             $value = parent::offsetGet($key);
-            yield $key => $this->encodeOutput($value, $key);
+            yield $key => $this->encodeOutput($value, $key, $this->getProperty('useSmartStrings'));
         }
     }
 

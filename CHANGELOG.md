@@ -1,5 +1,16 @@
 # SmartArray Changelog
 
+## [2.1.0] - 2025-02-14
+
+### Added
+- `smartMap($callback)`: Applies a callback to each element as a SmartString or nested SmartArray.
+   Useful for transforming values while preserving Smart objects.
+- `each($callback)`: Executes a callback on each element as a SmartString or nested SmartArray. Used for side effects, doesn't modify array.
+- Constructor: Added shorthand boolean option (true/false) to enable/disable SmartStrings
+
+### Changed
+- Misc code optimizations and other minor improvements
+
 ## [2.0.6] - 2025-02-11
 
 ### Changed

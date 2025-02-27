@@ -1,5 +1,10 @@
 # SmartArray Changelog
 
+## [2.1.1] - 2025-02-26
+
+### Fixed
+- Updated return type on __callStatic to reflect mixed return values
+
 ## [2.1.0] - 2025-02-14
 
 ### Added

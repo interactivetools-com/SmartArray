@@ -1440,7 +1440,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * @noinspection PhpDeprecationInspection
      * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
-    public static function __callStatic($method, $args): self
+    public static function __callStatic($method, $args): mixed
     {
         // Deprecated/renamed methods
         $return = match ($method) {

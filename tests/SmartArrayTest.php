@@ -7,14 +7,10 @@ namespace Tests;
 use BadMethodCallException, InvalidArgumentException;
 use ReflectionException, ReflectionObject;
 use PHPUnit\Framework\TestCase;
-
 use ArrayObject;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartString\SmartString;
-
-
-
 
 class SmartArrayTest extends TestCase
 {

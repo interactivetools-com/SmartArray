@@ -911,7 +911,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // return SmartNull if array is empty
         if ($this->count() === 0) {
-            return self::newSmartNull();
+            return $this->newSmartNull();
         }
 
         // error checking
@@ -1054,8 +1054,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
             ->pluck(column)         Extract single column from nested array
             ->pluckNth(position)    Get array containing nth element from each row
             ->implode(separator)    Join elements with separator into string
-            ->map(callback)         Transform each element using callback that receives raw values
-            ->smartMap(callback)    Transform each element using callback that receives Smart objects
+            ->map(callback)         Transform each element using callback (callback receives raw values) 
+            ->smartMap(callback)    Transform each element using callback (callback receives SmartStrings and SmartArrays)
             ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
             ->merge(...$arrays)     Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
             
@@ -1175,7 +1175,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $varExport   = match (true) {
                 is_null($var) => "null",
                 is_bool($var) => $var ? "true" : "false",
-                !$debugLevel  => "$var",                                       // Show raw values without quotes for compact mode
+                !$debugLevel  => $var,                                       // Show raw values without quotes for compact mode
                 $hasTabs      => '"' . addcslashes($var, "\t\"\0\$\\") . '"',  // Show tabs as \t for readability
                 default       => var_export($var, true),
             };

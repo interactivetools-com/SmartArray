@@ -1,5 +1,15 @@
 # SmartArray Changelog
 
+## [2.1.3] - 2025-04-08
+
+### Added
+- Added optional copy mode to `withSmartStrings()` and `noSmartStrings()` - pass `true` to get a new SmartArray instead of modifying the existing one
+- Added `usingSmartStrings()` method to check if an array is using SmartString conversion
+
+### Changed
+- Moved `help()` method documentation to external `/src/help.txt` file for easier maintenance
+- Improved test coverage for better reliability
+
 ## [2.1.2] - 2025-03-11
 
 ### Changed

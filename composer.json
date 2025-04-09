@@ -22,7 +22,7 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\": "tests/"
+      "Itools\\SmartArray\\Tests\\": "tests/"
     }
   },
   "require": {

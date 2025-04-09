@@ -1,0 +1,103 @@
+SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
+==========================================================================================
+SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
+It preserves familiar array syntax while adding powerful features for filtering, mapping,
+and data manipulation - making common array operations simpler, safer, and more expressive.
+
+Core Concepts
+-------------------
+$obj                = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
+$obj['columnName']  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
+$obj->columnName    = Itools\SmartString\SmartString  // Optional object syntax makes code cleaner and more readable
+
+Accessing Elements
+-------------------
+foreach ($users as $user) {          // Foreach over a SmartArray just like a regular array
+    echo "Name: $user->name\n";      // SmartString output is automatically HTML-encoded, no need for htmlspecialchars()
+
+    // For more complex expressions, curly braces are still required
+    echo "Bio: {$user->bio->textOnly()->maxChars(120, '...')}\n";  // Chain SmartString methods on column values
+}
+
+Original Values
+-------------------
+$obj->toArray()                      // Get original array with raw values
+$obj->columnName->value()            // Get original unencoded field value
+"Bio: {$user->wysiwyg->rawHtml()}"   // Alias for value(), clearer when handling trusted WYSIWYG/HTML content
+
+Creating SmartArrays
+-------------------
+$ids   = SmartArray::new([1, 2, 3]);
+$user  = SmartArray::new(['name' => 'John', 'age' => 30]);
+$users = SmartArray::new(DB::select('users'));  // Nested SmartArray of SmartStrings
+->withSmartStrings()    Enable SmartStrings for array values
+->noSmartStrings()      Disable SmartStrings for array values
+
+Value Access
+-------------
+$obj[key]               Get a value using array syntax
+$obj->key               Get a value using object syntax
+->get(key)              Get a value using method syntax
+->get(key, default)     Get a value with optional default if key not found
+->first()               Get the first element
+->last()                Get the last element
+->nth(position)         Get element by position, ignoring keys (0 is first, -1 is last)
+SmartArray::getRawValue($value)  Convert Smart* objects to original values, leave other types unchanged
+
+Array Information
+------------------
+->count()               Get the number of elements
+->isEmpty()             Returns true if array has no elements
+->isNotEmpty()          Returns true if array has any elements
+->contains(value)       Check if array contains a specific value
+
+Position & Layout
+------------------
+->isFirst()             Check if first in root array
+->isLast()              Check if last in root array
+->position()            Get position in root array (starting at 1)
+->isMultipleOf(n)       Check if position is multiple of n (3 for every 3rd element)
+->chunk(size)           Split array into smaller arrays of specified size
+
+Sorting & Filtering
+--------------------
+->sort()                Sort elements by value, reindexing keys
+->sortBy(column)        Sort nested array by column value, reindexing keys
+->unique()              Remove duplicate values, keeping first occurrence
+->filter(callback)      Keep elements where callback returns true, using raw values
+->where(conditions)     Keep elements matching [column => value] conditions
+
+Array Transformation
+---------------------
+->toArray()             Convert SmartArray/SmartString structure back to array/values
+->keys()                Get array of just the keys
+->values()              Get array of just the values
+->indexBy(column)       Get array using column as keys to single rows (duplicates overwrite)
+->groupBy(column)       Get array using column as keys to arrays of rows (duplicates group)
+->pluck(column)         Extract single column from nested array
+->pluckNth(position)    Get array containing nth element from each row
+->implode(separator)    Join elements with separator into string
+->map(callback)         Transform each element using callback (callback receives raw values)
+->smartMap(callback)    Transform each element using callback (callback receives SmartStrings and SmartArrays)
+->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
+->merge(...$arrays)     Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
+
+Database Operations
+--------------------
+->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
+->mysqli(key)           Get specific mysqli result metadata (affected_rows, insert_id, etc)
+->load()                Loads related record(s) if available for column
+
+Error Handling
+---------------
+->or404(message)        Returns 404 with message if array is empty (default message: "404 Not Found")
+->orDie(message)        Exits with message if array is empty
+->orThrow(exception)    Throws exception if array is empty
+
+Debugging
+----------
+print_r($obj)           Show array values
+$obj->debug()           Show array values, mysqli metadata, and available load() handlers
+$obj->help()            Display this help information
+
+For more details see SmartArray readme.md, and SmartString docs for chainable string methods.

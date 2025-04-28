@@ -13,6 +13,19 @@ use Itools\SmartString\SmartString;
  */
 class SmartArray extends ArrayObject implements JsonSerializable
 {
+    //region Global Settings
+
+    /**
+     * Controls whether array key access warnings are shown for missing keys
+     */
+    public static bool $warnIfMissing = true;
+
+    /**
+     * Controls whether deprecation notices are logged
+     */
+    public static bool $logDeprecations = false;
+
+    //endregion
     //region Creation and Conversion
 
     /**
@@ -86,7 +99,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * @param bool $newCopy Whether to return a new SmartArray or modify the current one
      * @return self
      */
-    public function withSmartStrings(bool $newCopy = false): self
+    public function enableSmartStrings(bool $newCopy = false): self
     {
         if ($newCopy) {
             $properties = ['useSmartStrings' => true] + get_object_vars($this);
@@ -97,7 +110,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         foreach ($this->getArrayCopy() as $value) {
             if ($value instanceof self) {
-                $value->withSmartStrings(false);
+                $value->enableSmartStrings(false);
             }
         }
 
@@ -111,7 +124,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * @param bool $newCopy Whether to return a new SmartArray or modify the current one
      * @return self
      */
-    public function noSmartStrings(bool $newCopy = false): self
+    public function disableSmartStrings(bool $newCopy = false): self
     {
         if ($newCopy) {
             $properties = ['useSmartStrings' => false] + get_object_vars($this);
@@ -122,7 +135,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         foreach ($this->getArrayCopy() as $value) {
             if ($value instanceof self) {
-                $value->noSmartStrings(false);
+                $value->disableSmartStrings(false);
             }
         }
 
@@ -154,17 +167,17 @@ class SmartArray extends ArrayObject implements JsonSerializable
             return $this->newSmartNull();
         }
 
-        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
-        if (is_int($key)) {
-            $firstEl  = $this->keys()->first();
-            $firstKey = is_object($firstEl) ? $firstEl->value() : $firstEl;
-            if (is_int($firstKey)) {
-                self::logDeprecation("Replace ->get($key) with ->nth($key) to access the nth element of on associative arrays.");
-                return $this->nth($key);
-            }
+        // Return via offsetGet if key exists, manually handle non-existent keys for no-default case
+        if ($this->offsetExists($key)) {
+            return $this->offsetGet($key);
         }
 
-        return $this->offsetGet($key);
+        // Show warning if key doesn't exist (only when no default provided)
+        if (self::$warnIfMissing) {
+            $this->warnIfMissing($key, 'offset');
+        }
+
+        return $this->newSmartNull();
     }
 
     /**
@@ -264,32 +277,17 @@ class SmartArray extends ArrayObject implements JsonSerializable
         $key             = self::getRawValue($key); // Convert SmartString keys to raw values
         $useSmartStrings ??= $this->getProperty('useSmartStrings');
 
-        // Deprecated: legacy support for ZenDB/ResultSet, this will be removed in a future version
-        if (is_string($key) && ($this->count() === 0 || $this->offsetExists(0))) { // If string is key, and (at least first) array key is numeric (array_is_list)
-            $return = match (strtolower(($key))) {
-                'affectedrows' => self::logDeprecationAndReturn($this->mysqli('affected_rows'), "Replace ->$key with ->mysqli('affected_rows')"),
-                'insertid'     => self::logDeprecationAndReturn($this->mysqli('insert_id'), "Replace ->$key with ->mysqli('insert_id')"),
-                'errno'        => self::logDeprecationAndReturn(0, "Replace ->$key with a try/catch block around the query"),
-                'error'        => self::logDeprecationAndReturn('', "Replace ->$key with a try/catch block around the query"),
-                'count'        => self::logDeprecationAndReturn($this->count(), "Replace ->$key with ->count() (add brackets)"),
-                'first'        => self::logDeprecationAndReturn($this->first(), "Replace ->$key with ->first() (add brackets)"),
-                'isfirst'      => self::logDeprecationAndReturn($this->isFirst(), "Replace ->$key with ->isFirst() (add brackets)"),
-                'islast'       => self::logDeprecationAndReturn($this->isLast(), "Replace ->$key with ->isLast() (add brackets)"),
-                'raw'          => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray()"),
-                'toarray'      => self::logDeprecationAndReturn($this->toArray(), "Replace ->$key with ->toArray() (add brackets)"),
-                'values'       => self::logDeprecationAndReturn($this->values(), "Replace ->$key with ->values() (add brackets)"),
-                default        => null,
-            };
-            if (!is_null($return)) {
-                return $return;
-            }
-        }
-
         // Return value if key exists, or SmartNull if not found
         if ($this->offsetExists($key)) {
             $value = parent::offsetGet($key);
             return $this->encodeOutput($value, $key, $useSmartStrings);
         }
+
+        // Show warning if key doesn't exist and array isn't empty
+        if (self::$warnIfMissing) {
+            $this->warnIfMissing($key, 'offset');
+        }
+
         return $this->newSmartNull();
     }
 
@@ -543,21 +541,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
     /**
      * Returns a new array of values
      */
-    public function values(string|int|null $key = null): SmartArray
+    public function values(): SmartArray
     {
-        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
-        if (!is_null($key) && $this->isNested()) {
-            $isLookupByPosition = is_int($key) && !is_int($this->keys()->first());
-            if ($isLookupByPosition) {
-                self::logDeprecation("Replace ->values($key) with ->pluckNth(\$key) for an array of the nth column of each row.");
-                $values = $this->map(fn($row) => array_values($row))->pluck($key);
-            } else {
-                self::logDeprecation("Replace ->values($key) with ->pluck($key) for an array of column values by key.");
-                $values = $this->pluck($key);
-            }
-            return $values; // Return the new SmartArray created above
-        }
-
         $values = array_values($this->toArray());
         return new self($values, get_object_vars($this));
     }
@@ -596,17 +581,11 @@ class SmartArray extends ArrayObject implements JsonSerializable
      *     'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
      * ]
      */
-    public function indexBy(string $column, bool $asList = false): SmartArray
+    public function indexBy(string $column): SmartArray
     {
         $this->assertNestedArray();
         if ($this->first() instanceof self) {
             $this->first()->warnIfMissing($column);
-        }
-
-        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
-        if ($asList === true) {
-            self::logDeprecation("Replace ->indexBy(column, true) with ->groupBy(column) to group rows by column value.");
-            return $this->groupBy($column);
         }
 
         // Index by column
@@ -1239,47 +1218,57 @@ class SmartArray extends ArrayObject implements JsonSerializable
     /**
      * Throws a PHP warning if the specified key isn't in the list of keys, but only if the array isn't empty.
      * Throws PHP warning if the column is missing in the array to help debugging, but only if the array is not empty
+     *
+     * Method argument warnings always display, but property/offset warnings can be toggled with $warnIfMissing.
+     *
+     * @param string|int $key The key to check for existence
+     * @param string $warningType 'offset' for properties, 'argument' for method arguments
      */
-    private function warnIfMissing(string|int $key): void
+    private function warnIfMissing(string|int $key, string $warningType = 'argument'): void
     {
-        // Skip warning if the array is empty or key exists
+        // Skip warning if the array is empty or if the key exists
         if ($this->count() === 0 || $this->offsetExists($key)) {
             return;
         }
+
+        // For offset access, respect the global toggle
+        if ($warningType === 'offset' && !self::$warnIfMissing) {
+            return;
+        }
+
+        // Always show warnings for method arguments regardless of global setting
 
         // If array isn't empty and key doesn't exist, throw warning to help debugging
         // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
         $caller   = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
         $function = $caller['function'] ?? "unknownFunction";
-        //$inFileOnLine = sprintf("in %s:%s", $caller['file'] ?? 'unknown', $caller['line'] ?? 'unknown'); //
-        $warning = "$function(): '$key' doesn't exist\n\n";
+
+        $warning = match ($warningType) {
+            'offset'   => "Undefined property or key '$key'",
+            'argument' => "$function(): '$key' doesn't exist",
+            default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
+        };
+        $warning .= "\n\n";
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
             $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"";
-        } else {
-            // But if it's not a method, show a list of valid keys in case they mistyped a property/offset name
-            $validKeys = implode(', ', array_keys($this->getArrayCopy()));
-            $warning   .= wordwrap("Valid keys are: $validKeys", 120);
         }
-        $warning .= "\n\n";
         $warning .= self::occurredInFile(true);
 
-
-        // output warning and trigger PHP warning (for logging)
+        // Emulate PHP warning: output warning and trigger PHP warning (for logging)
         echo "\nWarning: $warning\n";             // Output with echo so PHP doesn't add the filename and line number of this function on the end
         @trigger_error($warning, E_USER_WARNING); // Trigger a PHP warning but hide output with @ so it will still get logged
     }
 
+    /**
+     * Logs a deprecation warning if logging is enabled
+     */
     private static function logDeprecation($error): void
     {
-        @user_error($error, E_USER_DEPRECATED);  // Trigger a silent deprecation notice for logging purposes
-    }
-
-    private static function logDeprecationAndReturn($returnOrCallback, $error)
-    {
-        self::logDeprecation($error);
-        return is_callable($returnOrCallback) ? $returnOrCallback() : $returnOrCallback;
+        if (self::$logDeprecations) {
+            @user_error($error, E_USER_DEPRECATED);  // Trigger a silent deprecation notice for logging purposes
+        }
     }
 
     /**
@@ -1319,25 +1308,83 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function __call($method, $args)
     {
-        // Deprecated: legacy support for ZenDB/Collection, this will be removed in a future version
-        $return = match (strtolower($method)) {
-            'column', 'getcolumn'  => self::logDeprecationAndReturn($this->col(...$args), "Replace ->$method() with ->col()"),
-            'exists'               => self::logDeprecationAndReturn($this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"),
-            'firstrow', 'getfirst' => self::logDeprecationAndReturn($this->first(), "Replace ->$method() with ->first()"),
-            'getvalues'            => self::logDeprecationAndReturn($this->values(), "Replace ->$method() with ->values()"),
-            'item'                 => self::logDeprecationAndReturn($this->get(...$args), "Replace ->$method() with ->get()"),
-            'join'                 => self::logDeprecationAndReturn($this->implode(...$args), "Replace ->$method() with ->implode()"),
-            'raw'                  => self::logDeprecationAndReturn($this->toArray(), "Replace ->$method() with ->toArray()"),
-            default                => null,
+        $methodLc = strtolower($method);
+
+        // Deprecated Warnings: (optionally) log warning and return proper value.  This will be removed in a future version
+        [$return, $deprecationError] = match ($methodLc) {  // use lowercase names below for comparison
+            'column', 'getcolumn'  => [null, "Replace ->$method() with ->pluck() or another method"],
+            'exists'               => [$this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"],
+            'firstrow', 'getfirst' => [$this->first(), "Replace ->$method() with ->first()"],
+            'getvalues'            => [$this->values(), "Replace ->$method() with ->values()"],
+            'item'                 => [$this->get(...$args), "Replace ->$method() with ->get()"],
+            'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
+            'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
+            'withSmartStrings'     => [$this->enableSmartStrings(...$args), "Replace ->$method() with ->enableSmartStrings()"],
+            'noSmartStrings'       => [$this->disableSmartStrings(...$args), "Replace ->$method() with ->disableSmartStrings()"],
+            default                => [null, null],
         };
-        if (!is_null($return)) { // All methods should return objects
+        if ($deprecationError) {
+            self::logDeprecation($deprecationError);
             return $return;
+        }
+
+        // Common aliases: throw error with suggestion.  These are used by other libraries or common LLM suggestions
+        $methodAliases = [
+            // value access
+            'get'                 => ['fetch', 'value'],
+            'first'               => ['head'],
+            'last'                => ['tail'],
+            'nth'                 => ['index', 'at'],
+            'getRawValue'         => ['raw'],
+
+            // emptiness & search
+            'isEmpty'             => ['empty'],
+            'isNotEmpty'          => ['any', 'not_empty'],
+            'contains'            => ['has', 'includes'],
+
+            // position helpers
+            'position'            => ['pos'],
+            'chunk'               => ['split'],
+
+            // sorting & filtering
+            'sort'                => ['order', 'orderby'],
+            'unique'              => ['distinct', 'uniq'],
+            'filter'              => ['select'],
+            'where'               => ['filter_by'],
+
+            // array transforms
+            'toArray'             => ['array', 'raw'],
+            'keys'                => ['keyset'],
+            'values'              => ['vals', 'list'],
+            'indexBy'             => ['keyby'],
+            'groupBy'             => ['group'],
+            'pluck'               => ['column'],
+            'pluckNth'            => ['columnnth'],
+            'implode'             => ['join', 'concat'],
+            'map'                 => ['transform', 'apply'],
+            'each'                => ['foreach', 'iterate'],
+            'merge'               => ['append', 'union', 'combine'],
+
+            // utilities
+            'help'                => ['docs'],
+            'debug'               => ['dump'],
+        ];
+
+
+        // Check if the called method is an alias
+        $suggestion = null;
+        foreach ($methodAliases as $correctMethod => $aliases) {
+            if (in_array($methodLc, $aliases, true)) {
+                $suggestion = "did you mean ->$correctMethod()?";
+                break;
+            }
         }
 
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $baseClass = basename(self::class);
-        $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
+        $suggestion ??= "call ->help() for available methods.";
+        $error      = sprintf("Call to undefined method %s->$method(), $suggestion\n", basename(self::class));
         throw new Error($error . self::occurredInFile());
     }
 
@@ -1348,12 +1395,20 @@ class SmartArray extends ArrayObject implements JsonSerializable
     public static function __callStatic($method, $args): mixed
     {
         // Deprecated/renamed methods
-        $return = match ($method) {
-            'rawValue' => self::logDeprecationAndReturn(self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"),
-            'newSS'    => new self($args[0] ?? [], ['useSmartStrings' => true] + ($args[1] ?? [])), // args: $array, $properties
+        [$return, $deprecationError] = match ($method) {
+            'rawValue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
+            'newSS' => [
+                new self(
+                    $args[0] ?? [],
+                    ['useSmartStrings' => true] + ($args[1] ?? []
+                    ),  // args: $array, $properties
+                ),
+                "Replace ->$method() with ->enableSmartStrings()",
+            ],
             default    => null,
         };
-        if (!is_null($return)) { // All methods should return objects
+        if ($deprecationError) {
+            self::logDeprecation($deprecationError);
             return $return;
         }
 
@@ -1477,7 +1532,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     //endregion
-    //region Internal Properties
+    //region Instance Properties
 
     /**
      * PROPERTIES NOTICE:
@@ -1538,50 +1593,5 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     //endregion
-    //region Deprecated Methods
 
-    /**
-     * Legacy function to return column(s) by key or position
-     *
-     * Flat Arrays: Returns a single value referenced by key or position
-     * Nested Arrays: Returns a new SmartArray with values from the specified column (key or position)
-     *
-     * @param string|int $key The name or offset of the column to retrieve.
-     *
-     * @return SmartArray|SmartNull|SmartString The Field object for a single column or a Collection of Fields, or null if the key is not found.
-     * @deprecated See replacement suggests in method body.
-     */
-    public function col(string|int $key): SmartArray|SmartNull|SmartString
-    {
-        // Skip processing if the array is empty
-        if ($this->count() === 0) {
-            self::logDeprecation("Replace ->col() with another method.  Can't determine replacement method because array is empty.");
-            return $this->newSmartNull();
-        }
-
-        // Determine if the lookup is by position
-        $isLookupByPosition = is_int($key) && !is_int($this->keys()->first());
-
-        // Handle flat arrays (non-nested)
-        if (!$this->isNested()) {
-            if ($isLookupByPosition) {
-                self::logDeprecation("Replace ->col() with ->nth() to access the nth element of on associative arrays.");
-                return $this->nth($key);
-            }
-            self::logDeprecation("Replace ->col() with ->get() to access array elements by key.");
-            return $this->get($key);
-        }
-
-        // Handle nested Arrays
-        if ($isLookupByPosition) {
-            self::logDeprecation("Replace ->col() with ->pluckNth() for an array of the nth column of each row.");
-            $values = $this->map(fn($row) => array_values($row))->pluck($key);
-        } else {
-            self::logDeprecation("Replace ->col() with ->pluck() for an array of column values by key.");
-            $values = $this->pluck($key);
-        }
-        return $values; // Return the new SmartArray created above
-    }
-
-    //endregion
 }

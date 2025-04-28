@@ -391,7 +391,7 @@ class TransformationTest extends TestCase
         $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray does not match expected output.");
         $this->assertEquals($originalArray, $smartArray->toArray(), "Original SmartArray should remain unmodified.");
     }
-    
+
     /**
      * @dataProvider pluckWithKeyColumnProvider
      */
@@ -399,17 +399,17 @@ class TransformationTest extends TestCase
     {
         $smartArray = new SmartArray($input);
         $originalArray = $smartArray->toArray(); // Copy of the original array
-        
+
         // Start output buffering to capture any warnings
         ob_start();
         $plucked = $smartArray->pluck($valueColumn, $keyColumn);
         ob_end_clean();
-        
+
         // Compare results
         $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray with key column does not match expected output.");
         $this->assertEquals($originalArray, $smartArray->toArray(), "Original SmartArray should remain unmodified.");
     }
-    
+
     public function pluckWithKeyColumnProvider(): array
     {
         return [
@@ -584,12 +584,45 @@ class TransformationTest extends TestCase
         $output  = ob_get_clean();
 
         // Assert that the output contains the expected warning message
-        $expectedWarningPattern = "/Warning: pluck\(\): 'city' doesn't exist.*Valid keys are:/s";
+        $expectedWarningPattern = "/Warning: pluck\(\): 'city' doesn't exist/s";
         $this->assertMatchesRegularExpression($expectedWarningPattern, $output, "Expected warning message not found in output.");
 
         // Assert that the plucked SmartArray matches the expected output
         $expected = [];
         $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray does not match expected output.");
+    }
+
+    public function testPluckMissingKeyWithWarnIfMissingDisabled(): void
+    {
+        $smartArray = new SmartArray([
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Charlie'],
+        ]);
+
+        // Store original setting
+        $originalWarnIfMissing = SmartArray::$warnIfMissing;
+
+        try {
+            // Disable warnings
+            SmartArray::$warnIfMissing = false;
+
+            // But pluck() should still show argument warnings regardless of setting
+            ob_start();
+            $plucked = $smartArray->pluck('city');
+            $output = ob_get_clean();
+
+            // Assert that the warning is still shown (method argument warnings always show)
+            $expectedWarningPattern = "/Warning: pluck\(\): 'city' doesn't exist/s";
+            $this->assertMatchesRegularExpression($expectedWarningPattern, $output,
+                "Method argument warnings should still be shown for pluck() even with warnIfMissing disabled");
+
+            // Assert that the plucked SmartArray matches the expected output
+            $expected = [];
+            $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray should be empty when key doesn't exist");
+        } finally {
+            // Restore original setting
+            SmartArray::$warnIfMissing = $originalWarnIfMissing;
+        }
     }
 
     /**
@@ -898,31 +931,31 @@ class TransformationTest extends TestCase
             ],
         ];
     }
-    
+
     /**
      * @dataProvider smartMapProvider
      */
     public function testSmartMap($input, $callback, $expected, $useSmartStrings = true): void
     {
         $smartArray = new SmartArray($input);
-        
+
         if ($useSmartStrings) {
-            $smartArray->withSmartStrings();
+            $smartArray->enableSmartStrings();
         }
-        
+
         $originalArray = $smartArray->toArray(); // Copy of the original array
         $mapped = $smartArray->smartMap($callback);
-        
+
         // Check the result matches expected output
         $this->assertEquals($expected, $mapped->toArray(), "SmartMap result doesn't match expected output");
-        
+
         // Verify original array wasn't modified
         $this->assertEquals($originalArray, $smartArray->toArray(), "Original SmartArray should remain unmodified");
-        
+
         // Verify returned object is a SmartArray
         $this->assertInstanceOf(SmartArray::class, $mapped, "smartMap() should return a SmartArray");
     }
-    
+
     public function smartMapProvider(): array
     {
         return [
@@ -986,15 +1019,15 @@ class TransformationTest extends TestCase
             ],
         ];
     }
-    
+
     /**
      * @dataProvider eachProvider
      */
     public function testEach($input, $expectedResults): void
     {
         $smartArray = new SmartArray($input);
-        $smartArray->withSmartStrings();
-        
+        $smartArray->enableSmartStrings();
+
         $results = [];
         $returnValue = $smartArray->each(function ($value, $key) use (&$results) {
             // Store the results to verify later
@@ -1005,14 +1038,14 @@ class TransformationTest extends TestCase
                 'value' => $value instanceof SmartString ? $value->value() : ($value instanceof SmartArray ? 'SmartArray' : $value),
             ];
         });
-        
+
         // Verify each() returns the original SmartArray for chaining
         $this->assertSame($smartArray, $returnValue, "each() should return the original SmartArray for chaining");
-        
+
         // Verify results match expectations
         $this->assertEquals($expectedResults, $results, "each() callback should receive SmartString/SmartArray objects");
     }
-    
+
     public function eachProvider(): array
     {
         return [

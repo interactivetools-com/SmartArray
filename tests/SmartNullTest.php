@@ -271,14 +271,21 @@ class SmartNullTest extends TestCase
             'SmartArray returns SmartNull for non-existent key'     => [
                 'operation' => function () {
                     $array = new SmartArray(['a' => 1]);
-                    return $array->get('nonexistent') instanceof SmartNull;
+                    // Capture and discard output to avoid warnings in test results
+                    ob_start();
+                    $result = $array->get('nonexistent') instanceof SmartNull;
+                    ob_end_clean();
+                    return $result;
                 },
                 'expected'  => true,
             ],
             'SmartNull chained with string operations works safely' => [
                 'operation' => function () {
-                    $array     = new SmartArray(['a' => 1]);
+                    $array = new SmartArray(['a' => 1]);
+                    // Capture and discard output to avoid warnings in test results
+                    ob_start();
                     $smartNull = $array->get('nonexistent');
+                    ob_end_clean();
                     return $smartNull . " appended";
                 },
                 'expected'  => " appended",

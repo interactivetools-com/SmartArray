@@ -1,5 +1,19 @@
 # SmartArray Changelog
 
+## [2.2.0] - 2025-04-28
+
+### Added
+- `SmartArray::$warnIfMissing` to toggle warnings when missing array keys are accessed, defaults to true
+- `SmartArray::$logDeprecations` to toggle logging deprecation errors for old method names, defaults to false
+- Method aliases system for common function names from other libraries. Returns helpful message when wrong method is used
+
+### Changed
+- Deprecation notices are now disabled by default (`$logDeprecations` is false) for a quieter development experience
+- Method names from previous versions continue to work, ensuring backward compatibility as the interface evolves
+- Renamed: `withSmartStrings()` to `enableSmartStrings()` (old method still works)
+- Renamed: `noSmartStrings()` to `disableSmartStrings()` (old method still works)
+- Removed legacy code and deprecated ZenDB methods for cleaner codebase
+
 ## [2.1.3] - 2025-04-08
 
 ### Added
@@ -36,14 +50,14 @@
 ### Changed
 - `or404()` now returns a traditional 404 error page instead of a plain text message
 
-##[2.0.5] - 2025-01-31
+## [2.0.5] - 2025-01-31
 
 ### Added
-- contains($value): Check if the array contains a specific value.
-- withSmartStrings() & noSmartStrings(): Dynamically toggle SmartString wrapping on/off for the current array.
+- `contains($value)`: Check if the array contains a specific value
+- `withSmartStrings()` & `noSmartStrings()`: Dynamically toggle SmartString wrapping on/off for the current array
 
 ### Changed
-- Renamed: rawValue() → getRawValue().  Previous method name now logs a deprecation warning and calls getRawValue().
+- Renamed: `rawValue()` → `getRawValue()`. Previous method name now logs a deprecation warning and calls getRawValue()
 - Misc code optimizations and other minor improvements
 
 ## [2.0.4] - 2025-01-15
@@ -79,35 +93,35 @@
 
 ### Changed
 * BREAKING: Values now stay as raw values by default (previously auto-converted to SmartStrings)
-* Added SmartArray::new() for raw value handling and SmartArray::newSS() for SmartString conversion
+* Added `SmartArray::new()` for raw value handling and `SmartArray::newSS()` for SmartString conversion
 * Improved performance through optimized value handling and lazy conversion
 
 ### Added
 * New methods for array manipulation:
-    * where() - Filter rows by matching conditions
-    * pluckNth() - Extract values by position from nested arrays
-    * merge() - Combine multiple arrays
+    * `where()` - Filter rows by matching conditions
+    * `pluckNth()` - Extract values by position from nested arrays
+    * `merge()` - Combine multiple arrays
 * New debugging and introspection tools:
-    * debug() - Enhanced troubleshooting information
-    * Added SmartArray::rawValue() helper for consistent value conversion
+    * `debug()` - Enhanced troubleshooting information
+    * Added `SmartArray::rawValue()` helper for consistent value conversion
 * New database integration and advanced features:
-    * load() - Load related records from a database column 
-    * mysqli() - Access database result metadata (affected_rows, insert_id, error, etc.)
-    * root() - Access root SmartArray from nested children (useful for eager caching and other advanced use cases)
-    * setLoadHandler() for configuring related record loading
+    * `load()` - Load related records from a database column 
+    * `mysqli()` - Access database result metadata (affected_rows, insert_id, error, etc.)
+    * `root()` - Access root SmartArray from nested children (useful for eager caching and other advanced use cases)
+    * `setLoadHandler()` - For configuring related record loading
 
 ### Deprecated
 - Added support for legacy ZenDB methods, legacy methods still work, but log deprecation errors and will be removed in future
-- Renamed join() to implode() to better match PHP's implode() function (old method still works, but log deprecation error)
+- Renamed `join()` to `implode()` to better match PHP's implode() function (old method still works, but logs deprecation error)
 
 ## [1.2.0] - 2024-10-31
-* Added sort() and sortBy($column) methods
+* Added `sort()` and `sortBy($column)` methods
 * Updated readme.md with examples
-* Misc code and other minor improvements
+* Misc code optimizations and other minor improvements
 
 ## [1.1.0] - 2024-10-28
-* Added unique() method
-* Misc code and other minor improvements
+* Added `unique()` method
+* Misc code optimizations and other minor improvements
 
 ## [1.0.0] - 2024-10-28
 * Initial release

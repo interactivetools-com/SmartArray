@@ -334,7 +334,7 @@ class SmartArrayTest extends TestCase
         $this->assertFalse($original->usingSmartStrings());
 
         // Get new copy with SmartStrings enabled
-        $copy = $original->withSmartStrings(true);
+        $copy = $original->enableSmartStrings(true);
 
         // Verify original is unchanged
         $this->assertFalse($original->usingSmartStrings());
@@ -356,7 +356,7 @@ class SmartArrayTest extends TestCase
         $this->assertTrue($original->usingSmartStrings());
 
         // Get new copy with SmartStrings disabled
-        $copy = $original->noSmartStrings(true);
+        $copy = $original->disableSmartStrings(true);
 
         // Verify original is unchanged
         $this->assertTrue($original->usingSmartStrings());
@@ -378,7 +378,7 @@ class SmartArrayTest extends TestCase
         $this->assertFalse($original->usingSmartStrings());
 
         // Modify in place (default behavior)
-        $result = $original->withSmartStrings();
+        $result = $original->enableSmartStrings();
 
         // Verify original is modified
         $this->assertTrue($original->usingSmartStrings());
@@ -396,7 +396,7 @@ class SmartArrayTest extends TestCase
         $this->assertTrue($original->usingSmartStrings());
 
         // Modify in place (default behavior)
-        $result = $original->noSmartStrings();
+        $result = $original->disableSmartStrings();
 
         // Verify original is modified
         $this->assertFalse($original->usingSmartStrings());
@@ -417,10 +417,10 @@ class SmartArrayTest extends TestCase
         $this->assertTrue($withSS->usingSmartStrings());
 
         // Test toggling
-        $withoutSS->withSmartStrings();
+        $withoutSS->enableSmartStrings();
         $this->assertTrue($withoutSS->usingSmartStrings());
 
-        $withSS->noSmartStrings();
+        $withSS->disableSmartStrings();
         $this->assertFalse($withSS->usingSmartStrings());
     }
 
@@ -442,16 +442,16 @@ class SmartArrayTest extends TestCase
 
         $this->assertSame('', $result);
     }
-    
+
     public function testHelp(): void
     {
         $smartArray = new SmartArray([1, 2, 3]);
-        
+
         // Start output buffering to capture the help output
         ob_start();
         $smartArray->help();
         $output = ob_get_clean();
-        
+
         // Verify help text contains useful information
         $this->assertStringContainsString('<xmp>', $output, "Help output should be wrapped in <xmp> tags");
         $this->assertStringContainsString('SmartArray:', $output, "Help output should contain introductory text");
@@ -477,7 +477,7 @@ class SmartArrayTest extends TestCase
         $output = ob_get_clean();
 
         // Build the expected warning message pattern
-        $expectedWarningPattern = "/Warning: .*'age' doesn't exist.*Valid keys are: id, name/s";
+        $expectedWarningPattern = "/Warning: .*'age' doesn't exist/s";
 
         // Assert that the output contains the expected warning message
         $this->assertMatchesRegularExpression($expectedWarningPattern, $output, "Expected warning message not found in output.");
@@ -494,6 +494,62 @@ class SmartArrayTest extends TestCase
 
         // Assert that there is no warning output
         $this->assertEmpty($output, "No warning should be output when the array is empty.");
+    }
+
+    public function testWarnIfMissingOffsetWithGlobalSettingDisabled(): void
+    {
+        $smartArray = new SmartArray([
+            'id'   => 1,
+            'name' => 'Alice',
+        ]);
+
+        // Store original setting
+        $originalWarnIfMissing = SmartArray::$warnIfMissing;
+
+        try {
+            // Disable warnings globally
+            SmartArray::$warnIfMissing = false;
+
+            // For offset warnings, the global setting should prevent warnings
+            ob_start();
+            $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'offset']);
+            $output = ob_get_clean();
+
+            // Assert that no warning is shown when globally disabled
+            $this->assertEmpty($output, "No warning should be output for offset access when warnIfMissing is disabled");
+        } finally {
+            // Restore original setting
+            SmartArray::$warnIfMissing = $originalWarnIfMissing;
+        }
+    }
+
+    public function testWarnIfMissingArgumentWithGlobalSettingDisabled(): void
+    {
+        $smartArray = new SmartArray([
+            'id'   => 1,
+            'name' => 'Alice',
+        ]);
+
+        // Store original setting
+        $originalWarnIfMissing = SmartArray::$warnIfMissing;
+
+        try {
+            // Disable warnings globally
+            SmartArray::$warnIfMissing = false;
+
+            // Method argument warnings should still show even with the global setting disabled
+            ob_start();
+            $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']);
+            $output = ob_get_clean();
+
+            // Assert that the warning is still shown despite the global setting
+            $expectedWarningPattern = "/Warning: .*'age' doesn't exist/s";
+            $this->assertMatchesRegularExpression($expectedWarningPattern, $output,
+                "Method argument warnings should still be shown even with warnIfMissing disabled");
+        } finally {
+            // Restore original setting
+            SmartArray::$warnIfMissing = $originalWarnIfMissing;
+        }
     }
 
 //endregion

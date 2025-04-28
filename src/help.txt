@@ -30,8 +30,8 @@ Creating SmartArrays
 $ids   = SmartArray::new([1, 2, 3]);
 $user  = SmartArray::new(['name' => 'John', 'age' => 30]);
 $users = SmartArray::new(DB::select('users'));  // Nested SmartArray of SmartStrings
-->withSmartStrings()    Enable SmartStrings for array values
-->noSmartStrings()      Disable SmartStrings for array values
+->enableSmartStrings()   Enable SmartStrings for array values
+->disableSmartStrings()  Disable SmartStrings for array values
 
 Value Access
 -------------

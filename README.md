@@ -49,8 +49,8 @@ $records = [
     ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
 ];
 
-$users = SmartArray::new($records)->withSmartStrings(); // Convert to SmartArray of SmartStrings
-$users = SmartArray::new($records, true);               // Convert to SmartArray of SmartStrings (alternative syntax)
+$users = SmartArray::new($records)->enableSmartStrings(); // Convert to SmartArray of SmartStrings
+$users = SmartArray::new($records, true);                 // Convert to SmartArray of SmartStrings (alternative syntax)
 
 // Foreach over a SmartArray just like a regular array 
 foreach ($users as $user) {
@@ -468,8 +468,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Category             |                          Method | Description                                                                                               |
 |----------------------|--------------------------------:|-----------------------------------------------------------------------------------------------------------|
 | Basic Usage          |         SmartArray::new($array) | Create a new SmartArray. Values stay as-is, nested arrays become SmartArrays                              |
-|                      |              withSmartStrings() | Enable SmartStrings for array values, on output values become HTML-encoded SmartStrings                   |
-|                      |                noSmartStrings() | Disable SmartStrings for array values                                                                     |
+|                      |            enableSmartStrings() | Enable SmartStrings for array values, on output values become HTML-encoded SmartStrings                   |
+|                      |           disableSmartStrings() | Disable SmartStrings for array values                                                                     |
 | Value Access         |                     $obj['key'] | Get a value using array syntax                                                                            |
 |                      |                       $obj->key | Get a value using object syntax                                                                           |
 |                      |                       get($key) | Get a value using method syntax                                                                           |

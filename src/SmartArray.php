@@ -1319,8 +1319,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'item'                 => [$this->get(...$args), "Replace ->$method() with ->get()"],
             'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
-            'withSmartStrings'     => [$this->enableSmartStrings(...$args), "Replace ->$method() with ->enableSmartStrings()"],
-            'noSmartStrings'       => [$this->disableSmartStrings(...$args), "Replace ->$method() with ->disableSmartStrings()"],
+            'withsmartstrings'     => [$this->enableSmartStrings(...$args), "Replace ->$method() with ->enableSmartStrings()"],
+            'nosmartstrings'       => [$this->disableSmartStrings(...$args), "Replace ->$method() with ->disableSmartStrings()"],
             default                => [null, null],
         };
         if ($deprecationError) {

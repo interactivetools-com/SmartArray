@@ -1,5 +1,10 @@
 # SmartArray Changelog
 
+## [2.2.1] - 2025-04-28
+
+### Fixed
+- Fixed method alias matching to be case-insensitive for legacy methods: withSmartStrings and noSmartStrings
+
 ## [2.2.0] - 2025-04-28
 
 ### Added

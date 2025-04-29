@@ -1,94 +1,43 @@
 # SmartArray Changelog
 
-## [2.2.1] - 2025-04-28
+## [2.2.2] - 2025-04-29
+> **Bundled with CMS Builder v3.76**  
+> Roll-up release - every change from **v2.0.2 -> v2.2.1** is now part of this version.
+
+### Added
+- **Configuration & diagnostics**
+  - `SmartArray::$warnIfMissing` - toggle "missing-key" warnings (default **true**).
+  - `SmartArray::$logDeprecations` - turn legacy-method logging on/off (default **false**).
+  - **Friendly alias suggestions** - calling a known alias from common libraries now shows a "did you mean ...?" hint.
+- **Smart-object helpers**
+  - `smartMap(callable $fn)` - apply a callback while preserving `SmartString`/`SmartArray` wrappers.
+  - `each(callable $fn)` - iterate with wrappers intact; returns the original array for chaining.
+  - `contains($value)` - returns **true** if the array holds any matching value.
+  - Constructor shorthand: `SmartArray::new($data, bool $smartStrings)` - enable/disable SmartStrings in one call.
+- **Error-handling shortcuts**   
+  - `orDie()`, `or404()`, `orThrow()` - terminate, send 404, or throw when the array is empty.
+- **Fluent toggles**   
+  - `enableSmartStrings(bool $clone = false)` / `disableSmartStrings(bool $clone = false)` - toggle SmartString output; pass **true** to return a cloned array.
+
+### Changed
+- **Deprecations quieter by default** - `$logDeprecations` now defaults to **false**.
+- **Alias rename** - `rawValue()` -> `getRawValue()` (old name still works).
+- **404 helper** - `or404()` now renders a full HTML error page.
+- **Documentation** - inline `help()` moved to `/src/help.txt`; expanded examples in `README.md`.
+- **Internal cleanup**
+  - Removed legacy ZenDB hooks.
+  - `SmartNull` now extends `stdClass`; dynamic-property warnings eliminated.
+  - Runtime errors consolidated under base `Exception`.
+  - Numerous micro-optimisations and stricter type hints.
 
 ### Fixed
-- Fixed method alias matching to be case-insensitive for legacy methods: withSmartStrings and noSmartStrings
+- Misc bug fixes and optimizations
 
-## [2.2.0] - 2025-04-28
-
-### Added
-- `SmartArray::$warnIfMissing` to toggle warnings when missing array keys are accessed, defaults to true
-- `SmartArray::$logDeprecations` to toggle logging deprecation errors for old method names, defaults to false
-- Method aliases system for common function names from other libraries. Returns helpful message when wrong method is used
-
-### Changed
-- Deprecation notices are now disabled by default (`$logDeprecations` is false) for a quieter development experience
-- Method names from previous versions continue to work, ensuring backward compatibility as the interface evolves
-- Renamed: `withSmartStrings()` to `enableSmartStrings()` (old method still works)
-- Renamed: `noSmartStrings()` to `disableSmartStrings()` (old method still works)
-- Removed legacy code and deprecated ZenDB methods for cleaner codebase
-
-## [2.1.3] - 2025-04-08
-
-### Added
-- Added optional copy mode to `withSmartStrings()` and `noSmartStrings()` - pass `true` to get a new SmartArray instead of modifying the existing one
-- Added `usingSmartStrings()` method to check if an array is using SmartString conversion
-
-### Changed
-- Moved `help()` method documentation to external `/src/help.txt` file for easier maintenance
-- Improved test coverage for better reliability
-
-## [2.1.2] - 2025-03-11
-
-### Changed
-- Documentation updates and minor code optimizations
-
-## [2.1.1] - 2025-02-26
-
-### Fixed
-- Updated return type on __callStatic to reflect mixed return values
-
-## [2.1.0] - 2025-02-14
-
-### Added
-- `smartMap($callback)`: Applies a callback to each element as a SmartString or nested SmartArray.
-   Useful for transforming values while preserving Smart objects.
-- `each($callback)`: Executes a callback on each element as a SmartString or nested SmartArray. Used for side effects, doesn't modify array.
-- Constructor: Added shorthand boolean option (true/false) to enable/disable SmartStrings
-
-### Changed
-- Misc code optimizations and other minor improvements
-
-## [2.0.6] - 2025-02-11
-
-### Changed
-- `or404()` now returns a traditional 404 error page instead of a plain text message
-
-## [2.0.5] - 2025-01-31
-
-### Added
-- `contains($value)`: Check if the array contains a specific value
-- `withSmartStrings()` & `noSmartStrings()`: Dynamically toggle SmartString wrapping on/off for the current array
-
-### Changed
-- Renamed: `rawValue()` → `getRawValue()`. Previous method name now logs a deprecation warning and calls getRawValue()
-- Misc code optimizations and other minor improvements
-
-## [2.0.4] - 2025-01-15
-
-### Changed
-- Misc code optimizations and other minor improvements
-
-## [2.0.3] - 2025-01-13
-
-### Changed
-- Removed warnings for undefined properties when using offsetGet(), ->property, or array syntax []
-- Updated SmartNull to extend stdClass to prevent dynamic property warnings
-- Changed RuntimeExceptions to base Exception class
-
-## [2.0.2] - 2024-12-27
-
-### Added
-- `orDie()`: Terminates execution with message if value is blank (empty string, null or false)
-- `or404()`: Terminates execution with 404 header and message if value is blank (empty string, null or false)
-- `orThrow()`: Throws an exception with message if value is blank (empty string, null or false)
-- SmartNull objects now support mysqli() method so you can reference the original query that created them
-
-### Changed
-- Internal code organization and optimization improvements
+---
 
 ## [2.0.1] - 2024-12-09
+
+> **Bundled with CMS Builder v3.75**
 
 ### Changed
 - ZenDB support: Removed references to ->mysqli('error') and ->mysqli('errno') as try/catch is now used for error handling

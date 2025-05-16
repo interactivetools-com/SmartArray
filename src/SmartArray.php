@@ -1242,19 +1242,21 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
         $caller   = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
         $function = $caller['function'] ?? "unknownFunction";
+        $keyOrEmptyQuotes = $key === "" ? "''" : $key; // Show empty quotes for empty string keys
 
         $warning = match ($warningType) {
-            'offset'   => "Undefined property or key '$key'",
-            'argument' => "$function(): '$key' doesn't exist",
+            'offset'   => "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n",
+            'argument' => "$function(): '$key' doesn't exist\n",
             default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
         };
-        $warning .= "\n\n";
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
-            $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"";
+            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"";
         }
-        $warning .= self::occurredInFile(true);
+        if ($warningType === 'argument') {
+            $warning .= self::occurredInFile(true);
+        }
 
         // Emulate PHP warning: output warning and trigger PHP warning (for logging)
         echo "\nWarning: $warning\n";             // Output with echo so PHP doesn't add the filename and line number of this function on the end

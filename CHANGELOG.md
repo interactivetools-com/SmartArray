@@ -1,5 +1,15 @@
 # SmartArray Changelog
 
+## [2.2.3] - 2025-01-06
+
+### Changed
+- More compact error messages
+
+### Fixed
+- Cleaned up temporary development files
+
+---
+
 ## [2.2.2] - 2025-04-29
 > **Bundled with CMS Builder v3.76**  
 > Roll-up release - every change from **v2.0.2 -> v2.2.1** is now part of this version.

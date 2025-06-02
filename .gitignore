@@ -1,8 +1,11 @@
-.idea/
 .phpunit.result.cache
 composer*.phar
 composer.bat
 composer.*.json
 composer.lock
-test.php
 vendor/
+
+# ide/dev files
+.idea/
+test.php
+*.sh

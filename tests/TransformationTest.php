@@ -940,7 +940,7 @@ class TransformationTest extends TestCase
         $smartArray = new SmartArray($input);
 
         if ($useSmartStrings) {
-            $smartArray->enableSmartStrings();
+            $smartArray = $smartArray->enableSmartStrings();
         }
 
         $originalArray = $smartArray->toArray(); // Copy of the original array
@@ -1026,7 +1026,7 @@ class TransformationTest extends TestCase
     public function testEach($input, $expectedResults): void
     {
         $smartArray = new SmartArray($input);
-        $smartArray->enableSmartStrings();
+        $smartArray = $smartArray->enableSmartStrings();
 
         $results = [];
         $returnValue = $smartArray->each(function ($value, $key) use (&$results) {

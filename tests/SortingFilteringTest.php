@@ -394,6 +394,9 @@ class SortingFilteringTest extends TestCase
                 'conditions' => ['count' => 0],
                 'expected' => [
                     0 => ['count' => 0],
+                    1 => ['count' => '0'],
+                    2 => ['count' => null],
+                    3 => ['count' => false],
                 ],
             ],
             'multiple exact value matching' => [

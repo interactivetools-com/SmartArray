@@ -377,14 +377,14 @@ class SmartArrayTest extends TestCase
         $original = SmartArray::new($inputArray);
         $this->assertFalse($original->usingSmartStrings());
 
-        // Modify in place (default behavior)
+        // Get new instance with SmartStrings enabled
         $result = $original->enableSmartStrings();
 
-        // Verify original is modified
-        $this->assertTrue($original->usingSmartStrings());
+        // Verify result has SmartStrings enabled
+        $this->assertTrue($result->usingSmartStrings());
 
-        // Verify result is the same instance
-        $this->assertSame($original, $result);
+        // Verify original is unchanged
+        $this->assertFalse($original->usingSmartStrings());
     }
 
     /**
@@ -395,14 +395,14 @@ class SmartArrayTest extends TestCase
         $original = SmartArray::new($inputArray, true);
         $this->assertTrue($original->usingSmartStrings());
 
-        // Modify in place (default behavior)
+        // Get new instance with SmartStrings disabled
         $result = $original->disableSmartStrings();
 
-        // Verify original is modified
-        $this->assertFalse($original->usingSmartStrings());
+        // Verify result has SmartStrings disabled
+        $this->assertFalse($result->usingSmartStrings());
 
-        // Verify result is the same instance
-        $this->assertSame($original, $result);
+        // Verify original is unchanged
+        $this->assertTrue($original->usingSmartStrings());
     }
 
     /**
@@ -417,11 +417,13 @@ class SmartArrayTest extends TestCase
         $this->assertTrue($withSS->usingSmartStrings());
 
         // Test toggling
-        $withoutSS->enableSmartStrings();
-        $this->assertTrue($withoutSS->usingSmartStrings());
+        $withSSEnabled = $withoutSS->enableSmartStrings();
+        $this->assertTrue($withSSEnabled->usingSmartStrings());
+        $this->assertFalse($withoutSS->usingSmartStrings());
 
-        $withSS->disableSmartStrings();
-        $this->assertFalse($withSS->usingSmartStrings());
+        $withSSDisabled = $withSS->disableSmartStrings();
+        $this->assertFalse($withSSDisabled->usingSmartStrings());
+        $this->assertTrue($withSS->usingSmartStrings());
     }
 
 //endregion

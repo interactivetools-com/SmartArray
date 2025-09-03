@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace Itools\SmartArray;
@@ -10,6 +9,16 @@ use Itools\SmartString\SmartString;
 
 /**
  * SmartArray - Represent an array as an ArrayObject with extra features and a fluent, chainable interface.
+ *
+ * When SmartStrings are disabled (default):
+ *   - Scalars and null return actual types (string, int, float, bool, null), not SmartString objects, not chainable
+ *   - Arrays return SmartArrayRaw, use ->toArray() for raw arrays and values
+ *   - Missing keys return SmartNull, use ->value() for raw null
+ *
+ * When SmartStrings are enabled:
+ *   - Scalars and null return SmartString objects, not raw types.  Use ->value() to get raw value.
+ *   - Arrays return SmartArrayHTML, use ->toArray() for raw arrays and values
+ *   - Missing keys return SmartNull, use ->value() for raw null
  */
 class SmartArray extends ArrayObject implements JsonSerializable
 {
@@ -42,10 +51,18 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Create new empty ArrayObject with object property writing enabled (STD_PROP_LIST)
         parent::__construct([], ArrayObject::STD_PROP_LIST);
 
-        // Set properties
+        // Convert boolean to array format for backward compatibility
         if (is_bool($properties)) {
             $properties = ['useSmartStrings' => $properties];
         }
+
+        // Deprecate calling constructor directly, use ::new() or ::newHtml() factory methods instead
+         if (static::class === self::class) {
+             $suggestedMethod = empty($properties['useSmartStrings']) ? 'new($array)' : 'newHtml($array)';
+             self::logDeprecation("Direct instantiation with 'new SmartArray()' is deprecated. Use SmartArray::$suggestedMethod instead for better IDE type hinting.");
+         }
+
+        // Set properties
         foreach ($properties as $property => $value) {
             $this->{$property} = $value;
         }
@@ -77,69 +94,72 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     /**
-     * Alias for `new SmartArray()` that enables cleaner method chaining without extra parentheses.
+     * Create a new SmartArray with optional SmartString wrapping.
+     * This is the default factory method for creating SmartArrays.
      *
      * ```
-     * // Before PHP 8.4 (requires parentheses):
-     * $users = (new SmartArray($records))->indexBy('id');
-     *
-     * // Clean syntax (all versions):
-     * $users = SmartArray::new($records)->indexBy('id');
+     * // For internal data processing and JSON APIs (raw values)
+     * $data = SmartArray::new($records)->indexBy('id');
+     * echo json_encode($data); // Raw values, no HTML encoding
      * ```
+     *
+     * @param array $array The input array to convert
+     * @param array|bool $properties Optional properties array, or boolean for backward compatibility (deprecated)
+     * @return SmartArrayRaw|SmartArrayHtml A SmartArray that returns raw values (or SmartStrings if bool true passed - deprecated)
      */
-    public static function new(array $array = [], bool|array $properties = []): self
+    public static function new(array $array = [], array|bool $properties = []): SmartArrayRaw|SmartArrayHtml
     {
-        return new self($array, $properties);
+        // Backward compatibility: handle boolean for SmartStrings toggle
+        if (is_bool($properties)) {
+            self::logDeprecation("Passing boolean to SmartArray::new() is deprecated. Use SmartArray::newHtml() for HTML-safe values or SmartArray::newRaw() for raw values.");
+            return $properties ? self::newHtml($array) : self::newRaw($array);
+        }
+
+        return self::newRaw($array, $properties);
     }
 
     /**
-     * Enable SmartString wrapping of scalar values.
-     * If `$newCopy` is `true`, return a new SmartArray copy; otherwise modify this instance.
+     * Create a new SmartArrayRaw that returns raw values without SmartString wrapping.
      *
-     * @param bool $newCopy Whether to return a new SmartArray or modify the current one
-     * @return self
+     * This method provides better IDE type hinting compared to SmartArray::new().
+     * Your IDE will know this returns SmartArrayRaw specifically, improving autocomplete
+     * and type checking for internal data processing, JSON APIs, or when you need actual values.
+     *
+     * ```
+     * // For JSON APIs and data processing (raw values)
+     * $data = SmartArray::newRaw($records)->indexBy('id');
+     * echo json_encode($data); // Raw values, no HTML encoding
+     * ```
+     *
+     * @param array $array The input array to convert
+     * @param array $properties Optional properties array
+     * @return SmartArrayRaw A SmartArray that returns raw values (not SmartStrings)
      */
-    public function enableSmartStrings(bool $newCopy = false): self
+    public static function newRaw(array $array = [], array $properties = []): SmartArrayRaw
     {
-        if ($newCopy) {
-            $properties = ['useSmartStrings' => true] + get_object_vars($this);
-            return new self($this->toArray(), $properties);
-        }
-
-        $this->setProperty('useSmartStrings', true);
-
-        foreach ($this->getArrayCopy() as $value) {
-            if ($value instanceof self) {
-                $value->enableSmartStrings(false);
-            }
-        }
-
-        return $this;
+        return new SmartArrayRaw($array, $properties);
     }
 
     /**
-     * Disable SmartString wrapping, returning scalars as raw values.
-     * If `$newCopy` is `true`, return a new SmartArray copy; otherwise modify this instance.
+     * Create a new SmartArrayHtml with SmartString wrapping for HTML-safe output.
      *
-     * @param bool $newCopy Whether to return a new SmartArray or modify the current one
-     * @return self
+     * This method provides better IDE type hinting compared to SmartArray::new().
+     * Your IDE will know this returns SmartArrayHtml specifically, improving autocomplete
+     * and type checking when outputting data to HTML templates for automatic XSS protection.
+     *
+     * ```
+     * // For HTML templates (auto-encoded for XSS protection)
+     * $users = SmartArray::newHtml($records);
+     * echo $users->first()->name; // Automatically HTML-encoded
+     * ```
+     *
+     * @param array $array The input array to convert into a SmartArrayHtml
+     * @param array $properties Optional properties to pass to the SmartArrayHtml constructor
+     * @return SmartArrayHtml A SmartArray that returns SmartString objects for HTML safety
      */
-    public function disableSmartStrings(bool $newCopy = false): self
+    public static function newHtml(array $array = [], array $properties = []): SmartArrayHtml
     {
-        if ($newCopy) {
-            $properties = ['useSmartStrings' => false] + get_object_vars($this);
-            return new self($this->toArray(), $properties);
-        }
-
-        $this->setProperty('useSmartStrings', false);
-
-        foreach ($this->getArrayCopy() as $value) {
-            if ($value instanceof self) {
-                $value->disableSmartStrings(false);
-            }
-        }
-
-        return $this;
+        return new SmartArrayHtml($array, $properties);
     }
 
     //endregion
@@ -156,7 +176,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $isDefaultSmartObject = $default instanceof self || $default instanceof SmartString;
             return match (true) {
                 is_scalar($default), is_null($default) => $this->encodeOutput($default, $key, $this->getProperty('useSmartStrings')),
-                is_array($default)                     => new SmartArray($default),
+                is_array($default)                     => new static($default, get_object_vars($this)),
                 $isDefaultSmartObject                  => $default,
                 default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
             };
@@ -248,9 +268,9 @@ class SmartArray extends ArrayObject implements JsonSerializable
             return;
         }
 
-        // Convert nested arrays to SmartArrays
+        // Convert nested arrays to SmartArrays (preserving the current class type)
         if (is_array($value)) {
-            $value = new self($value, get_object_vars($this));
+            $value = new static($value, get_object_vars($this));
             parent::offsetSet($key, $value);
             return;
         }
@@ -331,7 +351,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function contains(mixed $value): bool
     {
-        return in_array(self::getRawValue($value), $this->toArray(), false);
+        return in_array(self::getRawValue($value), $this->toArray());
     }
 
     //endregion
@@ -401,7 +421,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         }
 
         $chunks = array_chunk($this->toArray(), $size);
-        return new self($chunks, get_object_vars($this));
+        return new static($chunks, get_object_vars($this));
     }
 
     //endregion
@@ -416,7 +436,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         $sorted = $this->toArray();
         sort($sorted, $flags);
-        return new self($sorted, get_object_vars($this));
+        return new static($sorted, get_object_vars($this));
     }
 
     /**
@@ -435,7 +455,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         $columnValues = array_column($sorted, $column);
         array_multisort($columnValues, SORT_ASC, $type, $sorted);
 
-        return new self($sorted, get_object_vars($this));
+        return new static($sorted, get_object_vars($this));
     }
 
     /**
@@ -447,7 +467,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         $this->assertFlatArray();
 
         $unique = array_unique($this->toArray());
-        return new self($unique, get_object_vars($this));
+        return new static($unique, get_object_vars($this));
     }
 
     /**
@@ -465,17 +485,17 @@ class SmartArray extends ArrayObject implements JsonSerializable
     public function filter(?callable $callback = null): self
     {
         $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
     /**
-     * Returns a new SmartArray containing only the elements that satisfy the callback function.
+     * Returns a new SmartArray containing only the array elements where all conditions match.
+     * Elements that are not arrays are automatically skipped.
      *
-     * Note, this method doesn't require nested arrays but will skip any elements that are not arrays.
-     * This allows us to work with CMSB schema files.
+     * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
      *
-     * @param array $conditions
-     * @return SmartArray
+     * @param array $conditions Key-value pairs to match against each element
+     * @return SmartArray A new SmartArray containing only matching elements
      */
     public function where(array $conditions): SmartArray
     {
@@ -486,16 +506,17 @@ class SmartArray extends ArrayObject implements JsonSerializable
                 return false;
             }
 
-            // check if all conditions are met
+            // check if all conditions are met (using non-strict comparison)
             foreach ($conditions as $key => $value) {
-                if (!array_key_exists($key, $row) || $row[$key] !== $value) {
+                /** @noinspection TypeUnsafeComparisonInspection */
+                if (!array_key_exists($key, $row) || $row[$key] != $value) {    // intentional non-strict comparison
                     return false;
                 }
             }
             return true;
         });
 
-        return new self($filtered, get_object_vars($this));
+        return new static($filtered, get_object_vars($this));
     }
 
     //endregion
@@ -535,7 +556,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     public function keys(): SmartArray
     {
         $keys = array_keys($this->getArrayCopy());
-        return new self($keys, get_object_vars($this));
+        return new static($keys, get_object_vars($this));
     }
 
     /**
@@ -544,7 +565,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     public function values(): SmartArray
     {
         $values = array_values($this->toArray());
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
 
@@ -590,7 +611,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // Index by column
         $values = array_column($this->toArray(), null, $column);
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
     /**
@@ -636,7 +657,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $values[$key][] = $row;
         }
 
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
     /**
@@ -664,7 +685,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         }
 
         $values = array_column($this->toArray(), $valueColumn, $keyColumn);
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
     /**
@@ -697,7 +718,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
                 $values[] = array_values($row)[$rowIndex];
             }
         }
-        return new self($values, get_object_vars($this));
+        return new static($values, get_object_vars($this));
     }
 
     /**
@@ -765,7 +786,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $newArray[$key] = $isClosure ? $callback($rawValue, $key) : $callback($rawValue);
         }
 
-        return new self($newArray, get_object_vars($this));
+        return new static($newArray, get_object_vars($this));
     }
 
     /**
@@ -803,7 +824,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
             $newArray[$key] = $callback($smartValue, $key);
         }
 
-        return new self($newArray, get_object_vars($this));
+        return new static($newArray, get_object_vars($this));
     }
 
     /**
@@ -853,7 +874,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     {
         $arrays = array_map([self::class, 'getRawValue'], $arrays); // convert SmartArrays to arrays
         $merged = array_merge($this->toArray(), ...$arrays);
-        return new self($merged, get_object_vars($this));
+        return new static($merged, get_object_vars($this));
     }
 
 
@@ -914,7 +935,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         };
 
         // return new SmartArray
-        return new self($array, [
+        return new static($array, [
             'useSmartStrings' => $this->getProperty('useSmartStrings'), // persist smart strings setting
             'loadHandler'     => $this->getProperty('loadHandler'),     // persist load handler
             'mysqli'          => $mysqliProperties ?? [],
@@ -936,7 +957,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     /**
      * Return the root SmartArray object for nested arrays, or the current object if not nested.
      */
-    public function root(): SmartArray
+    public function root(): self
     {
         return $this->getProperty('root');
     }
@@ -1132,6 +1153,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * Sends a 404 header and message if the array is empty, then exits.
      *
      * @param string|null $message The message to display when sending 404.
+     * @return self Returns self if not empty, exits with 404 if empty
      */
     public function or404(?string $message = null): self
     {
@@ -1147,7 +1169,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         echo <<<__HTML__
             <!DOCTYPE html>
-            <html>
+            <html lang>
             <head>
                 <title>Not Found</title>
             </head>
@@ -1164,7 +1186,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * Dies with a message if the array is empty
      *
      * @param string $message Error message to show
-     * @return self Returns $this for method chaining if not empty
+     * @return self Returns $this for method chaining if not empty, dies if empty
      */
     public function orDie(string $message): self
     {
@@ -1187,6 +1209,32 @@ class SmartArray extends ArrayObject implements JsonSerializable
         if ($this->count() === 0) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
             throw new RuntimeException($message);
+        }
+        return $this;
+    }
+
+    /**
+     * Redirects to a URL if the array is empty
+     *
+     * Uses a simple Location header redirect (HTTP 302 Temporary Redirect).
+     * If headers have already been sent, this method will throw an exception.
+     *
+     * @param string $url The URL to redirect to if array is empty
+     * @return self Returns $this for method chaining if not empty, redirects if empty
+     * @throws RuntimeException If headers have already been sent
+     */
+    public function orRedirect(string $url): self
+    {
+        // Check if headers have already been sent (fail fast)
+        if (headers_sent($file, $line)) {
+            throw new RuntimeException("Cannot redirect: headers already sent in $file on line $line");
+        }
+
+        if ($this->count() === 0) {
+            // Send redirect headers (302 Temporary Redirect)
+            http_response_code(302);
+            header("Location: " . $url);
+            exit;
         }
         return $this;
     }
@@ -1240,8 +1288,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // If array isn't empty and key doesn't exist, throw warning to help debugging
         // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
-        $caller   = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-        $function = $caller['function'] ?? "unknownFunction";
+        $caller           = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+        $function         = $caller['function'] ?? "unknownFunction";
         $keyOrEmptyQuotes = $key === "" ? "''" : $key; // Show empty quotes for empty string keys
 
         $warning = match ($warningType) {
@@ -1259,8 +1307,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
         }
 
         // Emulate PHP warning: output warning and trigger PHP warning (for logging)
-        echo "\nWarning: $warning\n";             // Output with echo so PHP doesn't add the filename and line number of this function on the end
-        @trigger_error($warning, E_USER_WARNING); // Trigger a PHP warning but hide output with @ so it will still get logged
+        echo "\nWarning: $warning\n";                  // Output with echo so PHP doesn't add the filename and line number of this function on the end
+        @trigger_error($warning, E_USER_WARNING);      // Trigger a PHP warning but hide output with @ so it will still get logged
     }
 
     /**
@@ -1305,7 +1353,6 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * @param $args
      * @return mixed
      *
-     * @noinspection PhpDeprecationInspection
      * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
     public function __call($method, $args)
@@ -1321,8 +1368,10 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'item'                 => [$this->get(...$args), "Replace ->$method() with ->get()"],
             'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
-            'withsmartstrings'     => [$this->enableSmartStrings(...$args), "Replace ->$method() with ->enableSmartStrings()"],
-            'nosmartstrings'       => [$this->disableSmartStrings(...$args), "Replace ->$method() with ->disableSmartStrings()"],
+            'withsmartstrings',
+            'enablesmartstrings'   => [new SmartArrayHtml($this->toArray()), "Replace ->$method() with SmartArrayHtml::new(\$array)"],
+            'nosmartstrings',
+            'disablesmartstrings'  => [new SmartArrayRaw($this->toArray()), "Replace ->$method() with SmartArrayRaw::new(\$array)"],
             default                => [null, null],
         };
         if ($deprecationError) {
@@ -1333,43 +1382,43 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Common aliases: throw error with suggestion.  These are used by other libraries or common LLM suggestions
         $methodAliases = [
             // value access
-            'get'                 => ['fetch', 'value'],
-            'first'               => ['head'],
-            'last'                => ['tail'],
-            'nth'                 => ['index', 'at'],
-            'getRawValue'         => ['raw'],
+            'get'         => ['fetch', 'value'],
+            'first'       => ['head'],
+            'last'        => ['tail'],
+            'nth'         => ['index', 'at'],
+            'getRawValue' => ['raw'],
 
             // emptiness & search
-            'isEmpty'             => ['empty'],
-            'isNotEmpty'          => ['any', 'not_empty'],
-            'contains'            => ['has', 'includes'],
+            'isEmpty'     => ['empty'],
+            'isNotEmpty'  => ['any', 'not_empty'],
+            'contains'    => ['has', 'includes'],
 
             // position helpers
-            'position'            => ['pos'],
-            'chunk'               => ['split'],
+            'position'    => ['pos'],
+            'chunk'       => ['split'],
 
             // sorting & filtering
-            'sort'                => ['order', 'orderby'],
-            'unique'              => ['distinct', 'uniq'],
-            'filter'              => ['select'],
-            'where'               => ['filter_by'],
+            'sort'        => ['order', 'orderby'],
+            'unique'      => ['distinct', 'uniq'],
+            'filter'      => ['select'],
+            'where'       => ['filter_by'],
 
             // array transforms
-            'toArray'             => ['array', 'raw'],
-            'keys'                => ['keyset'],
-            'values'              => ['vals', 'list'],
-            'indexBy'             => ['keyby'],
-            'groupBy'             => ['group'],
-            'pluck'               => ['column'],
-            'pluckNth'            => ['columnnth'],
-            'implode'             => ['join', 'concat'],
-            'map'                 => ['transform', 'apply'],
-            'each'                => ['foreach', 'iterate'],
-            'merge'               => ['append', 'union', 'combine'],
+            'toArray'     => ['array', 'raw'],
+            'keys'        => ['keyset'],
+            'values'      => ['vals', 'list'],
+            'indexBy'     => ['keyby'],
+            'groupBy'     => ['group'],
+            'pluck'       => ['column'],
+            'pluckNth'    => ['columnnth'],
+            'implode'     => ['join', 'concat'],
+            'map'         => ['transform', 'apply'],
+            'each'        => ['foreach', 'iterate'],
+            'merge'       => ['append', 'union', 'combine'],
 
             // utilities
-            'help'                => ['docs'],
-            'debug'               => ['dump'],
+            'help'        => ['docs'],
+            'debug'       => ['dump'],
         ];
 
 
@@ -1384,29 +1433,23 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $baseClass = basename(self::class);
+        $baseClass  = basename(self::class);
         $suggestion ??= "call ->help() for available methods.";
         $error      = sprintf("Call to undefined method %s->$method(), $suggestion\n", basename(self::class));
         throw new Error($error . self::occurredInFile());
     }
 
     /**
-     * @noinspection PhpDeprecationInspection
      * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
     public static function __callStatic($method, $args): mixed
     {
-        // Deprecated/renamed methods
-        [$return, $deprecationError] = match ($method) {
-            'rawValue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
-            'newSS' => [
-                new self(
-                    $args[0] ?? [],
-                    ['useSmartStrings' => true] + ($args[1] ?? []
-                    ),  // args: $array, $properties
-                ),
-                "Replace ->$method() with ->enableSmartStrings()",
-            ],
+        $methodLc = strtolower($method);
+
+        // Deprecated/renamed methods (case-insensitive)
+        [$return, $deprecationError] = match ($methodLc) {
+            'rawvalue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
+            'newss'    => [self::newHtml($args[0] ?? []), "Replace ::$method() with SmartArray::newHtml()"],
             default    => null,
         };
         if ($deprecationError) {

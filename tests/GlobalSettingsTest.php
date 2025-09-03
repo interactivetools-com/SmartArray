@@ -74,7 +74,7 @@ class GlobalSettingsTest extends TestCase
         $value = $array->age; // Access nonexistent property
         $output = ob_get_clean();
         $this->assertNotEmpty($output);
-        $this->assertStringContainsString("'age'", $output);
+        $this->assertStringContainsString(" age ", $output);
 
         // With warnings disabled
         SmartArray::$warnIfMissing = false;
@@ -94,7 +94,7 @@ class GlobalSettingsTest extends TestCase
         $value = $array['age']; // Access nonexistent key
         $output = ob_get_clean();
         $this->assertNotEmpty($output);
-        $this->assertStringContainsString("'age'", $output);
+        $this->assertStringContainsString(" age ", $output);
 
         // With warnings disabled
         SmartArray::$warnIfMissing = false;
@@ -134,7 +134,7 @@ class GlobalSettingsTest extends TestCase
         // Restore original value
         SmartArray::$warnIfMissing = $warnIfMissingOriginal;
     }
-    
+
     public function testWarnIfMissingAlwaysShowsWarningsForIndexByMethodArguments(): void
     {
         // Create a nested array structure to test with
@@ -149,11 +149,11 @@ class GlobalSettingsTest extends TestCase
         try {
             // With warnings disabled - method argument warnings should still show for indexBy method
             SmartArray::$warnIfMissing = false;
-            
+
             ob_start();
             $indexedArray = $array->indexBy('nonexistent_column'); // indexBy() uses warnIfMissing with 'argument' type
             $output = ob_get_clean();
-            
+
             // Assert that warning is still shown despite global setting being disabled
             $this->assertNotEmpty($output, "Method argument warnings should still be shown for indexBy() even with warnIfMissing disabled");
             $this->assertStringContainsString("'nonexistent_column'", $output);

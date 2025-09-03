@@ -27,11 +27,13 @@ $obj->columnName->value()            // Get original unencoded field value
 
 Creating SmartArrays
 -------------------
-$ids   = SmartArray::new([1, 2, 3]);
-$user  = SmartArray::new(['name' => 'John', 'age' => 30]);
-$users = SmartArray::new(DB::select('users'));  // Nested SmartArray of SmartStrings
-->enableSmartStrings()   Enable SmartStrings for array values
-->disableSmartStrings()  Disable SmartStrings for array values
+$ids   = SmartArray::newRaw([1, 2, 3]);                   // Raw PHP values (no SmartString wrapping)
+$user  = SmartArray::newHtml(['name' => 'John & Jane']);  // SmartString-wrapped values for HTML safety
+$users = SmartArray::newHtml(DB::select('users'));        // Nested SmartArray of SmartStrings
+
+Factory Methods:
+SmartArray::newRaw($array)   Returns raw PHP values (for JSON APIs, data processing)
+SmartArray::newHtml($array)  Returns SmartString-wrapped values (for HTML output)
 
 Value Access
 -------------
@@ -65,7 +67,7 @@ Sorting & Filtering
 ->sortBy(column)        Sort nested array by column value, reindexing keys
 ->unique()              Remove duplicate values, keeping first occurrence
 ->filter(callback)      Keep elements where callback returns true, using raw values
-->where(conditions)     Keep elements matching [column => value] conditions
+->where(conditions)     Keep elements matching [column => value] conditions (uses == for type-tolerant matching)
 
 Array Transformation
 ---------------------
@@ -93,6 +95,7 @@ Error Handling
 ->or404(message)        Returns 404 with message if array is empty (default message: "404 Not Found")
 ->orDie(message)        Exits with message if array is empty
 ->orThrow(exception)    Throws exception if array is empty
+->orRedirect(url)       Redirects to URL if array is empty (HTTP 302 redirect)
 
 Debugging
 ----------

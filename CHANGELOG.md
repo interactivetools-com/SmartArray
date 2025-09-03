@@ -1,5 +1,24 @@
 # SmartArray Changelog
 
+## [2.3.0] - 2025-09-03
+
+### Added
+- `orRedirect($url)` - Redirects to a URL if array is empty (HTTP 302 Temporary Redirect)
+- New factory methods and internal classes for better IDE support (makes class, return types, and SmartString behavior explicit):
+  - `SmartArray::newRaw($array)` - Creates `SmartArrayRaw` class with raw PHP values (no SmartString wrapping)
+  - `SmartArray::newHtml($array)` - Creates `SmartArrayHtml` class with SmartString-wrapped values for HTML safety
+
+### Changed
+- Minimum PHP version raised to 8.1 (from 8.0)
+- `where()` method now uses non-strict comparison (==) to match PHP's type coercion behavior: `'1' == 1`, `0 == false`, `null == false`, but `'' != 0`.
+  - This provides type-tolerant matching useful for database/form data where numeric values are often strings
+
+### Deprecated
+- `enableSmartStrings()` and `disableSmartStrings()` - call new factory method with $smartArray->toArray() and re-create if needed
+- Deprecation warnings are opt-in via `SmartArray::$logDeprecations = true` or the deprecation setting in your CMS
+
+---
+
 ## [2.2.3] - 2025-01-06
 
 ### Changed

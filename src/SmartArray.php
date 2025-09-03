@@ -162,6 +162,38 @@ class SmartArray extends ArrayObject implements JsonSerializable
         return new SmartArrayHtml($array, $properties);
     }
 
+    /**
+     * Converts this SmartArray to a SmartArrayRaw instance that returns raw PHP types.
+     *
+     * Useful for converting SmartArrayHtml results to raw values:
+     * ```php
+     * $rows = DB::select('users'); // Returns SmartArrayHtml
+     * $raw = $rows->toRaw();        // Convert to SmartArrayRaw for raw values
+     * ```
+     *
+     * @return SmartArrayRaw A new SmartArrayRaw instance with the same data
+     */
+    public function toRaw(): SmartArrayRaw
+    {
+        return new SmartArrayRaw($this->toArray(), get_object_vars($this));
+    }
+
+    /**
+     * Converts this SmartArray to a SmartArrayHtml instance that returns SmartString objects.
+     *
+     * Useful for converting SmartArrayRaw results to HTML-safe values:
+     * ```php
+     * $data = SmartArray::newRaw($array); // Raw values
+     * $html = $data->toHtml();             // Convert for HTML output
+     * ```
+     *
+     * @return SmartArrayHtml A new SmartArrayHtml instance with the same data
+     */
+    public function toHtml(): SmartArrayHtml
+    {
+        return new SmartArrayHtml($this->toArray(), get_object_vars($this));
+    }
+
     //endregion
     //region Value Access
 
@@ -1369,9 +1401,9 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
             'withsmartstrings',
-            'enablesmartstrings'   => [new SmartArrayHtml($this->toArray()), "Replace ->$method() with SmartArrayHtml::new(\$array)"],
+            'enablesmartstrings'   => [$this->toHtml(), "Replace ->$method() with ->toHtml()"],
             'nosmartstrings',
-            'disablesmartstrings'  => [new SmartArrayRaw($this->toArray()), "Replace ->$method() with SmartArrayRaw::new(\$array)"],
+            'disablesmartstrings'  => [$this->toRaw(), "Replace ->$method() with ->toRaw()"],
             default                => [null, null],
         };
         if ($deprecationError) {

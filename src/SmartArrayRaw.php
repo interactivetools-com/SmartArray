@@ -20,18 +20,15 @@ final class SmartArrayRaw extends SmartArray
 
     /**
      * Create new SmartArray with useSmartStrings=false
-     * Protected constructor prevents direct instantiation.
-     * Use SmartArray::newRaw() to create instances.
      *
      * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
      * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
      * within the root array.
      *
-     * @internal Only callable by SmartArray parent class factory methods
      * @param array $array The input array to convert into a SmartArray.
      * @param array|null $properties either a boolean to enable/disable SmartStrings, or an associative array of custom internal properties.
      */
-    protected function __construct(array $array = [], ?array $properties = [])
+    public function __construct(array $array = [], ?array $properties = [])
     {
         // Force useSmartStrings to false for raw values
         $properties['useSmartStrings'] = false;

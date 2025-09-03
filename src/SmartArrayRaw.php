@@ -346,7 +346,7 @@ final class SmartArrayRaw extends SmartArray
      * @throws InvalidArgumentException If the SmartArray is nested.
      *
      * @example
-     * $arr = SmartArray::newRaw(['apple', 'banana', 'cherry']);
+     * $arr = SmartArray::new(['apple', 'banana', 'cherry']);
      * $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
      */
     public function implode(string $separator): string

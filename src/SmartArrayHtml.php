@@ -347,7 +347,7 @@ final class SmartArrayHtml extends SmartArray
      * @throws InvalidArgumentException If the SmartArray is nested.
      *
      * @example
-     * $arr = SmartArray::newHtml(['apple', 'banana', 'cherry']);
+     * $arr = SmartArray::new(['apple', 'banana', 'cherry'])->asHtml();
      * $result = $arr->implode(', '); // Returns SmartString: "apple, banana, cherry"
      */
     public function implode(string $separator): SmartString

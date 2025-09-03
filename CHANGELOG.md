@@ -4,9 +4,9 @@
 
 ### Added
 - `orRedirect($url)` - Redirects to a URL if array is empty (HTTP 302 Temporary Redirect)
-- New factory methods and internal classes for better IDE support (makes class, return types, and SmartString behavior explicit):
-  - `SmartArray::newRaw($array)` - Creates `SmartArrayRaw` class with raw PHP values (no SmartString wrapping)
-  - `SmartArray::newHtml($array)` - Creates `SmartArrayHtml` class with SmartString-wrapped values for HTML safety
+- `asRaw()` method - Return values as raw PHP types for data processing (lazy conversion - returns same object if already raw)
+- `asHtml()` method - Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)
+- New internal subclasses for better IDE support (SmartArrayRaw and SmartArrayHtml make SmartString status and return types explicit)
 
 ### Changed
 - Minimum PHP version raised to 8.1 (from 8.0)
@@ -14,7 +14,8 @@
   - This provides type-tolerant matching useful for database/form data where numeric values are often strings
 
 ### Deprecated
-- `enableSmartStrings()` and `disableSmartStrings()` - call new factory method with $smartArray->toArray() and re-create if needed
+- `enableSmartStrings()` and `disableSmartStrings()` - use `->asHtml()` and `->asRaw()` instead
+- Using boolean second parameter in `SmartArray::new($data, bool $smartStrings)` - use `SmartArray::new($data)->asHtml()` instead
 - Deprecation warnings are opt-in via `SmartArray::$logDeprecations = true` or the deprecation setting in your CMS
 
 ---

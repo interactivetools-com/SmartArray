@@ -53,14 +53,9 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // Convert boolean to array format for backward compatibility
         if (is_bool($properties)) {
+            self::logDeprecation("Passing boolean to SmartArray constructor is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values.");
             $properties = ['useSmartStrings' => $properties];
         }
-
-        // Deprecate calling constructor directly, use ::new() or ::newHtml() factory methods instead
-         if (static::class === self::class) {
-             $suggestedMethod = empty($properties['useSmartStrings']) ? 'new($array)' : 'newHtml($array)';
-             self::logDeprecation("Direct instantiation with 'new SmartArray()' is deprecated. Use SmartArray::$suggestedMethod instead for better IDE type hinting.");
-         }
 
         // Set properties
         foreach ($properties as $property => $value) {
@@ -105,92 +100,63 @@ class SmartArray extends ArrayObject implements JsonSerializable
      *
      * @param array $array The input array to convert
      * @param array|bool $properties Optional properties array, or boolean for backward compatibility (deprecated)
-     * @return SmartArrayRaw|SmartArrayHtml A SmartArray that returns raw values (or SmartStrings if bool true passed - deprecated)
+     * @return SmartArrayRaw|SmartArrayHtml A SmartArray that returns raw values (or SmartStrings for backward compatibility)
      */
     public static function new(array $array = [], array|bool $properties = []): SmartArrayRaw|SmartArrayHtml
     {
         // Backward compatibility: handle boolean for SmartStrings toggle
         if (is_bool($properties)) {
-            self::logDeprecation("Passing boolean to SmartArray::new() is deprecated. Use SmartArray::newHtml() for HTML-safe values or SmartArray::newRaw() for raw values.");
-            return $properties ? self::newHtml($array) : self::newRaw($array);
+            self::logDeprecation("Passing boolean to SmartArray::new() is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values.");
+            return $properties ? (new SmartArrayRaw($array))->asHtml() : new SmartArrayRaw($array);
         }
 
-        return self::newRaw($array, $properties);
-    }
-
-    /**
-     * Create a new SmartArrayRaw that returns raw values without SmartString wrapping.
-     *
-     * This method provides better IDE type hinting compared to SmartArray::new().
-     * Your IDE will know this returns SmartArrayRaw specifically, improving autocomplete
-     * and type checking for internal data processing, JSON APIs, or when you need actual values.
-     *
-     * ```
-     * // For JSON APIs and data processing (raw values)
-     * $data = SmartArray::newRaw($records)->indexBy('id');
-     * echo json_encode($data); // Raw values, no HTML encoding
-     * ```
-     *
-     * @param array $array The input array to convert
-     * @param array $properties Optional properties array
-     * @return SmartArrayRaw A SmartArray that returns raw values (not SmartStrings)
-     */
-    public static function newRaw(array $array = [], array $properties = []): SmartArrayRaw
-    {
         return new SmartArrayRaw($array, $properties);
     }
 
-    /**
-     * Create a new SmartArrayHtml with SmartString wrapping for HTML-safe output.
-     *
-     * This method provides better IDE type hinting compared to SmartArray::new().
-     * Your IDE will know this returns SmartArrayHtml specifically, improving autocomplete
-     * and type checking when outputting data to HTML templates for automatic XSS protection.
-     *
-     * ```
-     * // For HTML templates (auto-encoded for XSS protection)
-     * $users = SmartArray::newHtml($records);
-     * echo $users->first()->name; // Automatically HTML-encoded
-     * ```
-     *
-     * @param array $array The input array to convert into a SmartArrayHtml
-     * @param array $properties Optional properties to pass to the SmartArrayHtml constructor
-     * @return SmartArrayHtml A SmartArray that returns SmartString objects for HTML safety
-     */
-    public static function newHtml(array $array = [], array $properties = []): SmartArrayHtml
-    {
-        return new SmartArrayHtml($array, $properties);
-    }
 
     /**
-     * Converts this SmartArray to a SmartArrayRaw instance that returns raw PHP types.
+     * Return values as raw PHP types for data processing.
      *
-     * Useful for converting SmartArrayHtml results to raw values:
+     * Explicitly guarantees SmartArrayRaw return type for IDE autocomplete and static analysis.
+     * Returns the same object if already SmartArrayRaw (lazy conversion), otherwise creates a new one.
+     * Useful both for conversion and type assertion.
+     *
      * ```php
      * $rows = DB::select('users'); // Returns SmartArrayHtml
-     * $raw = $rows->toRaw();        // Convert to SmartArrayRaw for raw values
+     * $raw = $rows->asRaw();        // Return values as raw PHP types
+     * $same = $raw->asRaw();        // Returns same object (no conversion needed)
      * ```
      *
-     * @return SmartArrayRaw A new SmartArrayRaw instance with the same data
+     * @return SmartArrayRaw This object if already raw, or a new SmartArrayRaw instance
      */
-    public function toRaw(): SmartArrayRaw
+    public function asRaw(): SmartArrayRaw
     {
+        if ($this instanceof SmartArrayRaw) {
+            return $this;
+        }
         return new SmartArrayRaw($this->toArray(), get_object_vars($this));
     }
 
     /**
-     * Converts this SmartArray to a SmartArrayHtml instance that returns SmartString objects.
+     * Return values as HTML-safe SmartString objects.
      *
-     * Useful for converting SmartArrayRaw results to HTML-safe values:
+     * Explicitly guarantees SmartArrayHtml return type for IDE autocomplete and static analysis.
+     * Returns the same object if already SmartArrayHtml (lazy conversion), otherwise creates a new one.
+     * Useful both for conversion and type assertion.
+     *
      * ```php
-     * $data = SmartArray::newRaw($array); // Raw values
-     * $html = $data->toHtml();             // Convert for HTML output
+     * $data = SmartArray::new($array); // Raw values
+     * $html = $data->asHtml();         // Return values as HTML-safe SmartStrings
+     * $same = $html->asHtml();         // Returns same object (no conversion needed)
      * ```
      *
-     * @return SmartArrayHtml A new SmartArrayHtml instance with the same data
+     * @return SmartArrayHtml This object if already HTML-safe, or a new SmartArrayHtml instance
      */
-    public function toHtml(): SmartArrayHtml
+    public function asHtml(): SmartArrayHtml
     {
+        if ($this instanceof SmartArrayHtml) {
+            return $this;
+        }
         return new SmartArrayHtml($this->toArray(), get_object_vars($this));
     }
 
@@ -1401,9 +1367,9 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
             'withsmartstrings',
-            'enablesmartstrings'   => [$this->toHtml(), "Replace ->$method() with ->toHtml()"],
+            'enablesmartstrings'   => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
             'nosmartstrings',
-            'disablesmartstrings'  => [$this->toRaw(), "Replace ->$method() with ->toRaw()"],
+            'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
             default                => [null, null],
         };
         if ($deprecationError) {
@@ -1481,7 +1447,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Deprecated/renamed methods (case-insensitive)
         [$return, $deprecationError] = match ($methodLc) {
             'rawvalue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
-            'newss'    => [self::newHtml($args[0] ?? []), "Replace ::$method() with SmartArray::newHtml()"],
+            'newss'    => [new SmartArrayHtml($args[0] ?? []), "Replace ::$method() with SmartArray::new()->asHtml()"],
             default    => null,
         };
         if ($deprecationError) {

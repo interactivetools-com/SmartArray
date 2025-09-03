@@ -1,4 +1,5 @@
 <?php
+/** @noinspection SenselessProxyMethodInspection */
 declare(strict_types=1);
 
 namespace Itools\SmartArray;
@@ -36,6 +37,21 @@ final class SmartArrayHtml extends SmartArray
 
         // Pass through to parent with all properties
         parent::__construct($array, $properties);
+    }
+
+    /**
+     * Create a new SmartArrayHtml that returns SmartString objects for HTML safety.
+     *
+     * @param array $array The input array to convert
+     * @param array|bool $properties Optional properties to pass to the constructor
+     * @return SmartArrayHtml A new SmartArrayHtml instance
+     */
+    public static function new(array $array = [], array|bool $properties = []): self
+    {
+        if (is_bool($properties)) {
+            $properties = [];
+        }
+        return new self($array, $properties);
     }
 
     //endregion
@@ -455,14 +471,6 @@ final class SmartArrayHtml extends SmartArray
     public function load(string $column): self|SmartNull
     {
         return parent::load($column);
-    }
-
-    /**
-     * Return the root SmartArray object for nested arrays, or the current object if not nested.
-     */
-    public function root(): self
-    {
-        return parent::root();
     }
 
     //endregion

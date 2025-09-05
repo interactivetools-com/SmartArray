@@ -1,6 +1,5 @@
 <?php
 declare(strict_types=1);
-
 namespace Itools\SmartArray;
 
 use Throwable, Error, RuntimeException, InvalidArgumentException;
@@ -45,6 +44,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * @param array $array The input array to convert into a SmartArray.
      * @param bool|array $properties either a boolean to enable/disable SmartStrings, or an associative array of custom internal properties.
      *
+     * @noinspection UnusedConstructorDependenciesInspection
      */
     public function __construct(array $array = [], bool|array $properties = [])
     {
@@ -946,6 +946,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
     /**
      * Set the load handler for lazy-loading nested arrays.
+     * @noinspection PhpUnused
      */
     public function setLoadHandler(callable $customLoadHandler): void
     {
@@ -1366,10 +1367,8 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'item'                 => [$this->get(...$args), "Replace ->$method() with ->get()"],
             'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
-            'withsmartstrings',
-            'enablesmartstrings'   => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
-            'nosmartstrings',
-            'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
+            'withsmartstrings', 'enablesmartstrings' => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
+            'nosmartstrings', 'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
             default                => [null, null],
         };
         if ($deprecationError) {
@@ -1431,7 +1430,6 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $baseClass  = basename(self::class);
         $suggestion ??= "call ->help() for available methods.";
         $error      = sprintf("Call to undefined method %s->$method(), $suggestion\n", basename(self::class));
         throw new Error($error . self::occurredInFile());
@@ -1583,13 +1581,18 @@ class SmartArray extends ArrayObject implements JsonSerializable
      * array elements are stored in an inaccessible internal array in $this->storage by PHP's ArrayObject
      * So getting/setting properties updates the stored element values, NOT the properties themselves
      * To maintain separation, internal properties must be private and accessed via getProp() and setProp()
+     *
+     * These properties are set on creation, passed on to nested SmartArrays, and never changed after creation
+     * The noinspections tag hide false positives caused by us setting these properties via getProperty()/setProperty()
      */
 
-    // These properties are set on creation, passed on to nested SmartArrays, and never changed after creation
-    // NOSONAR suppresses SonarLint false-positive: Unused private fields should be removed
-
+    /* @noinspection PhpUnusedPrivateFieldInspection */
     private bool  $useSmartStrings = false;
+
+    /* @noinspection PhpUnusedPrivateFieldInspection */
     private mixed $loadHandler;              // The handler for lazy-loading nested arrays, e.g. '\Your\Class\SmartArrayLoadHandler::load', receives $smartArray, $fieldName
+
+    /* @noinspection PhpUnusedPrivateFieldInspection */
     private array $mysqli          = [];     // NOSONAR Metadata from last mysqli result, e.g. $result->mysqli('affected_rows')
     private self  $root;                     // The root SmartArray, set on nested SmartArrays and self
 
@@ -1623,6 +1626,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
     /**
      * Set object property value or throw an exception if property does not exist.
+     * @noinspection PhpSameParameterValueInspection
      */
     private function setProperty(string $name, mixed $value): void
     {

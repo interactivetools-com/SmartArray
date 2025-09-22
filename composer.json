@@ -1,10 +1,11 @@
 {
   "name": "itools/smartarray",
-  "description": "Enhanced Arrays with Chainable Methods and Automatic HTML Encoding",
-  "keywords": ["smartarray", "array", "collection", "php", "fluent", "chainable", "helpers", "utils", "utf"],
+  "description": "Enhanced PHP arrays with built-in HTML encoding and chainable collection methods",
+  "keywords": ["SmartString", "array", "chainable", "chunk", "collection", "encoding", "escape", "filter", "fluent", "groupBy", "html", "implode", "iterable", "manipulation", "map", "pluck", "sanitize", "sort", "unique", "where", "xss"],
   "type": "library",
   "homepage": "https://github.com/interactivetools-com/SmartArray",
   "license": "MIT",
+  "readme": "README.md",
   "support": {
     "issues": "https://github.com/interactivetools-com/SmartArray/issues",
     "source": "https://github.com/interactivetools-com/SmartArray"
@@ -30,6 +31,6 @@
     "itools/smartstring": "*"
   },
   "require-dev": {
-    "phpunit/phpunit": "^9.6.22"
+    "phpunit/phpunit": "^9.6.27"
     }
 }

@@ -1,12 +1,15 @@
 # SmartArray Changelog
 
-## [2.3.0] - 2025-09-03
+## [2.3.0] - 2025-09-21
 
 ### Added
 - `orRedirect($url)` - Redirects to a URL if array is empty (HTTP 302 Temporary Redirect)
 - `asRaw()` method - Return values as raw PHP types for data processing (lazy conversion - returns same object if already raw)
 - `asHtml()` method - Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)
-- New internal subclasses for better IDE support (SmartArrayRaw and SmartArrayHtml make SmartString status and return types explicit)
+- Direct instantiation methods for explicit typing:
+  - `SmartArrayHtml::new($array)` - Creates HTML-safe SmartArray directly (alternative to `SmartArray::new($array)->asHtml()`)
+  - `SmartArrayRaw::new($array)` - Creates raw-value SmartArray directly (alternative to `SmartArray::new($array)->asRaw()`)
+  - These return a specific type, allowing IDEs to know exactly which methods and return types are available without calling `asHtml()` or `asRaw()`
 
 ### Changed
 - Minimum PHP version raised to 8.1 (from 8.0)

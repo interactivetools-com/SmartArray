@@ -51,20 +51,21 @@ $records = [
 
 // Always start with raw data for processing
 $users = SmartArray::new($records)
-    ->filter(fn($u) => strlen($u['name']) > 5)  // Work with raw values efficiently
-    ->sortBy('name');                           // Chain operations on raw data
+    ->asHtml()          // Make values HTML-safe (or use SmartArrayHtml::new() directly)
+    ->sortBy('name');   // Sort alphabetically by name
 
-// Convert to HTML-safe only when outputting to templates  
-foreach ($users->asHtml() as $user) {
+
+// Now $users contains SmartStrings for safe output
+foreach ($users as $user) {
     echo "Name: {$user['name']}, ";  // Automatically HTML-encoded for safety
     echo "City: $user->city\n";      // Object syntax with XSS protection
 }
 
 // Values are automatically HTML-encoded in string contexts to prevent XSS (see SmartString docs more details)
 echo $users->first()->name; // Output: John O&apos;Connor
-    
+
 // Use chainable methods to transform data
-$userIdAsCSV = $users->pluck('id')->implode(', '); // Output: "10, 15, 20"
+$userIdAsCSV = $users->pluck('id')->implode(', '); // Output: "10, 20"
 
 // Easily convert back to arrays and original values
 $usersArray = $users->toArray(); // Convert back to a regular PHP array and values
@@ -98,7 +99,7 @@ $articles = [
     ['title' => 'Mountain Observatory Captures Meteor Shower Images']
 ];
 
-$news = SmartArray::new($articles);
+$news = SmartArray::new($articles)->asHtml();
 
 // Create a news listing with featured articles
 echo "<div class='news-list'>\n";
@@ -155,7 +156,7 @@ $topSellers = [
     ['rank' => 5, 'title' => 'The Hobbit', 'sales' => 14000000]
 ];
 
-$books = SmartArray::new($topSellers);
+$books = SmartArray::new($topSellers)->asHtml();
 
 // Get specific positions (0-based indexing)
 echo $books->nth(0)->title;  // "The Great Gatsby" (first book)
@@ -201,7 +202,7 @@ $authors = [
 ];
 
 // Create a lookup array indexed by author_id
-$authorById = SmartArray::new($authors)->indexBy('author_id');
+$authorById = SmartArray::new($authors)->indexBy('author_id')->asHtml();
 
 // Now you can quickly look up authors by their ID
 echo $authorById[101]->name;  // Output: Jane Austen
@@ -215,7 +216,7 @@ $articles = [
 ];
 
 // Display articles with author information
-foreach (SmartArray::new($articles) as $article) {
+foreach (SmartArray::new($articles)->asHtml() as $article) {
     $author = $authorById[$article->author_id];
     echo "Title: $article->title\n";
     echo "By: $author->name ($author->genre)\n\n";
@@ -259,7 +260,7 @@ $books = [
 ];
 
 // Group books by genre
-$booksByGenre = SmartArray::new($books)->groupBy('genre');
+$booksByGenre = SmartArray::new($books)->groupBy('genre')->asHtml();
 
 // Now you can work with each genre's books separately
 foreach ($booksByGenre as $genre => $relatedBooks) {
@@ -272,7 +273,7 @@ foreach ($booksByGenre as $genre => $relatedBooks) {
 }
 
 // Group by author to analyze their work
-$booksByAuthor = SmartArray::new($books)->groupBy('author');
+$booksByAuthor = SmartArray::new($books)->groupBy('author')->asHtml();
 
 foreach ($booksByAuthor as $author => $books) {
     $years = $books->pluck('year')->values()->sort();
@@ -372,7 +373,7 @@ $records = [
     ['id' => 15, 'name' => 'Xena "X" Smith', 'city' => 'Los Angeles'],
     ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
 ];
-$users = SmartArray::new($records);
+$users = SmartArray::new($records)->asHtml();
 
 foreach ($users as $user) {
     if ($user->isFirst())       { echo "<table border='1' cellpadding='10' style='text-align: center'>\n<tr>\n"; }
@@ -472,6 +473,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Creation & Conversion |         SmartArray::new($array) | Create a SmartArray with raw PHP values for data processing. Arrays become SmartArrays, missing keys become SmartNulls     |
 |                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                |
 |                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                         |
+|                       |     SmartArrayHtml::new($array) | Advanced: Direct instantiation of SmartArray with SmartString values                                                       |
+|                       |      SmartArrayRaw::new($array) | Advanced: Direct instantiation of SmartArray with raw values                                                               |
 |                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                    |
 | Value Access          |                     $obj['key'] | Get a value using array syntax                                                                                             |
 |                       |                       $obj->key | Get a value using object syntax                                                                                            |
@@ -522,7 +525,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 
 **See Also:** For working with `SmartArray` values, check out the included companion
 library `SmartString`, all `SmartArray` values are `SmartString` objects with
-automatic HTML encoding and chainable methods:  
+automatic HTML encoding and chainable methods:
 https://github.com/interactivetools-com/SmartString?tab=readme-ov-file#method-reference
 
 ## Questions?

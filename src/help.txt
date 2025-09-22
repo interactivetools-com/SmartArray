@@ -31,8 +31,10 @@ $data  = SmartArray::new([1, 2, 3]);                        // Raw PHP values fo
 $users = SmartArray::new(DB::select('users'));              // Always start with raw data
 
 Converting Between Types:
-$html = $data->asHtml();                                     // Return values as HTML-safe SmartStrings when needed
-$raw  = $html->asRaw();                                      // Return values as raw PHP types
+$html = $data->asHtml();                                    // Return values as HTML-safe SmartStrings when needed
+$raw  = $html->asRaw();                                     // Return values as raw PHP types
+//$html = SmartArrayHtml::new($data);                       // Advanced: Direct creation of HTML-safe SmartArray
+//$raw  = SmartArrayRaw::new($data);                        // Advanced: Direct creation of raw-value SmartArray
 
 Example Workflow:
 $users = SmartArray::new($records)                           // Raw data for processing

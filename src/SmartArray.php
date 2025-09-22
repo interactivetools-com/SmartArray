@@ -106,7 +106,10 @@ class SmartArray extends ArrayObject implements JsonSerializable
     {
         // Backward compatibility: handle boolean for SmartStrings toggle
         if (is_bool($properties)) {
-            self::logDeprecation("Passing boolean to SmartArray::new() is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values.");
+            match ($properties) {
+                true  => self::logDeprecation("Passing `true` as the second argument to SmartArray::new(...) is deprecated. Use ::new(...)->asHtml() or `new SmartArrayHtml` instead."),
+                false => self::logDeprecation("Passing `false` as the second argument to SmartArray::new(...) is deprecated. Use ::new(...)->asRaw() or `new SmartArrayRaw` instead."),
+            };
             return $properties ? (new SmartArrayRaw($array))->asHtml() : new SmartArrayRaw($array);
         }
 
@@ -1445,7 +1448,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
         // Deprecated/renamed methods (case-insensitive)
         [$return, $deprecationError] = match ($methodLc) {
             'rawvalue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
-            'newss'    => [new SmartArrayHtml($args[0] ?? []), "Replace ::$method() with SmartArray::new()->asHtml()"],
+            'newss'    => [new SmartArrayHtml($args[0] ?? []), "Replace ::$method(...) with SmartArray::new(...)->asHtml()"],
             default    => null,
         };
         if ($deprecationError) {

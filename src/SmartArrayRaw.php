@@ -191,10 +191,11 @@ final class SmartArrayRaw extends SmartArray
      *
      * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
      *
-     * @param array $conditions Key-value pairs to match against each element
+     * @param array|string $conditions
+     * @param mixed|null $value
      * @return SmartArrayRaw A new SmartArray containing only matching elements
      */
-    public function where(array $conditions): self
+    public function where(array|string $conditions, mixed $value = null): self
     {
         return parent::where($conditions);
     }

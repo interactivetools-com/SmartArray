@@ -499,6 +499,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                            |
 |                       |               filter($callback) | Removes elements where callback returns false (callback receives raw values)                                               |
 |                       |              where($conditions) | Removes rows not matching conditions like `['status' => 'active']` (uses loose comparison: '1' matches 1, false matches 0) |
+|                       |           where($field, $value) | Shorthand: Removes rows where field doesn't match value (e.g., `where('status', 'active')`)                                |
 | Array Transformation  |                       toArray() | Converts back to regular PHP array with original values                                                                    |
 |                       |                          keys() | Gets array of keys, discarding the values                                                                                  |
 |                       |                        values() | Gets array of values, discarding the keys                                                                                  |

@@ -1,5 +1,10 @@
 # SmartArray Changelog
 
+## [2.4.0] - 2025-10-07
+
+### Added
+- `where($field, $value)` - Two-argument shorthand syntax for filtering by a single field (alternative to `where(['field' => 'value'])`)
+
 ## [2.3.0] - 2025-09-21
 
 ### Added

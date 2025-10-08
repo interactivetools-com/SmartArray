@@ -495,11 +495,38 @@ class SmartArray extends ArrayObject implements JsonSerializable
      *
      * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
      *
-     * @param array $conditions Key-value pairs to match against each element
+     * Examples:
+     *   $data->where(['status' => 'active'])           // Array of conditions
+     *   $data->where(['status' => 'active', 'type' => 'user'])  // Multiple conditions
+     *   $data->where('status', 'active')               // Two arguments shorthand
+     *
+     * @param array|string $conditions Key-value pairs to match against each element, or field name if using two-arg syntax
+     * @param mixed $value Optional value when using two-argument syntax
      * @return SmartArray A new SmartArray containing only matching elements
      */
-    public function where(array $conditions): SmartArray
+    public function where(array|string $conditions, mixed $value = null): SmartArray
     {
+        // Convert two-argument syntax to array format
+        if (is_string($conditions) && func_num_args() === 2) {
+            $conditions = [$conditions => $value];
+        }
+
+        // Type check after conversion
+        if (!is_array($conditions)) {
+            throw new InvalidArgumentException(
+                "SmartArray::where() expects an array of conditions or two arguments (field, value). Got: " . gettype($conditions)
+            );
+        }
+
+        // Guard against common mistake: passing ['field', 'value'] instead of ['field' => 'value']
+        // Prevents silent failures where filter returns empty results with no explanation
+        if (!empty($conditions) && array_is_list($conditions)) {
+            throw new InvalidArgumentException(
+                "SmartArray::where() expects an associative array of key=>value pairs. " .
+                "Got a list array. Use format: ['field' => 'value'] not ['field', 'value']"
+            );
+        }
+
         // Filter rows that match all conditions
         $filtered = array_filter($this->toArray(), static function ($row) use ($conditions) {
             // skip elements that are not arrays

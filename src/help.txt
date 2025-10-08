@@ -79,6 +79,7 @@ Sorting & Filtering
 ->unique()              Remove duplicate values, keeping first occurrence
 ->filter(callback)      Keep elements where callback returns true, using raw values
 ->where(conditions)     Keep elements matching [column => value] conditions (uses == for type-tolerant matching)
+->where(field, value)   Shorthand: Keep elements where field matches value
 
 Array Transformation
 ---------------------

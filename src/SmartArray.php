@@ -750,6 +750,27 @@ class SmartArray extends ArrayObject implements JsonSerializable
     }
 
     /**
+     * Mirrors PHP's array_column() - extract a column of values, optionally indexed by another column.
+     *
+     *     $arr->column('name');        // same as array_column($arr, 'name'), returns values from 'name' column
+     *     $arr->column('name', 'id');  // same as array_column($arr, 'name', 'id'), returns id => name mapping
+     *     $arr->column(null, 'id');    // same as array_column($arr, null, 'id'), returns rows indexed by 'id'
+     *
+     * @param int|string|null $columnKey Column to extract (null = entire rows via indexBy)
+     * @param int|string|null $indexKey  Column to use as array keys
+     * @return SmartArray
+     */
+    public function column(int|string|null $columnKey, int|string|null $indexKey = null): SmartArray
+    {
+        return match (true) {
+            $columnKey !== null && $indexKey === null => $this->pluck($columnKey),
+            $columnKey !== null && $indexKey !== null => $this->pluck($columnKey, (string)$indexKey),
+            $columnKey === null && $indexKey !== null => $this->indexBy((string)$indexKey),
+            default                                   => throw new RuntimeException("column() unexpected arguments"),
+        };
+    }
+
+    /**
      * Joins the elements of the SmartArray into a single string with a specified separator.
      *
      * This method works on flat SmartArrays only. For SmartString elements,
@@ -768,7 +789,7 @@ class SmartArray extends ArrayObject implements JsonSerializable
     {
         $this->assertFlatArray();
 
-        $values = array_map('strval', array_values($this->toArray()));
+        $values = array_map('strval', $this->toArray());
         $value  = implode($separator, $values);
 
         return $this->encodeOutput($value, null, $this->getProperty('useSmartStrings'));
@@ -931,12 +952,13 @@ class SmartArray extends ArrayObject implements JsonSerializable
      */
     public function load(string $column): SmartArray|SmartNull
     {
-        $loadHandler = $this->getProperty('loadHandler');
-
-        // return SmartNull if array is empty
+        // return SmartNull if array is empty (or is SmartNull already)
         if ($this->count() === 0) {
             return $this->newSmartNull();
         }
+
+        // get load handler
+        $loadHandler = $this->getProperty('loadHandler');
 
         // error checking
         match (true) {
@@ -1390,16 +1412,16 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // Deprecated Warnings: (optionally) log warning and return proper value.  This will be removed in a future version
         [$return, $deprecationError] = match ($methodLc) {  // use lowercase names below for comparison
-            'column', 'getcolumn'  => [null, "Replace ->$method() with ->pluck() or another method"],
-            'exists'               => [$this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"],
-            'firstrow', 'getfirst' => [$this->first(), "Replace ->$method() with ->first()"],
-            'getvalues'            => [$this->values(), "Replace ->$method() with ->values()"],
-            'item'                 => [$this->get(...$args), "Replace ->$method() with ->get()"],
-            'join'                 => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
-            'raw'                  => [$this->toArray(), "Replace ->$method() with ->toArray()"],
+            'getcolumn'                              => [null, "Replace ->$method() with ->pluck() or another method"],
+            'exists'                                 => [$this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"],
+            'firstrow', 'getfirst'                   => [$this->first(), "Replace ->$method() with ->first()"],
+            'getvalues'                              => [$this->values(), "Replace ->$method() with ->values()"],
+            'item'                                   => [$this->get(...$args), "Replace ->$method() with ->get()"],
+            'join'                                   => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
+            'raw'                                    => [$this->toArray(), "Replace ->$method() with ->toArray()"],
             'withsmartstrings', 'enablesmartstrings' => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
             'nosmartstrings', 'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
-            default                => [null, null],
+            default                                  => [null, null],
         };
         if ($deprecationError) {
             self::logDeprecation($deprecationError);
@@ -1436,12 +1458,11 @@ class SmartArray extends ArrayObject implements JsonSerializable
             'values'      => ['vals', 'list'],
             'indexBy'     => ['keyby'],
             'groupBy'     => ['group'],
-            'pluck'       => ['column'],
             'pluckNth'    => ['columnnth'],
             'implode'     => ['join', 'concat'],
             'map'         => ['transform', 'apply'],
             'each'        => ['foreach', 'iterate'],
-            'merge'       => ['append', 'union', 'combine'],
+            'merge'       => ['append', 'union'],
 
             // utilities
             'help'        => ['docs'],

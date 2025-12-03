@@ -337,6 +337,19 @@ final class SmartArrayHtml extends SmartArray
     }
 
     /**
+     * Extract a column of values, optionally indexed by another column.
+     * Mirrors PHP's array_column() - accepts int keys for numeric-indexed arrays.
+     *
+     * @param int|string|null $columnKey Column to extract (null = entire rows via indexBy)
+     * @param int|string|null $indexKey  Column to use as array keys
+     * @return self
+     */
+    public function column(int|string|null $columnKey, int|string|null $indexKey = null): self
+    {
+        return parent::column($columnKey, $indexKey);
+    }
+
+    /**
      * Joins the elements of the SmartArray into a single string with a specified separator.
      *
      * This method works on flat SmartArrays only. For SmartString elements,

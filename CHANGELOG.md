@@ -1,5 +1,16 @@
 # SmartArray Changelog
 
+## [2.4.1] - 2025-12-03
+
+### Added
+- `column()` alias - Mirrors PHP's `array_column()`, calls `pluck()` or `indexBy()` internally (repurposes deprecated `getColumn()`)
+
+### Fixed
+- Fixed `load()` throwing "Property 'loadHandler' does not exist" when called on non-existent elements (returned as SmartNull)
+- Minor optimization: removed redundant `array_values()` call in `implode()`
+
+---
+
 ## [2.4.0] - 2025-10-07
 
 ### Added

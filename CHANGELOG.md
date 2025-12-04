@@ -1,5 +1,12 @@
 # SmartArray Changelog
 
+## [2.4.2] - 2025-12-03
+
+### Fixed
+- Fixed `new()` factory ignoring `useSmartStrings` property - was always returning `SmartArrayRaw` regardless of setting
+
+---
+
 ## [2.4.1] - 2025-12-03
 
 ### Added

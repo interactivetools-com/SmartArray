@@ -110,12 +110,15 @@ class SmartArray extends ArrayObject implements JsonSerializable
                 true  => self::logDeprecation("Passing `true` as the second argument to SmartArray::new(...) is deprecated. Use ::new(...)->asHtml() or `new SmartArrayHtml` instead."),
                 false => self::logDeprecation("Passing `false` as the second argument to SmartArray::new(...) is deprecated. Use ::new(...)->asRaw() or `new SmartArrayRaw` instead."),
             };
-            return $properties ? (new SmartArrayRaw($array))->asHtml() : new SmartArrayRaw($array);
+            $properties = ['useSmartStrings' => $properties];
         }
 
-        return new SmartArrayRaw($array, $properties);
+        // Return appropriate type based on useSmartStrings
+        return match ($properties['useSmartStrings'] ?? false) {
+            true  => new SmartArrayHtml($array, $properties),
+            false => new SmartArrayRaw($array, $properties),
+        };
     }
-
 
     /**
      * Return values as raw PHP types for data processing.

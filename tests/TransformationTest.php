@@ -991,6 +991,42 @@ class TransformationTest extends TestCase
     }
 
     /**
+     * @dataProvider sprintfProvider
+     */
+    public function testSprintf($input, $format, $expected, $useSmartStrings = false): void
+    {
+        $smartArray = new SmartArray($input, ['useSmartStrings' => $useSmartStrings]);
+        $result     = $smartArray->sprintf($format);
+
+        $this->assertInstanceOf(\Itools\SmartArray\SmartArrayRaw::class, $result);
+        $this->assertSame($expected, $result->toArray());
+    }
+
+    public function sprintfProvider(): array
+    {
+        return [
+            'raw strings' => [
+                'input'           => ['apple', 'banana'],
+                'format'          => '<li>%s</li>',
+                'expected'        => ['<li>apple</li>', '<li>banana</li>'],
+                'useSmartStrings' => false,
+            ],
+            'html encoding' => [
+                'input'           => ['<script>', '<b>bold</b>'],
+                'format'          => '<td>%s</td>',
+                'expected'        => ['<td>&lt;script&gt;</td>', '<td>&lt;b&gt;bold&lt;/b&gt;</td>'],
+                'useSmartStrings' => true,
+            ],
+            'keys preserved' => [
+                'input'           => ['a' => 'apple', 'b' => 'banana'],
+                'format'          => '%s!',
+                'expected'        => ['a' => 'apple!', 'b' => 'banana!'],
+                'useSmartStrings' => false,
+            ],
+        ];
+    }
+
+    /**
      * @dataProvider mapProvider
      */
     public function testMap($input, $callback, $expected): void

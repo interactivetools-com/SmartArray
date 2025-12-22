@@ -1,5 +1,25 @@
 # SmartArray Changelog
 
+## [2.4.3] - 2025-12-22
+
+### Added
+- `sprintf($format)` - Applies sprintf formatting to each element, useful for wrapping values in HTML tags like `<td>`, `<li>`, `<option>`, etc. Values are automatically HTML-encoded for SmartArrayHtml (XSS-safe). Always returns SmartArrayRaw to prevent double-encoding. See "Building Dynamic HTML Tables with sprintf()" in README.md.
+  ```php
+  // Table cells from row data (auto HTML-encoded)
+  <tr><?= $row->sprintf("<td>%s</td>")->implode() ?></tr>
+
+  // Table headers from keys
+  <tr><?= $row->keys()->sprintf("<th>%s</th>")->implode() ?></tr>
+
+  // Select options
+  <?= $items->sprintf("<option>%s</option>")->implode("\n") ?>
+  ```
+
+### Changed
+- `implode($separator)` - Separator parameter now optional, defaults to empty string. Enables cleaner `->sprintf()->implode()` chains.
+
+---
+
 ## [2.4.2] - 2025-12-03
 
 ### Fixed

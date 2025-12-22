@@ -363,9 +363,30 @@ final class SmartArrayRaw extends SmartArray
      * $arr = SmartArray::new(['apple', 'banana', 'cherry']);
      * $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
      */
-    public function implode(string $separator): string
+    public function implode(string $separator = ''): string
     {
         return parent::implode($separator);
+    }
+
+    /**
+     * Applies sprintf formatting to each element and returns SmartArrayRaw.
+     *
+     * - For SmartArrayHtml input, values are automatically HTML-encoded (safe for HTML output)
+     * - For SmartArrayRaw input, values pass through as-is
+     * - Format string is not encoded (only the values are)
+     *
+     * Example:
+     *
+     *     $row = SmartArray::new(["O'Brien", '<script>'])->asHtml();
+     *     <tr><?= $row->sprintf("<td>%s</td>")->implode() ?></tr>
+     *     // Output: <tr><td>O&apos;Brien</td><td>&lt;script&gt;</td></tr>
+     *
+     * @param string $format The sprintf format string (e.g., "<td>%s</td>")
+     * @return self Pre-formatted strings (won't be re-encoded on output)
+     */
+    public function sprintf(string $format): self
+    {
+        return parent::sprintf($format);
     }
 
     /**

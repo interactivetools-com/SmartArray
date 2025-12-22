@@ -17,6 +17,7 @@ and data manipulation - making common array operations simpler, safer, and more 
         * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
         * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
         * [Building Safe MySQL ID Lists with pluck(), map(), and implode()](#building-safe-mysql-id-lists-with-pluck-map-and-implode)
+        * [Building Dynamic HTML Tables with sprintf()](#building-dynamic-html-tables-with-sprintf)
         * [Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()](#creating-grid-layouts-with-isfirst-islast-ismultipleof-and-chunk)
         * [Debugging and Help](#debugging-and-help)
     * [Method Reference](#method-reference)
@@ -362,6 +363,77 @@ $authorIdCSV = SmartArray::new($articles)    // Convert ResultSet to SmartArray 
 $sql = "SELECT * FROM authors WHERE author_id IN ($authorIdCSV)";
 ```
 
+### Building Dynamic HTML Tables with sprintf()
+
+The `sprintf()` method applies formatting to each element, making it easy to wrap values in HTML tags.
+Combined with `implode()`, you can build table rows in a single expression:
+
+```php
+$rows = SmartArray::new([
+    ['name' => "John O'Connor",  'city' => 'New York',    'status' => 'Active'],
+    ['name' => 'Jane <script>',  'city' => 'Los Angeles', 'status' => 'Pending'],
+    ['name' => 'Tom & Jerry',    'city' => 'Vancouver',   'status' => 'Active'],
+])->asHtml();
+?>
+
+<table class='data-table'>
+    <?php if ($rows->isNotEmpty()): ?>
+        <thead>
+            <tr><?= $rows->first()->keys()->sprintf("<th>%s</th>")->implode("\n") ?></tr>
+        </thead>
+    <?php endif ?>
+
+    <tbody>
+        <?php foreach ($rows as $row): ?>
+            <tr><?= $row->sprintf("<td>%s</td>")->implode("\n") ?></tr>
+        <?php endforeach ?>
+
+        <?php if ($rows->isEmpty()): ?>
+            <tr><td colspan="3">No records found</td></tr>
+        <?php endif ?>
+    </tbody>
+</table>
+```
+
+Output:
+
+```html
+
+<table class='data-table'>
+    <thead>
+    <tr>
+        <th>name</th>
+        <th>city</th>
+        <th>status</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>John O&apos;Connor</td>
+        <td>New York</td>
+        <td>Active</td>
+    </tr>
+    <tr>
+        <td>Jane &lt;script&gt;</td>
+        <td>Los Angeles</td>
+        <td>Pending</td>
+    </tr>
+    <tr>
+        <td>Tom &amp; Jerry</td>
+        <td>Vancouver</td>
+        <td>Active</td>
+    </tr>
+    </tbody>
+</table>
+```
+
+**Key Features:**
+
+- Values are automatically HTML-encoded (note how `O'Connor`, `<script>`, and `&` are safely escaped)
+- Format string is applied to each element, then `implode()` joins them
+- Use `isNotEmpty()` to conditionally show headers only when there's data
+- Works with any sprintf format: `sprintf("<option value='%s'>")`, `sprintf("<li>%s</li>")`, etc.
+
 ### Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()
 
 SmartArray makes it easy to create grid layouts by providing methods like `isFirst()`, `isLast()`, and `isMultipleOf()`
@@ -508,6 +580,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                     pluck($key) | Gets array of column values from rows                                                                                      |
 |                       |                  pluckNth($key) | Gets array of values at position from rows                                                                                 |
 |                       |             implode($separator) | Joins elements with separator into string                                                                                  |
+|                       |                sprintf($format) | Applies sprintf formatting to each element (values are HTML-encoded for SmartArrayHtml)                                    |
 |                       |                  map($callback) | Transforms each element using callback (callback receives raw values)                                                      |
 |                       |             smartMap($callback) | Transforms each element using callback (callback receives SmartStrings and SmartArrays)                                    |
 |                       |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                               |

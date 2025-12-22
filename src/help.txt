@@ -90,7 +90,8 @@ Array Transformation
 ->groupBy(column)       Get array using column as keys to arrays of rows (duplicates group)
 ->pluck(column)         Extract single column from nested array
 ->pluckNth(position)    Get array containing nth element from each row
-->implode(separator)    Join elements with separator into string
+->implode(separator)    Join elements with separator into string (default: '')
+->sprintf(format)       Apply sprintf format to each element, returns SmartArrayRaw
 ->map(callback)         Transform each element using callback (callback receives raw values)
 ->smartMap(callback)    Transform each element using callback (callback receives SmartStrings and SmartArrays)
 ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.

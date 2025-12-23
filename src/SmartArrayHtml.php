@@ -198,7 +198,7 @@ final class SmartArrayHtml extends SmartArray
      */
     public function where(array|string $conditions, mixed $value = null): self
     {
-        return parent::where($conditions);
+        return parent::where($conditions, $value);
     }
 
     //endregion

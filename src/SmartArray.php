@@ -993,12 +993,12 @@ class SmartArray extends ArrayObject implements JsonSerializable
 
         // error checking
         match (true) {
-            !$loadHandler                   => throw new RuntimeException("No loadHandler property is defined"),
-            !is_callable($loadHandler)      => throw new RuntimeException("Load handler is not callable"),
-            empty($column)                  => throw new InvalidArgumentException("Column name is required for load() method."),
-            preg_match('/[^\w-]/', $column) => throw new RuntimeException("Column name contains invalid characters: $column"),
-            $this->isNested()               => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
-            default                         => null,
+            !$loadHandler                         => throw new RuntimeException("No loadHandler property is defined"),
+            !is_callable($loadHandler)            => throw new RuntimeException("Load handler is not callable"),
+            empty($column)                        => throw new InvalidArgumentException("Column name is required for load() method."),
+            (bool)preg_match('/[^\w-]/', $column) => throw new RuntimeException("Column name contains invalid characters: $column"),
+            $this->isNested()                     => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
+            default                               => null,
         };
 
         // get handler output

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Methods;
 
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 
@@ -34,7 +35,7 @@ class SmartMapTest extends SmartArrayTestCase
 
         $this->assertEquals($expected, $mapped->toArray(), "SmartMap result doesn't match expected output");
         $this->assertEquals($originalArray, $smartArray->toArray(), "Original SmartArray should remain unmodified");
-        $this->assertInstanceOf(SmartArray::class, $mapped, "smartMap() should return a SmartArray");
+        $this->assertInstanceOf(SmartArrayBase::class, $mapped, "smartMap() should return a SmartArrayBase");
     }
 
     public static function smartMapProvider(): array

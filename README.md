@@ -8,7 +8,7 @@ and data manipulation - making common array operations simpler, safer, and more 
 
 <!-- TOC -->
 
-* [SmartArray](#smartarray-enhanced-arrays-with-chainable-methods-and-automatic-html-encoding)
+* [SmartArray: Enhanced Arrays with Chainable Methods and Automatic HTML Encoding](#smartarray-enhanced-arrays-with-chainable-methods-and-automatic-html-encoding)
     * [Table of Contents](#table-of-contents)
     * [Quick Start](#quick-start)
     * [Usage Examples](#usage-examples)
@@ -366,7 +366,14 @@ $sql = "SELECT * FROM authors WHERE author_id IN ($authorIdCSV)";
 ### Building Dynamic HTML Tables with sprintf()
 
 The `sprintf()` method applies formatting to each element, making it easy to wrap values in HTML tags.
-Combined with `implode()`, you can build table rows in a single expression:
+Combined with `implode()`, you can build table rows in a single expression.
+
+**Key Features:**
+
+- Supports `{value}` and `{key}` as readable aliases for `%1$s` and `%2$s`
+- Also works with standard sprintf formats: `%s`, `%1$s`, `%2$s`, etc.
+- Values are automatically HTML-encoded for SmartArrayHtml (XSS-safe)
+- Format string is applied to each element, then `implode()` joins them
 
 ```php
 $rows = SmartArray::new([
@@ -379,13 +386,13 @@ $rows = SmartArray::new([
 <table class='data-table'>
     <?php if ($rows->isNotEmpty()): ?>
         <thead>
-            <tr><?= $rows->first()->keys()->sprintf("<th>%s</th>")->implode("\n") ?></tr>
+            <tr><?= $rows->first()->keys()->sprintf("<th>{value}</th>")->implode("\n") ?></tr>
         </thead>
     <?php endif ?>
 
     <tbody>
         <?php foreach ($rows as $row): ?>
-            <tr><?= $row->sprintf("<td>%s</td>")->implode("\n") ?></tr>
+            <tr><?= $row->sprintf("<td>{value}</td>")->implode("\n") ?></tr>
         <?php endforeach ?>
 
         <?php if ($rows->isEmpty()): ?>
@@ -427,12 +434,27 @@ Output:
 </table>
 ```
 
-**Key Features:**
+Note how `O'Connor`, `<script>`, and `&` are safely HTML-encoded in the output.
 
-- Values are automatically HTML-encoded (note how `O'Connor`, `<script>`, and `&` are safely escaped)
-- Format string is applied to each element, then `implode()` joins them
-- Use `isNotEmpty()` to conditionally show headers only when there's data
-- Works with any sprintf format: `sprintf("<option value='%s'>")`, `sprintf("<li>%s</li>")`, etc.
+**Using `{key}` for Select Options:**
+
+```php
+$countries = SmartArray::new(['us' => 'United States', 'ca' => 'Canada', 'mx' => 'Mexico'])->asHtml();
+?>
+<select name="country">
+    <?= $countries->sprintf("<option value='{key}'>{value}</option>")->implode("\n") ?>
+</select>
+```
+
+Output:
+
+```html
+<select name="country">
+    <option value='us'>United States</option>
+    <option value='ca'>Canada</option>
+    <option value='mx'>Mexico</option>
+</select>
+```
 
 ### Creating Grid Layouts with isFirst(), isLast(), isMultipleOf() and chunk()
 
@@ -543,11 +565,10 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Category              |                          Method | Description                                                                                                                |
 |-----------------------|--------------------------------:|----------------------------------------------------------------------------------------------------------------------------|
 | Creation & Conversion |         SmartArray::new($array) | Create a SmartArray with raw PHP values for data processing. Arrays become SmartArrays, missing keys become SmartNulls     |
+|                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                    |
 |                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                |
 |                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                         |
 |                       |     SmartArrayHtml::new($array) | Advanced: Direct instantiation of SmartArray with SmartString values                                                       |
-|                       |      SmartArrayRaw::new($array) | Advanced: Direct instantiation of SmartArray with raw values                                                               |
-|                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                    |
 | Value Access          |                     $obj['key'] | Get a value using array syntax                                                                                             |
 |                       |                       $obj->key | Get a value using object syntax                                                                                            |
 |                       |                       get($key) | Get a value using method syntax                                                                                            |
@@ -580,7 +601,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                     pluck($key) | Gets array of column values from rows                                                                                      |
 |                       |                  pluckNth($key) | Gets array of values at position from rows                                                                                 |
 |                       |             implode($separator) | Joins elements with separator into string                                                                                  |
-|                       |                sprintf($format) | Applies sprintf formatting to each element (values are HTML-encoded for SmartArrayHtml)                                    |
+|                       |                sprintf($format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                   |
 |                       |                  map($callback) | Transforms each element using callback (callback receives raw values)                                                      |
 |                       |             smartMap($callback) | Transforms each element using callback (callback receives SmartStrings and SmartArrays)                                    |
 |                       |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                               |

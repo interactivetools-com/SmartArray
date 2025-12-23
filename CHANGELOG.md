@@ -3,20 +3,35 @@
 ## [2.4.3] - 2025-12-22
 
 ### Added
-- `sprintf($format)` - Applies sprintf formatting to each element, useful for wrapping values in HTML tags like `<td>`, `<li>`, `<option>`, etc. Values are automatically HTML-encoded for SmartArrayHtml (XSS-safe). Always returns SmartArrayRaw to prevent double-encoding. See "Building Dynamic HTML Tables with sprintf()" in README.md.
-  ```php
-  // Table cells from row data (auto HTML-encoded)
-  <tr><?= $row->sprintf("<td>%s</td>")->implode() ?></tr>
+- `sprintf($format)` - Applies sprintf formatting to each element, useful for wrapping values in HTML tags.
+  - Values are automatically HTML-encoded for SmartArrayHtml (XSS-safe).
+  - Always returns SmartArray to prevent double-encoding.
+  - Supports `{value}` and `{key}` as readable aliases for sprintf formats `%1$s` and `%2$s`.
+  - See "Building Dynamic HTML Tables with sprintf()" in README.md.
+  - Example usage:
+```php
+  // Table cells (auto HTML-encoded)
+  <tr><?= $row->sprintf("<td>{value}</td>")->implode() ?></tr>
 
   // Table headers from keys
-  <tr><?= $row->keys()->sprintf("<th>%s</th>")->implode() ?></tr>
+  <tr><?= $row->keys()->sprintf("<th>{value}</th>")->implode() ?></tr>
 
-  // Select options
-  <?= $items->sprintf("<option>%s</option>")->implode("\n") ?>
+  // Select options with keys as values
+  <?= $options->sprintf("<option value='{key}'>{value}</option>")->implode("\n") ?>
+  // Output: <option value='us'>United States</option>
+  //         <option value='ca'>Canada</option>
   ```
 
 ### Changed
-- `implode($separator)` - Separator parameter now optional, defaults to empty string. Enables cleaner `->sprintf()->implode()` chains.
+- `implode($separator)` - Separator parameter now optional, defaults to empty string
+- **Performance**: Removed `ArrayObject` dependency - SmartArray now implements `ArrayAccess`, `IteratorAggregate`, `Countable` directly for ~50% better performance
+- **Architecture**: New `SmartArrayBase` abstract class contains all implementation; `SmartArray` and `SmartArrayHtml` are thin subclasses
+
+### Deprecated
+- **Array access syntax**: `$array['key']` is deprecated. Use `$array->key` or `$array->get('key')` instead.
+  - `SmartArray::$warnIfDeprecated = true` - Echo warnings to output (for development)
+  - `SmartArray::$logDeprecations = true` - Log via `trigger_error()` (for error logs)
+- `SmartArrayRaw` class - Now an alias for `SmartArray`. Use `SmartArray` directly.
 
 ---
 

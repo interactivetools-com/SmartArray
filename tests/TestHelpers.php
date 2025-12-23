@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests;
 
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartString\SmartString;
 
@@ -66,12 +67,12 @@ class TestHelpers
     {
         return match (true) {
             is_scalar($var), is_null($var) => $var,
-            $var instanceof SmartArray     => $var->toArray(),
+            $var instanceof SmartArrayBase => $var->toArray(),
             $var instanceof SmartNull      => null,
             default                        => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
     }
-    
+
     /**
      * Return raw value from any element returned by SmartArray::new() - includes scalar|null but not SmartStrings
      */
@@ -79,7 +80,7 @@ class TestHelpers
     {
         return match (true) {
             is_scalar($var), is_null($var) => $var,
-            $var instanceof SmartArray     => $var->toArray(),
+            $var instanceof SmartArrayBase => $var->toArray(),
             $var instanceof SmartNull      => null,
             default                        => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
@@ -94,12 +95,12 @@ class TestHelpers
         $isSmartString       = $var instanceof SmartString;
         $isSmartStringString = $var instanceof SmartString && is_string($var->value());
         return match (true) {
-            $isSmartStringString       => $var->__toString(),            // Call __toString() on SmartString strings
-            $isSmartString             => $var->value(),                 // Call value() on non-string SmartStrings
-            $var instanceof SmartArray  => self::toArrayResolveSS($var), // Call toArrayResolveSS() on SmartArrays
-            $var instanceof SmartNull   => null,                         // Convert SmartNull to null
-            is_scalar($var), is_null($var) => $var,                      // Return scalars and null as-is
-            default                    => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
+            $isSmartStringString           => $var->__toString(),            // Call __toString() on SmartString strings
+            $isSmartString                 => $var->value(),                 // Call value() on non-string SmartStrings
+            $var instanceof SmartArrayBase => self::toArrayResolveSS($var), // Call toArrayResolveSS() on SmartArrays
+            $var instanceof SmartNull      => null,                         // Convert SmartNull to null
+            is_scalar($var), is_null($var) => $var,                         // Return scalars and null as-is
+            default                        => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
     }
 
@@ -109,19 +110,9 @@ class TestHelpers
     public static function toArrayResolveSS($smartArray): array
     {
         $result = [];
-        
-        // Handle ArrayObject/SmartArray with getIterator to ensure SmartStrings get converted
-        if ($smartArray instanceof \ArrayObject) {
-            foreach ($smartArray->getIterator() as $key => $value) {
-                $result[$key] = self::normalizeSS($value);
-            }
-        } else {
-            // Handle regular array
-            foreach ($smartArray as $key => $value) {
-                $result[$key] = self::normalizeSS($value);
-            }
+        foreach ($smartArray as $key => $value) {
+            $result[$key] = self::normalizeSS($value);
         }
-        
         return $result;
     }
     

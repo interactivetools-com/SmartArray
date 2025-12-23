@@ -9,13 +9,12 @@ use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 
 /**
- * Tests for property access syntax: $arr->key
+ * Tests for property access syntax: $arr->key (preferred)
  *
- * Note: SmartArray extends ArrayObject with ARRAY_AS_PROPS flag, so both
- * ['key'] and ->key currently route through offsetGet(). These tests are
- * kept separate from OffsetGetTest for future refactoring flexibility.
+ * Property syntax routes through __get() to getElement().
+ * Array syntax $arr['key'] is deprecated and routes through offsetGet().
  *
- * @see OffsetGetTest for array index syntax ($arr['key'])
+ * @see OffsetGetTest for deprecated array index syntax ($arr['key'])
  */
 class PropertyGetTest extends SmartArrayTestCase
 {

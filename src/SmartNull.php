@@ -11,9 +11,12 @@ use RuntimeException;
 use stdClass;
 
 /**
- * NullSmartArray - A SmartArray|SmartString object that can be used as a placeholder for null values.
+ * SmartNull - Chainable null object for missing elements.
+ *
+ * Implements SmartBase so instanceof SmartBase works for all Smart* types.
+ * Extends stdClass to avoid IDE warnings related to undefined properties.
  */
-class SmartNull extends stdClass implements Iterator, ArrayAccess, JsonSerializable, Countable // extend stdClass to avoid IDE warnings related to undefined properties
+class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, JsonSerializable, Countable
 {
     //region Constructor
 
@@ -131,14 +134,11 @@ class SmartNull extends stdClass implements Iterator, ArrayAccess, JsonSerializa
      */
     public function mysqli(?string $property = null): int|string|null|array
     {
-        // return array of all mysqli properties
-
         if (is_null($property)) {
-            return get_object_vars($this)['mysqli'] ?? [];
+            return $this->mysqli;
         }
 
-        // return specific mysqli property
-        return get_object_vars($this)['mysqli'][$property] ?? null;
+        return $this->mysqli[$property] ?? null;
     }
 
     //endregion
@@ -169,9 +169,11 @@ class SmartNull extends stdClass implements Iterator, ArrayAccess, JsonSerializa
     public function __call($name, array $arguments): mixed
     {
         return match (true) {
-            method_exists(SmartArray::class, $name)  => SmartArray::new([], ['useSmartStrings' => $this->useSmartStrings])->$name(...$arguments),
-            method_exists(SmartString::class, $name) => SmartString::new(null)->$name(...$arguments),
-            default                                  => throw new InvalidArgumentException("Method '$name' not found"),
+            method_exists(SmartArrayBase::class, $name) => $this->useSmartStrings
+                ? SmartArrayHtml::new()->$name(...$arguments)
+                : SmartArray::new()->$name(...$arguments),
+            method_exists(SmartString::class, $name)    => SmartString::new(null)->$name(...$arguments),
+            default                                     => throw new InvalidArgumentException("Method '$name' not found"),
         };
     }
 
@@ -191,9 +193,8 @@ class SmartNull extends stdClass implements Iterator, ArrayAccess, JsonSerializa
     //endregion
     //region Internal Properties
 
-    private bool  $useSmartStrings = false;
-    private mixed $loadHandler;              // The handler for lazy-loading nested arrays, e.g. '\Your\Class\SmartArrayLoadHandler::load', receives $smartArray, $fieldName
-    private array $mysqli          = [];     // NOSONAR Metadata from last mysqli result, e.g. $result->mysqli('affected_rows')
+    private bool  $useSmartStrings = false;  // Determines which SmartArray type to create when delegating method calls
+    private array $mysqli          = [];     // Metadata from last mysqli result, accessed via mysqli() method
 
     //endregion
 }

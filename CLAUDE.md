@@ -1,72 +1,163 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Build & Test Commands
 
 ```bash
-# Run all tests
-./vendor/bin/phpunit
-
-# Run a single test file
-./vendor/bin/phpunit tests/SmartArrayTest.php
-
-# Run a specific test method
-./vendor/bin/phpunit --filter testMethodName
-
-# Install dependencies
-composer install
+./vendor/bin/phpunit                          # Run all tests
+./vendor/bin/phpunit tests/SmartArrayTest.php # Run single file
+./vendor/bin/phpunit --filter testMethodName  # Run specific test
+composer install                              # Install dependencies
 ```
 
-## Architecture Overview
+## Architecture
 
-SmartArray is an XSS-safe, fluent collection manipulation library for PHP 8.1+ that extends `ArrayObject`. It provides chainable methods and automatic HTML encoding through integration with the SmartString library.
+SmartArray is a fluent collection library for PHP 8.1+ with automatic HTML encoding via SmartString integration.
 
-### Three-Tier Class Hierarchy
+### Class Hierarchy
 
 ```
-SmartArray (abstract base)      - Core implementation with all methods
-├── SmartArrayRaw (final)       - Returns raw PHP types (default for data processing)
-└── SmartArrayHtml (final)      - Returns SmartString objects (HTML-safe output)
+SmartArrayBase (abstract)       - All implementation lives here
+├── SmartArray                  - Returns raw PHP types (string, int, null, etc.)
+└── SmartArrayHtml              - Returns SmartString objects (auto HTML-encodes)
 
-SmartNull                       - Chainable null object for graceful failure handling
+SmartArrayRaw                   - DEPRECATED alias for SmartArray
+SmartNull                       - Chainable null object (returned for missing keys)
+SmartBase                       - Marker interface for instanceof checks
 ```
 
-**Key design decisions:**
-- `SmartArrayRaw` and `SmartArrayHtml` exist primarily for IDE autocomplete - they override return type hints without adding runtime overhead
-- `asRaw()` and `asHtml()` use lazy conversion - they return the same object if already the correct type
-- All transformation methods return new instances (immutable/functional approach)
-- Both array syntax (`$arr['key']`) and object syntax (`$arr->key`) access the internal array storage via `ARRAY_AS_PROPS` flag
+### When to Use Which Class
 
-### Property System
+| Class | Use Case | Value Access |
+|-------|----------|--------------|
+| `SmartArray` | Data processing, APIs, internal logic | `$arr->name` returns `"John"` |
+| `SmartArrayHtml` | HTML templates, output | `$arr->name` returns `SmartString` (HTML-safe) |
 
-Properties are stored separately from array elements using private `getProperty()`/`setProperty()` methods:
-- `useSmartStrings`, `loadHandler`, `mysqli`, `root`, `isFirst`, `isLast`, `position`
+Convert between them: `$arr->asHtml()` / `$arr->asRaw()` (lazy - returns same object if already correct type)
 
-Global static settings:
-- `SmartArray::$warnIfMissing` - Toggle missing-key warnings (default: true)
-- `SmartArray::$logDeprecations` - Toggle deprecation logging (default: false)
+### Storage & Access
 
-### SmartNull Pattern
+- **Array elements**: Stored in private `$data` array
+- **Access methods**: `getElement()` / `setElement()` (internal), `get()` / `__get()` (public)
+- **Preferred syntax**: `$arr->key` or `$arr->get('key')`
+- **Deprecated syntax**: `$arr['key']` (triggers warning if `$warnIfDeprecated` enabled)
 
-`SmartNull` implements Iterator, ArrayAccess, Countable, and JsonSerializable to allow unlimited method chaining without null checks. Returned when accessing missing keys.
+### Internal Properties
 
-## Test Organization
+Passed between instances via `getInternalProperties()`:
+- `loadHandler` - Callback for lazy-loading related data
+- `mysqli` - Database result metadata (affected_rows, insert_id)
+- `root` - Reference to root SmartArray (for nested arrays)
 
-Tests are organized by functional area:
-- `SmartArrayTest.php` - Construction, factories, conversions, JSON serialization
-- `ValueAccessTest.php` - get(), first(), last(), nth(), defaults, missing keys
-- `ArrayInformationTest.php` - isEmpty(), isNotEmpty(), contains()
-- `PositionLayoutTest.php` - position(), isFirst(), isLast(), isMultipleOf(), chunk()
-- `SortingFilteringTest.php` - sort(), sortBy(), unique(), filter(), where()
-- `TransformationTest.php` - keys(), values(), indexBy(), groupBy(), pluck(), implode(), map(), each()
-- `GlobalSettingsTest.php` - Static settings behavior
-- `SmartNullTest.php` - SmartNull behavior and chaining
+Calculated during construction (not passed):
+- `isFirst`, `isLast`, `position` - Position metadata for nested arrays
+
+### Global Settings
+
+```php
+SmartArray::$warnIfMissing    = true;   // Echo warning for missing keys
+SmartArray::$warnIfDeprecated = false;  // Echo warning for deprecated usage (array syntax)
+SmartArray::$logDeprecations  = false;  // trigger_error() for deprecated usage (for error logs)
+```
+
+## Method Reference
+
+### Value Access
+`get($key)`, `first()`, `last()`, `nth($index)` - Return element or SmartNull
+
+### Array Information
+`count()`, `isEmpty()`, `isNotEmpty()`, `contains($value)`, `toArray()`
+
+### Position (for nested arrays in loops)
+`position()`, `isFirst()`, `isLast()`, `isMultipleOf($n)`, `isNth($n)`
+
+### Sorting & Filtering
+`sort()`, `sortBy($column)`, `unique()`, `filter($callback)`, `where($conditions)`
+
+### Transformation (return new SmartArray)
+`keys()`, `values()`, `indexBy($col)`, `groupBy($col)`, `pluck($col)`, `column()`, `chunk($size)`, `merge()`
+
+### Iteration
+`map($callback)` - Receives raw values, returns new SmartArray
+`smartMap($callback)` - Receives SmartString/SmartArray wrappers
+`each($callback)` - Side effects only, returns `$this`
+
+### Output
+`implode($sep)` - Returns string (SmartArray) or SmartString (SmartArrayHtml)
+`sprintf($format)` - Supports `{value}` and `{key}` aliases, always returns SmartArray
+
+### Error Handling
+`or404()`, `orDie($msg)`, `orThrow($msg)`, `orRedirect($url)` - Handle empty arrays
 
 ## Key Implementation Details
 
-- `where()` uses loose comparison (`==`) intentionally for database/form data tolerance
-- Position metadata (`isFirst`, `isLast`, `position`) is calculated during construction via O(n) iteration
-- `map()` receives raw values; `smartMap()` receives SmartString/SmartArray wrappers
-- `each()` returns `$this` for chaining (used for side effects)
-- `implode()` returns `string` from SmartArrayRaw, `SmartString` from SmartArrayHtml
+1. **Immutable transformations**: All methods return new instances, never modify in place
+
+2. **SmartNull pattern**: Missing keys return SmartNull which allows continued chaining:
+   ```php
+   $arr->nonexistent->alsoMissing->value(); // Returns null, no errors
+   ```
+
+3. **Position metadata**: Set during element insertion (single pass) for nested arrays only
+
+4. **where() uses loose comparison**: `==` intentionally for database/form data tolerance
+
+5. **sprintf() returns SmartArray**: Pre-formatted HTML shouldn't be re-encoded:
+   ```php
+   $html->sprintf("<li>{value}</li>")->implode(); // Returns SmartArray, not SmartArrayHtml
+   ```
+
+6. **Internal methods bypass deprecation**: `getElement()` doesn't trigger warnings; `offsetGet()` does
+
+## Patterns to Follow
+
+### Adding a new transformation method
+
+```php
+// In SmartArrayBase - implement the logic
+public function myMethod(): self
+{
+    $result = /* transform $this->toArray() */;
+    return new static($result, $this->getInternalProperties());
+}
+
+// In SmartArray and SmartArrayHtml - override for return type narrowing
+public function myMethod(): static
+{
+    return parent::myMethod();
+}
+```
+
+### Deprecation warnings
+
+```php
+// Check both flags before doing expensive work
+if (!self::$warnIfDeprecated && !self::$logDeprecations) {
+    return;
+}
+self::logDeprecation("Message about what's deprecated and what to use instead");
+```
+
+## Test Organization
+
+```
+tests/
+├── SmartArrayTest.php          # Construction, factories, JSON serialization
+├── SmartNullTest.php           # SmartNull chaining behavior
+├── GlobalSettingsTest.php      # $warnIfMissing, $warnIfDeprecated, $logDeprecations
+├── LegacyMethodsTest.php       # Deprecated method compatibility
+├── SmartArrayTestCase.php      # Base test class with helpers
+├── TestHelpers.php             # normalizeRaw(), normalizeSS(), getTestRecords()
+└── Methods/                    # One file per method
+    ├── CreationConversionTest.php  # new, asRaw(), asHtml()
+    ├── GetTest.php, FirstTest.php, LastTest.php, NthTest.php
+    ├── FilterTest.php, WhereTest.php, SortTest.php, SortByTest.php
+    ├── PluckTest.php, PluckNthTest.php, ColumnTest.php
+    ├── IndexByTest.php, GroupByTest.php, ChunkTest.php
+    ├── MapTest.php, SmartMapTest.php, EachTest.php
+    ├── ImplodeTest.php, SprintfTest.php
+    ├── PropertyGetTest.php, PropertySetTest.php    # $arr->key syntax
+    ├── OffsetGetTest.php, OffsetSetTest.php        # $arr['key'] syntax (deprecated)
+    ├── PositionTest.php, IsFirstTest.php, IsLastTest.php, IsMultipleOfTest.php
+    ├── LoadTest.php, MysqliTest.php, RootTest.php
+    └── ErrorHandlersTest.php   # or404(), orDie(), orThrow(), orRedirect()
+```

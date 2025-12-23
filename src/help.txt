@@ -31,10 +31,10 @@ $data  = SmartArray::new([1, 2, 3]);                        // Raw PHP values fo
 $users = SmartArray::new(DB::select('users'));              // Always start with raw data
 
 Converting Between Types:
+$array = $data->toArray();                                  // Converts back to regular PHP array with original values
 $html = $data->asHtml();                                    // Return values as HTML-safe SmartStrings when needed
 $raw  = $html->asRaw();                                     // Return values as raw PHP types
 //$html = SmartArrayHtml::new($data);                       // Advanced: Direct creation of HTML-safe SmartArray
-//$raw  = SmartArrayRaw::new($data);                        // Advanced: Direct creation of raw-value SmartArray
 
 Example Workflow:
 $users = SmartArray::new($records)                           // Raw data for processing
@@ -91,7 +91,7 @@ Array Transformation
 ->pluck(column)         Extract single column from nested array
 ->pluckNth(position)    Get array containing nth element from each row
 ->implode(separator)    Join elements with separator into string (default: '')
-->sprintf(format)       Apply sprintf format to each element, returns SmartArrayRaw
+->sprintf(format)       Apply sprintf format to each element. Also supports {value} and {key} aliases.
 ->map(callback)         Transform each element using callback (callback receives raw values)
 ->smartMap(callback)    Transform each element using callback (callback receives SmartStrings and SmartArrays)
 ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.

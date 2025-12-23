@@ -6,7 +6,6 @@ namespace Itools\SmartArray\Tests\Methods;
 
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
-use Itools\SmartArray\SmartArrayRaw;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 
@@ -24,7 +23,7 @@ use Itools\SmartString\SmartString;
  *
  *   // Convert
  *   $arr->asHtml()                 // → SmartArrayHtml
- *   $arr->asRaw()                  // → SmartArrayRaw
+ *   $arr->asRaw()                  // → SmartArray
  */
 class CreationConversionTest extends SmartArrayTestCase
 {
@@ -123,11 +122,11 @@ class CreationConversionTest extends SmartArrayTestCase
     //endregion
     //region SmartArray::new() - Chaining helper
 
-    public function testSmartArrayNewReturnsSmartArrayRaw(): void
+    public function testSmartArrayNewReturnsSmartArray(): void
     {
         $arr = SmartArray::new(['name' => 'John']);
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr);
+        $this->assertInstanceOf(SmartArray::class, $arr);
         $this->assertFalse($arr->usingSmartStrings());
     }
 
@@ -145,7 +144,7 @@ class CreationConversionTest extends SmartArrayTestCase
     {
         $arr = SmartArray::new([]);
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr);
+        $this->assertInstanceOf(SmartArray::class, $arr);
         $this->assertCount(0, $arr);
     }
 
@@ -241,12 +240,12 @@ class CreationConversionTest extends SmartArrayTestCase
     //endregion
     //region ->asRaw() - Convert to raw values
 
-    public function testAsRawConvertsToSmartArrayRaw(): void
+    public function testAsRawConvertsToSmartArray(): void
     {
         $html = new SmartArrayHtml(['name' => 'John']);
         $raw  = $html->asRaw();
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $raw);
+        $this->assertInstanceOf(SmartArray::class, $raw);
         $this->assertFalse($raw->usingSmartStrings());
     }
 
@@ -265,7 +264,7 @@ class CreationConversionTest extends SmartArrayTestCase
 
     public function testAsRawReturnsSameInstanceIfAlreadyRaw(): void
     {
-        $raw1 = SmartArray::new(['name' => 'John']); // SmartArrayRaw
+        $raw1 = SmartArray::new(['name' => 'John']); // SmartArray
         $raw2 = $raw1->asRaw();
 
         // Should return same instance (lazy conversion)
@@ -304,7 +303,7 @@ class CreationConversionTest extends SmartArrayTestCase
         $backRaw  = $html->asRaw();
 
         $this->assertSame($original->toArray(), $backRaw->toArray());
-        $this->assertInstanceOf(SmartArrayRaw::class, $backRaw);
+        $this->assertInstanceOf(SmartArray::class, $backRaw);
     }
 
     public function testRoundTripHtmlToRawToHtml(): void
@@ -320,21 +319,21 @@ class CreationConversionTest extends SmartArrayTestCase
     //endregion
     //region Type consistency across operations
 
-    public function testSmartArrayRawMethodsReturnSmartArrayRaw(): void
+    public function testSmartArrayMethodsReturnSmartArray(): void
     {
         $arr = SmartArray::new([
             ['id' => 1, 'name' => 'John'],
             ['id' => 2, 'name' => 'Jane'],
         ]);
 
-        // All transformation methods should return SmartArrayRaw
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->filter(fn($r) => true));
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->where('id', 1));
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->sortBy('name'));
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->indexBy('id'));
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->pluck('name'));
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->values());
-        $this->assertInstanceOf(SmartArrayRaw::class, $arr->keys());
+        // All transformation methods should return SmartArray
+        $this->assertInstanceOf(SmartArray::class, $arr->filter(fn($r) => true));
+        $this->assertInstanceOf(SmartArray::class, $arr->where('id', 1));
+        $this->assertInstanceOf(SmartArray::class, $arr->sortBy('name'));
+        $this->assertInstanceOf(SmartArray::class, $arr->indexBy('id'));
+        $this->assertInstanceOf(SmartArray::class, $arr->pluck('name'));
+        $this->assertInstanceOf(SmartArray::class, $arr->values());
+        $this->assertInstanceOf(SmartArray::class, $arr->keys());
     }
 
     public function testSmartArrayHtmlMethodsReturnSmartArrayHtml(): void
@@ -357,7 +356,7 @@ class CreationConversionTest extends SmartArrayTestCase
     //endregion
     //region where() shorthand syntax
 
-    public function testWhereShorthandSyntaxWorksOnSmartArrayRaw(): void
+    public function testWhereShorthandSyntaxWorksOnSmartArray(): void
     {
         $arr = SmartArray::new([
             ['status' => 'active', 'name' => 'John'],
@@ -381,6 +380,69 @@ class CreationConversionTest extends SmartArrayTestCase
         $result = $arr->where('status', 'active')->pluck('name')->toArray();
 
         $this->assertSame(['John', 'Bob'], $result);
+    }
+
+    //endregion
+    //region Property preservation through conversions
+
+    public function testAsHtmlPreservesLoadHandler(): void
+    {
+        $handlerCalled = false;
+        $handler = function ($arr, $col) use (&$handlerCalled) {
+            $handlerCalled = true;
+            return [['loaded' => 'data'], []];
+        };
+
+        $raw = SmartArray::new(['id' => 1]);
+        $raw->setLoadHandler($handler);
+
+        $html = $raw->asHtml();
+        $html->load('related');
+
+        $this->assertTrue($handlerCalled, 'loadHandler should be preserved through asHtml()');
+    }
+
+    public function testAsRawPreservesLoadHandler(): void
+    {
+        $handlerCalled = false;
+        $handler = function ($arr, $col) use (&$handlerCalled) {
+            $handlerCalled = true;
+            return [['loaded' => 'data'], []];
+        };
+
+        $html = SmartArrayHtml::new(['id' => 1]);
+        $html->setLoadHandler($handler);
+
+        $raw = $html->asRaw();
+        $raw->load('related');
+
+        $this->assertTrue($handlerCalled, 'loadHandler should be preserved through asRaw()');
+    }
+
+    public function testAsHtmlPreservesMysqliMetadata(): void
+    {
+        // Create array with mysqli metadata via constructor properties
+        $raw = new SmartArray(['id' => 1], [
+            'mysqli' => ['affected_rows' => 5, 'insert_id' => 42],
+        ]);
+
+        $html = $raw->asHtml();
+
+        $this->assertSame(5, $html->mysqli('affected_rows'), 'mysqli metadata should be preserved through asHtml()');
+        $this->assertSame(42, $html->mysqli('insert_id'), 'mysqli metadata should be preserved through asHtml()');
+    }
+
+    public function testAsRawPreservesMysqliMetadata(): void
+    {
+        // Create array with mysqli metadata via constructor properties
+        $html = new SmartArrayHtml(['id' => 1], [
+            'mysqli' => ['affected_rows' => 5, 'insert_id' => 42],
+        ]);
+
+        $raw = $html->asRaw();
+
+        $this->assertSame(5, $raw->mysqli('affected_rows'), 'mysqli metadata should be preserved through asRaw()');
+        $this->assertSame(42, $raw->mysqli('insert_id'), 'mysqli metadata should be preserved through asRaw()');
     }
 
     //endregion

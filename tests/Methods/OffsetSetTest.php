@@ -12,13 +12,13 @@ use Itools\SmartArray\Tests\TestHelpers;
 use stdClass;
 
 /**
- * Tests for array index assignment: $arr['key'] = value
+ * Tests for array index assignment: $arr['key'] = value (deprecated)
  *
- * Note: SmartArray extends ArrayObject with ARRAY_AS_PROPS flag, so both
- * ['key'] and ->key currently route through offsetSet(). These tests are
- * kept separate from PropertySetTest for future refactoring flexibility.
+ * Array syntax is deprecated - use $arr->key = value instead.
+ * Array syntax routes through offsetSet() which triggers deprecation warnings
+ * when SmartArray::$logDeprecations is enabled.
  *
- * @see PropertySetTest for property syntax ($arr->key = value)
+ * @see PropertySetTest for preferred property syntax ($arr->key = value)
  *
  * @noinspection PhpArrayUsedOnlyForWriteInspection
  * @noinspection OnlyWritesOnParameterInspection

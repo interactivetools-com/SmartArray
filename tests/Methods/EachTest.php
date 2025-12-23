@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Methods;
 
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 
@@ -31,10 +32,10 @@ class EachTest extends SmartArrayTestCase
             $results[$key] = [
                 'key'           => $key,
                 'isSmartString' => $value instanceof SmartString,
-                'isSmartArray'  => $value instanceof SmartArray,
+                'isSmartArray'  => $value instanceof SmartArrayBase,
                 'value'         => $value instanceof SmartString
                     ? $value->value()
-                    : ($value instanceof SmartArray ? 'SmartArray' : $value),
+                    : ($value instanceof SmartArrayBase ? 'SmartArray' : $value),
             ];
         });
 

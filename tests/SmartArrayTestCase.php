@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Itools\SmartArray\SmartArray;
-use Itools\SmartArray\SmartNull;
-use Itools\SmartString\SmartString;
 
 /**
  * Base test case for SmartArray method tests.

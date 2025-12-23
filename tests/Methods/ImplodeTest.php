@@ -12,7 +12,7 @@ use Itools\SmartArray\Tests\SmartArrayTestCase;
  * Tests for SmartArray::implode() method.
  *
  * implode($separator) joins all elements into a string.
- * Returns string (SmartArrayRaw) or SmartString (SmartArrayHtml).
+ * Returns string (SmartArray) or SmartString (SmartArrayHtml).
  * Throws InvalidArgumentException for nested arrays.
  */
 class ImplodeTest extends SmartArrayTestCase

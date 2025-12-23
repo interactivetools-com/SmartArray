@@ -1,7 +1,6 @@
 <?php
-/** @noinspection SenselessProxyMethodInspection */
+/** @noinspection PhpUnnecessaryStaticReferenceInspection */
 declare(strict_types=1);
-
 namespace Itools\SmartArray;
 
 use RuntimeException, InvalidArgumentException;
@@ -9,14 +8,16 @@ use Closure;
 use Itools\SmartString\SmartString;
 
 /**
- * SmartArray with useSmartStrings=true
- *  - Scalars and null return SmartString objects, not raw types.  Use ->value() to get raw value.
- *  - Arrays return SmartArrayHTML, use ->toArray() for raw arrays and values
- *  - Missing keys return SmartNull, use ->value() for raw null
+ * SmartArrayHtml - Collection returning SmartString values for HTML safety.
  *
- * This wrapper class exists so your IDE can know if SmartStrings are enabled and infer the correct return types.
+ * Values are automatically wrapped in SmartString objects that HTML-encode
+ * on output, preventing XSS vulnerabilities.
+ *
+ * - Scalars and null return SmartString objects, not raw types. Use ->value() to get raw value.
+ * - Nested arrays return SmartArrayHtml, use ->toArray() for raw arrays and values
+ * - Missing keys return SmartNull, use ->value() for raw null
  */
-final class SmartArrayHtml extends SmartArray
+final class SmartArrayHtml extends SmartArrayBase
 {
     //region Creation and Conversion
 
@@ -28,10 +29,25 @@ final class SmartArrayHtml extends SmartArray
      * within the root array.
      *
      * @param array $array The input array to convert into a SmartArray.
-     * @param array|null $properties either a boolean to enable/disable SmartStrings, or an associative array of custom internal properties.
+     * @param bool|array|null $properties An associative array of custom internal properties (legacy boolean accepted but deprecated).
      */
-    public function __construct(array $array = [], ?array $properties = [])
+    public function __construct(array $array = [], bool|array|null $properties = [])
     {
+        // Handle deprecated boolean parameter
+        if ($properties === false) {
+            self::logDeprecation("new SmartArrayHtml(\$data, false) is deprecated. Use new SmartArray(\$data) instead.");
+            throw new InvalidArgumentException("Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray(\$data) instead.");
+        }
+        elseif (is_bool($properties)) {
+            $properties = [];
+        }
+
+        // Handle deprecated useSmartStrings in array
+        if (is_array($properties) && ($properties['useSmartStrings'] ?? true) === false) {
+            self::logDeprecation("new SmartArrayHtml(\$data, ['useSmartStrings' => false]) is deprecated. Use new SmartArray(\$data) instead.");
+            throw new InvalidArgumentException("Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray(\$data) instead.");
+        }
+
         // Force useSmartStrings to true so values are SmartStrings
         $properties['useSmartStrings'] = true;
 
@@ -44,14 +60,36 @@ final class SmartArrayHtml extends SmartArray
      *
      * @param array $array The input array to convert
      * @param array|bool $properties Optional properties to pass to the constructor
-     * @return SmartArrayHtml A new SmartArrayHtml instance
+     * @return static A new SmartArrayHtml instance
      */
-    public static function new(array $array = [], array|bool $properties = []): self
+    public static function new(array $array = [], array|bool $properties = []): static
     {
         if (is_bool($properties)) {
             $properties = [];
         }
-        return new self($array, $properties);
+        return new static($array, $properties);
+    }
+
+    /**
+     * Return values as raw PHP types for data processing.
+     * Creates a new SmartArray instance.
+     *
+     * @return SmartArray A new SmartArray instance
+     */
+    public function asRaw(): SmartArray
+    {
+        return new SmartArray($this->toArray(), $this->getInternalProperties());
+    }
+
+    /**
+     * Return values as HTML-safe SmartString objects.
+     * Returns the same object (already in HTML mode).
+     *
+     * @return SmartArrayHtml This object (already HTML-safe)
+     */
+    public function asHtml(): SmartArrayHtml
+    {
+        return $this;
     }
 
     //endregion
@@ -61,15 +99,20 @@ final class SmartArrayHtml extends SmartArray
      * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
      * If the key doesn't exist, a SmartNull object is returned to allow further chaining.
      */
-    public function get(int|string $key, mixed $default = null): self|SmartNull|SmartString
+    public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString
     {
-        return parent::get($key, $default);
+        // Must use func_num_args() check here and call parent appropriately,
+        // because parent uses func_num_args() to detect if default was provided
+        if (func_num_args() >= 2) {
+            return parent::get($key, $default);
+        }
+        return parent::get($key);
     }
 
     /**
      * Get first element in array, or SmartNull if array is empty (to allow for further chaining).
      */
-    public function first(): self|SmartNull|SmartString
+    public function first(): static|SmartNull|SmartString
     {
         return parent::first();
     }
@@ -77,7 +120,7 @@ final class SmartArrayHtml extends SmartArray
     /**
      * Get last element in array, or SmartNull if array is empty (to allow for further chaining).
      */
-    public function last(): self|SmartNull|SmartString
+    public function last(): static|SmartNull|SmartString
     {
         return parent::last();
     }
@@ -94,26 +137,10 @@ final class SmartArrayHtml extends SmartArray
      * $max    = $result->first()->nth(0)->value(); // Get "MAX(`order`)" column
      * ```
      */
-    public function nth(int $index): self|SmartNull|SmartString
+    public function nth(int $index): static|SmartNull|SmartString
     {
         return parent::nth($index);
     }
-
-    /**
-     * Retrieves a value from the SmartArray.
-     *
-     * This method is called in two scenarios:
-     * 1. When accessing the object using array syntax (e.g., $smartArray[16]).
-     * 2. When accessing properties (e.g., $smartArray->property), if the ArrayObject::ARRAY_AS_PROPS flag is set (default in SmartArray).
-     *
-     * Note: With ArrayObject::ARRAY_AS_PROPS, this method handles both array and property access
-     * for all keys, whether they are defined or not, completely bypassing __get.
-     */
-    public function offsetGet(mixed $key, ?bool $useSmartStrings = null): self|SmartNull|SmartString
-    {
-        return parent::offsetGet($key, $useSmartStrings);
-    }
-
 
     //endregion
     //region Position & Layout
@@ -136,7 +163,7 @@ final class SmartArrayHtml extends SmartArray
      *     SmartArray([7])
      * ]
      */
-    public function chunk(int $size): self
+    public function chunk(int $size): static
     {
         return parent::chunk($size);
     }
@@ -147,7 +174,7 @@ final class SmartArrayHtml extends SmartArray
     /**
      * Returns a new array sorted by values, using PHP sort() function.
      */
-    public function sort(int $flags = SORT_REGULAR): self
+    public function sort(int $flags = SORT_REGULAR): static
     {
         return parent::sort($flags);
     }
@@ -155,7 +182,7 @@ final class SmartArrayHtml extends SmartArray
     /**
      * Returns a new SmartArray sorted by the specified column, using PHP array_multisort().
      */
-    public function sortBy(string $column, int $type = SORT_REGULAR): self
+    public function sortBy(string $column, int $type = SORT_REGULAR): static
     {
         return parent::sortBy($column, $type);
     }
@@ -164,7 +191,7 @@ final class SmartArrayHtml extends SmartArray
      * Returns a new array with duplicate values removed, keeping only the first
      * occurrence of each unique value, and preserving keys.
      */
-    public function unique(): self
+    public function unique(): static
     {
         return parent::unique();
     }
@@ -181,7 +208,7 @@ final class SmartArrayHtml extends SmartArray
      *
      * @return self A new SmartArray containing only the elements that passed the callback test.
      */
-    public function filter(?callable $callback = null): self
+    public function filter(?callable $callback = null): static
     {
         return parent::filter($callback);
     }
@@ -196,7 +223,7 @@ final class SmartArrayHtml extends SmartArray
      * @param mixed|null $value
      * @return SmartArrayHtml A new SmartArray containing only matching elements
      */
-    public function where(array|string $conditions, mixed $value = null): self
+    public function where(array|string $conditions, mixed $value = null): static
     {
         return parent::where($conditions, $value);
     }
@@ -208,7 +235,7 @@ final class SmartArrayHtml extends SmartArray
     /**
      * Returns a new array of keys
      */
-    public function keys(): self
+    public function keys(): static
     {
         return parent::keys();
     }
@@ -216,7 +243,7 @@ final class SmartArrayHtml extends SmartArray
     /**
      * Returns a new array of values
      */
-    public function values(): self
+    public function values(): static
     {
         return parent::values();
     }
@@ -253,7 +280,7 @@ final class SmartArrayHtml extends SmartArray
      *     'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
      * ]
      */
-    public function indexBy(string $column): self
+    public function indexBy(string $column): static
     {
         return parent::indexBy($column);
     }
@@ -286,7 +313,7 @@ final class SmartArrayHtml extends SmartArray
      *     ],
      * ]
      */
-    public function groupBy(string $column): self
+    public function groupBy(string $column): static
     {
         return parent::groupBy($column);
     }
@@ -309,7 +336,7 @@ final class SmartArrayHtml extends SmartArray
      * $userEmails = $users->pluck('email');                        // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
      * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
      */
-    public function pluck(string|int $valueColumn, ?string $keyColumn = null): self
+    public function pluck(string|int $valueColumn, ?string $keyColumn = null): static
     {
         return parent::pluck($valueColumn, $keyColumn);
     }
@@ -331,7 +358,7 @@ final class SmartArrayHtml extends SmartArray
      *
      * $tables = $resultSet->pluckNth(0);   // Position 0 (first value): Returns ["cms_accounts", "cms_settings", "cms_pages"]
      */
-    public function pluckNth(int $index): self
+    public function pluckNth(int $index): static
     {
         return parent::pluckNth($index);
     }
@@ -344,7 +371,7 @@ final class SmartArrayHtml extends SmartArray
      * @param int|string|null $indexKey  Column to use as array keys
      * @return self
      */
-    public function column(int|string|null $columnKey, int|string|null $indexKey = null): self
+    public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
         return parent::column($columnKey, $indexKey);
     }
@@ -370,22 +397,29 @@ final class SmartArrayHtml extends SmartArray
     }
 
     /**
-     * Applies sprintf formatting to each element and returns SmartArrayRaw.
+     * Applies sprintf formatting to each element and returns SmartArray.
      *
-     * - For SmartArrayHtml input, values are automatically HTML-encoded (safe for HTML output)
-     * - For SmartArrayRaw input, values pass through as-is
-     * - Format string is not encoded (only the values are)
+     * Supports two placeholder styles:
+     * - Standard sprintf: `%s` (value), `%1$s` (value), `%2$s` (key)
+     * - Named aliases: `{value}` and `{key}` (converted to sprintf format internally)
+     *
+     * Values are automatically HTML-encoded (safe for HTML output).
+     * Returns SmartArray (raw) since pre-formatted HTML shouldn't be re-encoded.
      *
      * Example:
      *
-     *     $row = SmartArray::new(["O'Brien", '<script>'])->asHtml();
-     *     <tr><?= $row->sprintf("<td>%s</td>")->implode() ?></tr>
-     *     // Output: <tr><td>O&apos;Brien</td><td>&lt;script&gt;</td></tr>
+     *     $row = SmartArrayHtml::new(["O'Brien", '<script>']);
+     *     $row->sprintf("<td>%s</td>")->implode();
+     *     // Output: <td>O&apos;Brien</td><td>&lt;script&gt;</td>
      *
-     * @param string $format The sprintf format string (e.g., "<td>%s</td>")
-     * @return SmartArrayRaw Pre-formatted strings (won't be re-encoded on output)
+     *     $options = SmartArrayHtml::new(['us' => 'United States', 'ca' => 'Canada']);
+     *     $options->sprintf("<option value='{key}'>{value}</option>")->implode();
+     *     // Output: <option value='us'>United States</option><option value='ca'>Canada</option>
+     *
+     * @param string $format The sprintf format string (also supports {value}/{key} aliases)
+     * @return SmartArray Pre-formatted strings (won't be re-encoded on output)
      */
-    public function sprintf(string $format): SmartArrayRaw
+    public function sprintf(string $format): SmartArray
     {
         return parent::sprintf($format);
     }
@@ -420,7 +454,7 @@ final class SmartArrayHtml extends SmartArray
      *  $values = $nested->map(fn(array $item) => $item['a']);
      *  // $values is now a SmartArray: [1, 2]
      */
-    public function map(callable $callback): self
+    public function map(callable $callback): static
     {
         return parent::map($callback);
     }
@@ -450,7 +484,7 @@ final class SmartArrayHtml extends SmartArray
      *  $exclaimed = $arr->smartMap(fn($str, $k) => $str->upper()->append('!'));
      *  // $exclaimed -> ['HELLO!', 'WORLD!']
      */
-    public function smartMap(closure $callback): self
+    public function smartMap(closure $callback): static
     {
         return parent::smartMap($callback);
     }
@@ -470,7 +504,7 @@ final class SmartArrayHtml extends SmartArray
      *
      * If you need to transform or collect results, consider ->map() or ->smartMap() instead.
      */
-    public function each(Closure $callback): self
+    public function each(Closure $callback): static
     {
         return parent::each($callback);
     }
@@ -479,18 +513,18 @@ final class SmartArrayHtml extends SmartArray
      * Merges the SmartArray with one or more arrays or SmartArrays.
      * Numeric keys are renumbered, string keys are overwritten by later values.
      *
-     * @param array|SmartArray ...$arrays Arrays to merge with
+     * @param array|SmartArrayBase ...$arrays Arrays to merge with
      * @return self Returns a new SmartArray with the merged results
      *
      * @example
-     * $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
+     * $arr1 = SmartArrayHtml::new(['a' => 1, 'b' => 2]);
      * $arr2 = ['b' => 3, 'c' => 4];
-     * $arr3 = SmartArray::new(['d' => 5]);
+     * $arr3 = SmartArrayHtml::new(['d' => 5]);
      *
      * $result = $arr1->merge($arr2, $arr3);
      * // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
      */
-    public function merge(array|SmartArray ...$arrays): self
+    public function merge(array|SmartArrayBase ...$arrays): static
     {
         return parent::merge(...$arrays);
     }
@@ -503,28 +537,13 @@ final class SmartArrayHtml extends SmartArray
      * Returns SmartArray or throws an exception load() handler is not available for column
      * @throws RuntimeException
      */
-    public function load(string $column): self|SmartNull
+    public function load(string $column): static|SmartNull
     {
         return parent::load($column);
     }
 
     //endregion
     //region Debugging and Help
-
-    /**
-     * Type hint for IDEs to enable property autocomplete. Never actually called at runtime.
-     *
-     * Properties are handled by ArrayObject::offsetGet() instead of __get() due to the
-     * ARRAY_AS_PROPS flag. This means $obj->property behaves the same as $obj['property'].
-     * @throws RuntimeException
-     */
-    public function __get(string $key): self|SmartNull|SmartString
-    {
-        throw new RuntimeException(
-            "Property access on SmartArray is handled by ArrayObject::offsetGet() due to ARRAY_AS_PROPS flag. " .
-            "If you see this error, something has gone wrong with ArrayObject property handling.",
-        );
-    }
 
     //endregion
     //region Error Handling
@@ -535,7 +554,7 @@ final class SmartArrayHtml extends SmartArray
      * @param string|null $message The message to display when sending 404.
      * @return SmartArrayHtml Returns self if not empty, exits with 404 if empty
      */
-    public function or404(?string $message = null): self
+    public function or404(?string $message = null): static
     {
         return parent::or404($message);
     }
@@ -546,7 +565,7 @@ final class SmartArrayHtml extends SmartArray
      * @param string $message Error message to show
      * @return self Returns $this for method chaining if not empty, dies if empty
      */
-    public function orDie(string $message): self
+    public function orDie(string $message): static
     {
         return parent::orDie($message);
     }
@@ -558,7 +577,7 @@ final class SmartArrayHtml extends SmartArray
      * @return self Returns $this for method chaining if not empty
      * @throws RuntimeException If array is empty
      */
-    public function orThrow(string $message): self
+    public function orThrow(string $message): static
     {
         return parent::orThrow($message);
     }
@@ -573,9 +592,33 @@ final class SmartArrayHtml extends SmartArray
      * @return self Returns $this for method chaining if not empty, redirects if empty
      * @throws RuntimeException If headers have already been sent
      */
-    public function orRedirect(string $url): self
+    public function orRedirect(string $url): static
     {
         return parent::orRedirect($url);
+    }
+
+    //endregion
+    //region Iterator
+
+    /**
+     * @return SmartArrayHtml[]|SmartString[]
+     */
+    public function getIterator(): \Iterator
+    {
+        return parent::getIterator();
+    }
+
+    //endregion
+    //region Deprecated Array Access
+
+    /**
+     * Retrieves a value from the SmartArray using array syntax.
+     *
+     * @deprecated Use ->property or ->get('key') instead of $array['key']
+     */
+    public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|SmartString
+    {
+        return parent::offsetGet($offset, $useSmartStrings);
     }
 
     //endregion

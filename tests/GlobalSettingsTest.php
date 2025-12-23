@@ -10,12 +10,14 @@ use Itools\SmartArray\SmartArray;
 class GlobalSettingsTest extends TestCase
 {
     private bool $originalWarnIfMissing;
+    private bool $originalWarnIfDeprecated;
     private bool $originalLogDeprecations;
 
     protected function setUp(): void
     {
         // Store original global settings before each test
         $this->originalWarnIfMissing = SmartArray::$warnIfMissing;
+        $this->originalWarnIfDeprecated = SmartArray::$warnIfDeprecated;
         $this->originalLogDeprecations = SmartArray::$logDeprecations;
     }
 
@@ -23,6 +25,7 @@ class GlobalSettingsTest extends TestCase
     {
         // Restore original global settings after each test
         SmartArray::$warnIfMissing = $this->originalWarnIfMissing;
+        SmartArray::$warnIfDeprecated = $this->originalWarnIfDeprecated;
         SmartArray::$logDeprecations = $this->originalLogDeprecations;
     }
 
@@ -30,6 +33,12 @@ class GlobalSettingsTest extends TestCase
     {
         // Verify the default value is true
         $this->assertTrue(SmartArray::$warnIfMissing, "warnIfMissing should be enabled by default");
+    }
+
+    public function testWarnIfDeprecatedGlobalSettingDefault(): void
+    {
+        // Verify the default value is false
+        $this->assertFalse(SmartArray::$warnIfDeprecated);
     }
 
     public function testLogDeprecationsGlobalSettingDefault(): void
@@ -51,6 +60,19 @@ class GlobalSettingsTest extends TestCase
         $this->assertTrue(SmartArray::$warnIfMissing);
     }
 
+    public function testWarnIfDeprecatedGlobalSettingCanBeChanged(): void
+    {
+        // Change the setting
+        SmartArray::$warnIfDeprecated = true;
+
+        // Verify it changed
+        $this->assertTrue(SmartArray::$warnIfDeprecated);
+
+        // Change back and verify
+        SmartArray::$warnIfDeprecated = false;
+        $this->assertFalse(SmartArray::$warnIfDeprecated);
+    }
+
     public function testLogDeprecationsGlobalSettingCanBeChanged(): void
     {
         // Change the setting
@@ -62,6 +84,26 @@ class GlobalSettingsTest extends TestCase
         // Change back and verify
         SmartArray::$logDeprecations = false;
         $this->assertFalse(SmartArray::$logDeprecations);
+    }
+
+    public function testWarnIfDeprecatedEchoesDeprecationWarnings(): void
+    {
+        $arr = SmartArray::new(['name' => 'test']);
+
+        // With warning disabled (default)
+        SmartArray::$warnIfDeprecated = false;
+        ob_start();
+        $value = $arr['name']; // Deprecated array access
+        $output = ob_get_clean();
+        $this->assertEmpty($output, "No output when warnIfDeprecated is false");
+
+        // With warning enabled
+        SmartArray::$warnIfDeprecated = true;
+        ob_start();
+        $value = $arr['name']; // Deprecated array access
+        $output = ob_get_clean();
+        $this->assertStringContainsString('Warning:', $output, "Should echo deprecation warning");
+        $this->assertStringContainsString('Array access', $output, "Should mention array access");
     }
 
     public function testWarnIfMissingDisablesWarningsForNonexistentProperties(): void
@@ -336,5 +378,39 @@ class GlobalSettingsTest extends TestCase
         $output = ob_get_clean();
 
         $this->assertEmpty($output, "No warning should be shown for nonexistent array key when warnIfMissing is disabled");
+    }
+
+    public function testInternalMethodsDoNotTriggerDeprecationWarnings(): void
+    {
+        // Enable deprecation logging
+        SmartArray::$logDeprecations = true;
+
+        $arr = SmartArray::new(['a' => 1, 'b' => 2, 'c' => 3]);
+
+        // Capture any deprecation notices
+        $deprecationsCaught = [];
+        set_error_handler(function ($errno, $errstr) use (&$deprecationsCaught) {
+            if ($errno === E_USER_DEPRECATED) {
+                $deprecationsCaught[] = $errstr;
+            }
+            return true;
+        });
+
+        // Call internal methods that previously used offsetGet()
+        $arr->first();
+        $arr->last();
+        $arr->nth(1);
+        $arr->each(fn($v, $k) => null);
+        $arr->smartMap(fn($v, $k) => $v);
+
+        restore_error_handler();
+
+        // Filter out any deprecations that contain "Array access"
+        $arrayAccessDeprecations = array_filter($deprecationsCaught, fn($msg) => str_contains($msg, 'Array access'));
+
+        $this->assertEmpty(
+            $arrayAccessDeprecations,
+            "Internal methods should not trigger array access deprecation warnings. Got: " . implode(', ', $arrayAccessDeprecations)
+        );
     }
 }

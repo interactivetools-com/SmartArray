@@ -7,8 +7,8 @@ namespace Itools\SmartArray\Tests;
 use BadMethodCallException, InvalidArgumentException;
 use ReflectionException, ReflectionObject;
 use PHPUnit\Framework\TestCase;
-use ArrayObject;
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartString\SmartString;
@@ -20,29 +20,16 @@ class SmartArrayTest extends TestCase
     /**
      * Check the internal object structure checking for incorrect values or types
      */
-    private function verifyObjectStructure(SmartArray $obj, string $path = '$obj', ?SmartArray $actualRoot = null): void
+    private function verifyObjectStructure(SmartArrayBase $obj, string $path = '$obj', ?SmartArrayBase $actualRoot = null): void
     {
         $weAreRoot = $path === '$obj'; // e.g., depth is 0, not path set
         $arrayCopy = $obj->getArrayCopy();
 
-        // Check for allowed types: SmartArray, scalar, or null
+        // Check for allowed types: SmartArrayBase, scalar, or null
         foreach ($arrayCopy as $element) {
-            if (!$element instanceof SmartArray && !is_scalar($element) && !is_null($element)) {
-                throw new InvalidArgumentException("Invalid type at $path : " . get_debug_type($obj) . ". Must be SmartArray, scalar, or null.");
+            if (!$element instanceof SmartArrayBase && !is_scalar($element) && !is_null($element)) {
+                throw new InvalidArgumentException("Invalid type at $path : " . get_debug_type($obj) . ". Must be SmartArrayBase, scalar, or null.");
             }
-        }
-
-        // ArrayObject flags are correct
-        $flags = $obj->getFlags();
-        $flagsText = match ($flags) {
-            0                                                        => 'NONE',
-            ArrayObject::STD_PROP_LIST                               => 'STD_PROP_LIST',
-            ArrayObject::ARRAY_AS_PROPS                              => 'ARRAY_AS_PROPS',
-            ArrayObject::STD_PROP_LIST | ArrayObject::ARRAY_AS_PROPS => 'STD_PROP_LIST|ARRAY_AS_PROPS',
-            default                                                  => "Unknown flags: $flags",
-        };
-        if ($flagsText !== 'ARRAY_AS_PROPS') {
-            throw new InvalidArgumentException("Invalid flags at $path. Expected ARRAY_AS_PROPS, got $flagsText instead.");
         }
 
         // Check position properties
@@ -52,8 +39,8 @@ class SmartArrayTest extends TestCase
         foreach ($arrayCopy as $key => $el) {
             $position++;
 
-            // skip non-SmartArray elements
-            if (!$el instanceof SmartArray) {
+            // skip non-SmartArrayBase elements
+            if (!$el instanceof SmartArrayBase) {
                 continue;
             }
 
@@ -88,10 +75,9 @@ class SmartArrayTest extends TestCase
             throw new InvalidArgumentException("Invalid mysqli metadata at $path. Expected " . var_export($actualRoot->mysqli(), true) . ", got " . var_export($obj->mysqli(), true) . " instead.");
         }
 
-        // Check useSmartArrays
-
-        $thisObjectUseSmartStrings = $this->callPrivateMethod($obj, 'getProperty', ['useSmartStrings']);
-        $actualRootUseSmartStrings = $this->callPrivateMethod($obj->root(), 'getProperty', ['useSmartStrings']);
+        // Check useSmartStrings
+        $thisObjectUseSmartStrings = $obj->usingSmartStrings();
+        $actualRootUseSmartStrings = $obj->root()->usingSmartStrings();
         if (!$weAreRoot && $thisObjectUseSmartStrings !== $actualRootUseSmartStrings) {
             throw new InvalidArgumentException("Invalid useSmartStrings at $path. Expected " . var_export($actualRootUseSmartStrings, true) . ", got " . var_export($thisObjectUseSmartStrings, true) . " instead.");
         }
@@ -99,7 +85,7 @@ class SmartArrayTest extends TestCase
         // Recurse over child SmartArrays
         $actualRoot ??= $obj;
         foreach ($arrayCopy as $key => $element) {
-            if ($element instanceof SmartArray) {
+            if ($element instanceof SmartArrayBase) {
                 $this->verifyObjectStructure($element, "$path->$key", $actualRoot);
             }
         }
@@ -159,10 +145,10 @@ class SmartArrayTest extends TestCase
     public static function normalizeRaw($var): float|array|bool|int|string|null
     {
         return match (true) {
-            is_scalar($var), is_null($var) => $var,
-            $var instanceof SmartArray     => $var->toArray(),
-            $var instanceof SmartNull      => null,
-            default                        => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
+            is_scalar($var), is_null($var)    => $var,
+            $var instanceof SmartArrayBase    => $var->toArray(),
+            $var instanceof SmartNull         => null,
+            default                           => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
     }
 
@@ -178,11 +164,11 @@ class SmartArrayTest extends TestCase
         $isSmartString       = $var instanceof SmartString;
         $isSmartStringString = $var instanceof SmartString && is_string($var->value());
         return match (true) {
-            $isSmartStringString       => $var->__toString(),            // Call __toString() on SmartString strings
-            $isSmartString             => $var->value(),                 // Just show other values
-            $var instanceof SmartArray => self::toArrayResolveSS($var),
-            $var instanceof SmartNull  => null,
-            default                    => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
+            $isSmartStringString           => $var->__toString(),            // Call __toString() on SmartString strings
+            $isSmartString                 => $var->value(),                 // Just show other values
+            $var instanceof SmartArrayBase => self::toArrayResolveSS($var),
+            $var instanceof SmartNull      => null,
+            default                        => __FUNCTION__ . "() Unexpected value type: " . get_debug_type($var),
         };
     }
 

@@ -1,12 +1,12 @@
 <?php
-
+/** @noinspection PhpUndefinedMethodInspection */
 declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests;
 
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
-use Itools\SmartArray\SmartArrayRaw;
 
 /**
  * Tests for deprecated/legacy method aliases in SmartArray.
@@ -159,25 +159,25 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $this->assertTrue($result->usingSmartStrings());
     }
 
-    public function testDisableSmartStringsReturnsSmartArrayRaw(): void
+    public function testDisableSmartStringsReturnsSmartArray(): void
     {
         SmartArray::$logDeprecations = false;
 
         $smartArray = SmartArray::newSS(['name' => 'John']);
         $result     = $smartArray->disableSmartStrings();
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $result);
+        $this->assertInstanceOf(SmartArray::class, $result);
         $this->assertFalse($result->usingSmartStrings());
     }
 
-    public function testNoSmartStringsReturnsSmartArrayRaw(): void
+    public function testNoSmartStringsReturnsSmartArray(): void
     {
         SmartArray::$logDeprecations = false;
 
         $smartArray = SmartArray::newSS(['name' => 'John']);
         $result     = $smartArray->noSmartStrings();
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $result);
+        $this->assertInstanceOf(SmartArray::class, $result);
         $this->assertFalse($result->usingSmartStrings());
     }
 
@@ -278,6 +278,84 @@ class LegacyMethodsTest extends SmartArrayTestCase
             'item with key'       => ['item', ['a'], 1],
             'raw'                 => ['raw', [], ['a' => 1, 'b' => 2, 'c' => 3]],
         ];
+    }
+
+    //endregion
+    //region Legacy constructor syntax
+
+    public function testSmartArrayWithBooleanTrueThrows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot create SmartArray with useSmartStrings=true');
+
+        new SmartArray(['name' => 'John'], true);
+    }
+
+    public function testSmartArrayWithUseSmartStringsTrueThrows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot create SmartArray with useSmartStrings=true');
+
+        new SmartArray(['name' => 'John'], ['useSmartStrings' => true]);
+    }
+
+    public function testSmartArrayHtmlWithBooleanFalseThrows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot create SmartArrayHtml with useSmartStrings=false');
+
+        new SmartArrayHtml(['name' => 'John'], false);
+    }
+
+    public function testSmartArrayHtmlWithUseSmartStringsFalseThrows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot create SmartArrayHtml with useSmartStrings=false');
+
+        new SmartArrayHtml(['name' => 'John'], ['useSmartStrings' => false]);
+    }
+
+    public function testSmartArrayWithBooleanFalseWorks(): void
+    {
+        // Passing false to SmartArray is valid (matches the class's purpose)
+        $result = new SmartArray(['name' => 'John'], false);
+
+        $this->assertInstanceOf(SmartArray::class, $result);
+        $this->assertFalse($result->usingSmartStrings());
+    }
+
+    public function testSmartArrayHtmlWithBooleanTrueWorks(): void
+    {
+        // Passing true to SmartArrayHtml is valid (matches the class's purpose)
+        $result = new SmartArrayHtml(['name' => 'John'], true);
+
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
+        $this->assertTrue($result->usingSmartStrings());
+    }
+
+    public function testLegacyConstructorTriggersDeprecationBeforeException(): void
+    {
+        SmartArray::$logDeprecations = true;
+
+        $deprecationTriggered = false;
+        set_error_handler(function ($errno, $errstr) use (&$deprecationTriggered) {
+            if ($errno === E_USER_DEPRECATED && str_contains($errstr, 'deprecated')) {
+                $deprecationTriggered = true;
+            }
+            return true;
+        });
+
+        try {
+            new SmartArray(['test'], true);
+        }
+        catch (InvalidArgumentException) {
+            // Expected
+        }
+        finally {
+            restore_error_handler();
+        }
+
+        $this->assertTrue($deprecationTriggered, 'Deprecation warning should be triggered before exception');
     }
 
     //endregion

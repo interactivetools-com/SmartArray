@@ -1,14 +1,13 @@
 SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
 ==========================================================================================
 SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
-It preserves familiar array syntax while adding powerful features for filtering, mapping,
-and data manipulation - making common array operations simpler, safer, and more expressive.
+It adds powerful features for filtering, mapping, and data manipulation - making common
+array operations simpler, safer, and more expressive.
 
 Core Concepts
 -------------------
-$obj                = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
-$obj['columnName']  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
-$obj->columnName    = Itools\SmartString\SmartString  // Optional object syntax makes code cleaner and more readable
+$obj              = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
+$obj->columnName  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
 
 Accessing Elements
 -------------------
@@ -32,8 +31,8 @@ $users = SmartArray::new(DB::select('users'));              // Always start with
 
 Converting Between Types:
 $array = $data->toArray();                                  // Converts back to regular PHP array with original values
-$html = $data->asHtml();                                    // Return values as HTML-safe SmartStrings when needed
-$raw  = $html->asRaw();                                     // Return values as raw PHP types
+$html  = $data->asHtml();                                   // Return values as HTML-safe SmartStrings when needed
+$raw   = $html->asRaw();                                    // Return values as raw PHP types
 //$html = SmartArrayHtml::new($data);                       // Advanced: Direct creation of HTML-safe SmartArray
 
 Example Workflow:
@@ -48,9 +47,8 @@ foreach ($users->asHtml() as $user) {
 
 Value Access
 -------------
-$obj[key]               Get a value using array syntax
-$obj->key               Get a value using object syntax
-->get(key)              Get a value using method syntax
+$obj->key               Get a value using property syntax
+->get(key)              Get a value (required for numeric keys or keys with special characters)
 ->get(key, default)     Get a value with optional default if key not found
 ->first()               Get the first element
 ->last()                Get the last element

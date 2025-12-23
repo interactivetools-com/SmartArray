@@ -1,8 +1,8 @@
 # SmartArray: Enhanced Arrays with Chainable Methods and Automatic HTML Encoding
 
 SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
-It preserves familiar array syntax while adding powerful features for filtering, mapping,
-and data manipulation - making common array operations simpler, safer, and more expressive.
+It adds powerful features for filtering, mapping, and data manipulation - making common
+array operations simpler, safer, and more expressive.
 
 ## Table of Contents
 
@@ -58,8 +58,8 @@ $users = SmartArray::new($records)
 
 // Now $users contains SmartStrings for safe output
 foreach ($users as $user) {
-    echo "Name: {$user['name']}, ";  // Automatically HTML-encoded for safety
-    echo "City: $user->city\n";      // Object syntax with XSS protection
+    echo "Name: $user->name, ";   // Automatically HTML-encoded for safety
+    echo "City: $user->city\n";
 }
 
 // Values are automatically HTML-encoded in string contexts to prevent XSS (see SmartString docs more details)
@@ -206,8 +206,8 @@ $authors = [
 $authorById = SmartArray::new($authors)->indexBy('author_id')->asHtml();
 
 // Now you can quickly look up authors by their ID
-echo $authorById[101]->name;  // Output: Jane Austen
-echo $authorById[103]->genre; // Output: Science Fiction
+echo $authorById->get(101)->name;  // Output: Jane Austen
+echo $authorById->get(103)->genre; // Output: Science Fiction
 
 // Particularly useful when joining data from multiple sources
 $articles = [
@@ -218,7 +218,7 @@ $articles = [
 
 // Display articles with author information
 foreach (SmartArray::new($articles)->asHtml() as $article) {
-    $author = $authorById[$article->author_id];
+    $author = $authorById->get($article->author_id);
     echo "Title: $article->title\n";
     echo "By: $author->name ($author->genre)\n\n";
 }
@@ -569,9 +569,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                |
 |                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                         |
 |                       |     SmartArrayHtml::new($array) | Advanced: Direct instantiation of SmartArray with SmartString values                                                       |
-| Value Access          |                     $obj['key'] | Get a value using array syntax                                                                                             |
-|                       |                       $obj->key | Get a value using object syntax                                                                                            |
-|                       |                       get($key) | Get a value using method syntax                                                                                            |
+| Value Access          |                       $obj->key | Get a value using property syntax                                                                                          |
+|                       |                       get($key) | Get a value (required for numeric keys or keys with special characters)                                                    |
 |                       |             get($key, $default) | Get a value with optional default if key not found                                                                         |
 |                       |                         first() | Get the first element                                                                                                      |
 |                       |                          last() | Get the last element                                                                                                       |

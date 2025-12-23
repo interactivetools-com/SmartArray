@@ -62,7 +62,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         // Convert boolean to array format for backward compatibility
         if (is_bool($properties)) {
-            self::logDeprecation("Passing boolean to SmartArray constructor is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values.");
+            self::logDeprecation("Passing boolean to SmartArray constructor is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values");
             $properties = ['useSmartStrings' => $properties];
         }
 
@@ -107,8 +107,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Backward compatibility: handle boolean for SmartStrings toggle
         if (is_bool($properties)) {
             match ($properties) {
-                true  => self::logDeprecation("Passing `true` as the second argument to SmartArray::new(...) is deprecated. Use SmartArrayHtml::new(...) instead."),
-                false => self::logDeprecation("Passing `false` as the second argument to SmartArray::new(...) is deprecated. Just use SmartArray::new(...)."),
+                true  => self::logDeprecation("Passing `true` as the second argument to SmartArray::new(...) is deprecated. Use SmartArrayHtml::new(...) instead"),
+                false => self::logDeprecation("Passing `false` as the second argument to SmartArray::new(...) is deprecated. Just use SmartArray::new(...)"),
             };
             $properties = ['useSmartStrings' => $properties];
         }
@@ -1407,19 +1407,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // If array isn't empty and key doesn't exist, throw warning to help debugging
         // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
-        $caller           = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-        $function         = $caller['function'] ?? "unknownFunction";
+        $caller           = self::getExternalCaller();
         $keyOrEmptyQuotes = $key === "" ? "''" : $key; // Show empty quotes for empty string keys
 
         $warning = match ($warningType) {
             'offset'   => "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n",
-            'argument' => "$function(): '$key' doesn't exist\n",
+            'argument' => "{$caller['function']}(): '$key' doesn't exist\n",
             default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
         };
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
-            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"";
+            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"";
         }
         if ($warningType === 'argument') {
             $warning .= self::occurredInFile(true);
@@ -1435,6 +1434,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     protected static function logDeprecation(string $message): void
     {
+        $caller   = self::getExternalCaller();
+        $message .= " in {$caller['file']}:{$caller['line']}.";
+
         if (self::$warnIfDeprecated) {
             echo "\nWarning: $message\n";
         }
@@ -1461,7 +1463,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // output warning and trigger PHP warning (for logging)
         // PHP Error: Fatal error: Uncaught Error: Object of class Itools\SmartArray\SmartArray could not be converted to string in C:\path\file.php:27
         $warning = "Can't convert SmartArray to string $inFileOnLine.\n\n";
-        $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods and array access in braces like \"{\$var->method()} or {\$var['key']}\"\n\n";
+        $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n\n";
         $warning .= "For more info: \$var->help()";
 
         // output warning
@@ -1580,6 +1582,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $baseClass = basename(self::class);
         $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
         throw new Error($error . self::occurredInFile());
+    }
+
+    /**
+     * Find the first caller outside the SmartArray library directory.
+     * Returns array with 'file' (basename), 'line', and 'function' keys.
+     */
+    private static function getExternalCaller(): array
+    {
+        $smartArrayDir = dirname(__FILE__);
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $caller) {
+            if (!empty($caller['file']) && dirname($caller['file']) !== $smartArrayDir) {
+                return [
+                    'file'     => basename($caller['file']),
+                    'line'     => $caller['line'] ?? "unknown",
+                    'function' => $caller['function'] ?? "unknown",
+                ];
+            }
+        }
+        return ['file' => "unknown", 'line' => "unknown", 'function' => "unknown"];
     }
 
     /**
@@ -1756,7 +1777,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             default                                              => "->get('$key')",
         };
 
-        self::logDeprecation("Array access \$array[$keyStr] is deprecated. Use $suggestion instead.");
+        self::logDeprecation("Replace [$keyStr] with $suggestion");
     }
 
     //endregion

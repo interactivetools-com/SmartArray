@@ -103,7 +103,7 @@ class GlobalSettingsTest extends TestCase
         $value = $arr['name']; // Deprecated array access
         $output = ob_get_clean();
         $this->assertStringContainsString('Warning:', $output, "Should echo deprecation warning");
-        $this->assertStringContainsString('Array access', $output, "Should mention array access");
+        $this->assertStringContainsString("['name']", $output, "Should mention the accessed key");
     }
 
     public function testWarnIfMissingDisablesWarningsForNonexistentProperties(): void

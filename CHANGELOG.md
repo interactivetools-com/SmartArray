@@ -1,5 +1,13 @@
 # SmartArray Changelog
 
+## [2.4.4] - 2025-12-23
+
+### Changed
+- **Documentation**: Updated README.md and help.txt to use property syntax (`->key`) and `->get()` instead of array brackets
+- **Deprecation warnings**: Now include file and line number; removed obsolete `$var['key']` suggestions from error messages
+
+---
+
 ## [2.4.3] - 2025-12-22
 
 ### Added

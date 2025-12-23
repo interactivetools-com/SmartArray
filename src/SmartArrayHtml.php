@@ -16,6 +16,10 @@ use Itools\SmartString\SmartString;
  * - Scalars and null return SmartString objects, not raw types. Use ->value() to get raw value.
  * - Nested arrays return SmartArrayHtml, use ->toArray() for raw arrays and values
  * - Missing keys return SmartNull, use ->value() for raw null
+ *
+ * PhpStorm 2025.3.1: Repeated @implements needed - union types in Iterator generics don't work reliably for foreach inference
+ * @implements \Iterator<mixed, SmartString>
+ * @implements \Iterator<mixed, SmartArrayHtml>
  */
 final class SmartArrayHtml extends SmartArrayBase
 {
@@ -595,17 +599,6 @@ final class SmartArrayHtml extends SmartArrayBase
     public function orRedirect(string $url): static
     {
         return parent::orRedirect($url);
-    }
-
-    //endregion
-    //region Iterator
-
-    /**
-     * @return SmartArrayHtml[]|SmartString[]
-     */
-    public function getIterator(): \Iterator
-    {
-        return parent::getIterator();
     }
 
     //endregion

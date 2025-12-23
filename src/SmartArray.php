@@ -16,6 +16,14 @@ use Closure;
  * - Scalars and null return actual types (string, int, float, bool, null), not SmartString objects
  * - Nested arrays return SmartArray, use ->toArray() for raw arrays
  * - Missing keys return SmartNull, use ->value() for raw null
+ *
+ * PhpStorm 2025.3.1: Repeated @implements needed - union types in Iterator generics don't work reliably for foreach inference
+ * @implements \Iterator<mixed, SmartArray>
+ * @implements \Iterator<mixed, string>
+ * @implements \Iterator<mixed, int>
+ * @implements \Iterator<mixed, float>
+ * @implements \Iterator<mixed, bool>
+ * @implements \Iterator<mixed, null>
  */
 class SmartArray extends SmartArrayBase
 {
@@ -591,17 +599,6 @@ class SmartArray extends SmartArrayBase
     public function orRedirect(string $url): static
     {
         return parent::orRedirect($url);
-    }
-
-    //endregion
-    //region Iterator
-
-    /**
-     * @return SmartArray[]|string[]|int[]|float[]|bool[]|null[]
-     */
-    public function getIterator(): \Iterator
-    {
-        return parent::getIterator();
     }
 
     //endregion

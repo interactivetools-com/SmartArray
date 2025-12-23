@@ -1,5 +1,12 @@
 # SmartArray Changelog
 
+## [2.4.5] - 2025-12-23
+
+### Changed
+- **IDE support**: Added `@implements \Iterator` annotations for PhpStorm foreach type inference
+
+---
+
 ## [2.4.4] - 2025-12-23
 
 ### Changed

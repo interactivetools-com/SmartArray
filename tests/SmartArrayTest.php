@@ -9,6 +9,7 @@ use ReflectionException, ReflectionObject;
 use PHPUnit\Framework\TestCase;
 use ArrayObject;
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartString\SmartString;
 
@@ -259,9 +260,9 @@ class SmartArrayTest extends TestCase
     /**
      * @dataProvider constructorProvider
      */
-    public function testNewSS($inputArray): void
+    public function testSmartArrayHtmlConstructor($inputArray): void
     {
-        $obj = SmartArray::newSS($inputArray);
+        $obj = new SmartArrayHtml($inputArray);
         $this->verifyObjectStructure($obj);
         $this->assertSame(
             expected: self::toArrayResolveSS($obj),
@@ -330,7 +331,7 @@ class SmartArrayTest extends TestCase
      */
     public function testWithSmartStringsNewCopy($inputArray): void
     {
-        $original = SmartArray::new($inputArray);
+        $original = new SmartArray($inputArray);
         $this->assertFalse($original->usingSmartStrings());
 
         // Get new copy with SmartStrings enabled
@@ -352,7 +353,7 @@ class SmartArrayTest extends TestCase
      */
     public function testNoSmartStringsNewCopy($inputArray): void
     {
-        $original = SmartArray::new($inputArray, true);
+        $original = new SmartArrayHtml($inputArray);
         $this->assertTrue($original->usingSmartStrings());
 
         // Get new copy with SmartStrings disabled
@@ -374,7 +375,7 @@ class SmartArrayTest extends TestCase
      */
     public function testWithSmartStringsModifyInPlace($inputArray): void
     {
-        $original = SmartArray::new($inputArray);
+        $original = new SmartArray($inputArray);
         $this->assertFalse($original->usingSmartStrings());
 
         // Get new instance with SmartStrings enabled
@@ -392,7 +393,7 @@ class SmartArrayTest extends TestCase
      */
     public function testNoSmartStringsModifyInPlace($inputArray): void
     {
-        $original = SmartArray::new($inputArray, true);
+        $original = new SmartArrayHtml($inputArray);
         $this->assertTrue($original->usingSmartStrings());
 
         // Get new instance with SmartStrings disabled
@@ -410,10 +411,10 @@ class SmartArrayTest extends TestCase
      */
     public function testUsingSmartStrings($inputArray): void
     {
-        $withoutSS = SmartArray::new($inputArray);
+        $withoutSS = new SmartArray($inputArray);
         $this->assertFalse($withoutSS->usingSmartStrings());
 
-        $withSS = SmartArray::new($inputArray, true);
+        $withSS = new SmartArrayHtml($inputArray);
         $this->assertTrue($withSS->usingSmartStrings());
 
         // Test toggling

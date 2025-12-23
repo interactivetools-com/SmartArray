@@ -82,24 +82,36 @@ class SmartNullTest extends TestCase
 
     public function comparisonProvider(): array
     {
+        // Note: PHP object loose comparison rules:
+        // - Object == null → always false (objects never loosely equal null)
+        // - Object == false → object casts to bool (true), so true == false is false
+        // - Object == '' → PHP tries string comparison, calls __toString()
         return [
-            'loose equality with null returns false'        => [
+            'loose equality with null returns false (objects never == null)' => [
+                'operation' => fn($sn) => $sn == null,
+                'expected'  => false,
+            ],
+            'strict equality with null returns false'                        => [
                 'operation' => fn($sn) => $sn === null,
                 'expected'  => false,
             ],
-            'strict equality with null returns false'       => [
-                'operation' => fn($sn) => $sn === null,
+            'loose equality with false returns false (object casts to true)' => [
+                'operation' => fn($sn) => $sn == false,
                 'expected'  => false,
             ],
-            'loose equality with false returns false'       => [
+            'strict equality with false returns false'                       => [
                 'operation' => fn($sn) => $sn === false,
                 'expected'  => false,
             ],
-            'strict equality with false returns false'      => [
-                'operation' => fn($sn) => $sn === false,
+            'loose equality with empty string returns true (__toString)'     => [
+                'operation' => fn($sn) => $sn == '',
+                'expected'  => true,
+            ],
+            'strict equality with empty string returns false'                => [
+                'operation' => fn($sn) => $sn === '',
                 'expected'  => false,
             ],
-            'identity with another SmartNull returns false' => [
+            'identity with another SmartNull returns false'                  => [
                 'operation' => fn($sn) => $sn === new SmartNull(),
                 'expected'  => false,
             ],

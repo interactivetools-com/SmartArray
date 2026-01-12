@@ -1492,6 +1492,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             'item'                                   => [$this->get(...$args), "Replace ->$method() with ->get()"],
             'join'                                   => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
             'raw'                                    => [$this->toArray(), "Replace ->$method() with ->toArray()"],
+            'toraw'                                  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
+            'tohtml'                                 => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
             'withsmartstrings', 'enablesmartstrings' => [$this->asHtml(), "Replace ->$method() with ->asHtml() or use SmartArrayHtml::new()"],
             'nosmartstrings', 'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw() or use SmartArray::new()"],
             default                                  => [null, null],
@@ -1732,7 +1734,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->triggerArrayAccessDeprecation($offset);
+        $this->triggerArrayAccessDeprecation($offset, 'set');
         $this->setElement($offset, $value);
     }
 
@@ -1744,7 +1746,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        $this->triggerArrayAccessDeprecation($offset);
+        $this->triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset, $useSmartStrings);
     }
 
@@ -1755,26 +1757,39 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function offsetUnset(mixed $offset): void
     {
-        $this->triggerArrayAccessDeprecation($offset);
+        $this->triggerArrayAccessDeprecation($offset, 'unset');
         unset($this->data[$offset]);
     }
 
     /**
      * Log a deprecation notice for array access syntax.
      */
-    private function triggerArrayAccessDeprecation(mixed $key): void
+    private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
     {
         if (!self::$warnIfDeprecated && !self::$logDeprecations) {
             return;
         }
 
-        $keyStr = is_string($key) ? "'$key'" : (string) $key;
+        $keyStr          = is_string($key) ? "'$key'" : (string) $key;
+        $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
 
         // Suggest the preferred access method
-        $suggestion = match (true) {
-            is_int($key)                                         => "->get($key)",
-            preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key) === 1 => "->$key",
-            default                                              => "->get('$key')",
+        $suggestion = match ($operation) {
+            'set' => match (true) {
+                is_int($key)     => "->set($key, \$value)",
+                $isValidPropName => "->$key = \$value",
+                default          => "->set('$key', \$value) or ->{'$key'} = \$value",
+            },
+            'unset' => match (true) {
+                is_int($key)     => '->{' . $key . '}',
+                $isValidPropName => "->$key",
+                default          => "->{'$key'}",
+            },
+            default => match (true) {
+                is_int($key)     => "->get($key)",
+                $isValidPropName => "->$key",
+                default          => "->get('$key')",
+            },
         };
 
         self::logDeprecation("Replace [$keyStr] with $suggestion");

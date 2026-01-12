@@ -1,5 +1,11 @@
 # SmartArray Changelog
 
+## [2.4.6] - 2026-01-11 - Improved deprecation handling
+- Added `toRaw()` and `toHtml()` as deprecated aliases for `asRaw()` and `asHtml()`
+- Improved array access deprecation messages to show context-appropriate suggestions for get, set, and unset operations
+
+---
+
 ## [2.4.5] - 2025-12-23
 
 ### Changed

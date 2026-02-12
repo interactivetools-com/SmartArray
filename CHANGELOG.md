@@ -1,5 +1,26 @@
 # SmartArray Changelog
 
+## [2.5.0] - 2026-02-12 - Deprecation cleanup and SmartNull improvements
+
+### Added
+- `SmartNull->value()` - Explicit method returning null, for IDE support and consistency with SmartString
+- `SmartNull->asHtml()` - Converts to empty SmartArrayHtml, preserving internal properties (mysqli, loadHandler)
+- `SmartNull->asRaw()` - Converts to empty SmartArray, preserving internal properties
+- Use case: `DB::get(...)->first()->asHtml()` now gives a typed SmartArrayHtml with query metadata even when no results
+
+### Changed
+- Removed `$warnIfDeprecated`, `$warnIfMissing`, and `$logDeprecations` settings (use PHP's native error handling instead)
+- Deprecation and missing-key warnings now always trigger via `@trigger_error()`
+- `getArrayCopy()` is now private, use `->toArray()` instead
+- `sprintf()` now HTML-encodes `{key}` placeholders for SmartArrayHtml
+- `orRedirect()` only checks `headers_sent()` when a redirect is actually needed
+- Error messages now correctly show `SmartArray` or `SmartArrayHtml` instead of `SmartArrayBase`
+
+### Deprecated
+- `isFirst()`, `isLast()`, `position()`, `isMultipleOf()`, `chunk()`, `smartMap()` - now trigger deprecation notice
+
+---
+
 ## [2.4.6] - 2026-01-11 - Improved deprecation handling
 - Added `toRaw()` and `toHtml()` as deprecated aliases for `asRaw()` and `asHtml()`
 - Improved array access deprecation messages to show context-appropriate suggestions for get, set, and unset operations

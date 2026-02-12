@@ -22,10 +22,10 @@ class IsFirstTest extends SmartArrayTestCase
      */
     public function testIsFirst(array $input): void
     {
-        $smartArray     = new SmartArray($input);
-        $smartArrayData = $smartArray->getArrayCopy();
-        $firstKey       = array_key_first($smartArrayData);
-        $assertionMade  = false;
+        $smartArray    = new SmartArray($input);
+        $keys          = $smartArray->keys()->toArray();
+        $firstKey      = $keys[0] ?? null;
+        $assertionMade = false;
 
         foreach ($smartArray as $key => $value) {
             // Only nested SmartArrays have isFirst()

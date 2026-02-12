@@ -33,7 +33,7 @@ Converting Between Types:
 $array = $data->toArray();                                  // Converts back to regular PHP array with original values
 $html  = $data->asHtml();                                   // Return values as HTML-safe SmartStrings when needed
 $raw   = $html->asRaw();                                    // Return values as raw PHP types
-//$html = SmartArrayHtml::new($data);                       // Advanced: Direct creation of HTML-safe SmartArray
+$html  = SmartArrayHtml::new($data);                        // Create HTML-safe SmartArray directly (same result)
 
 Example Workflow:
 $users = SmartArray::new($records)                           // Raw data for processing
@@ -48,8 +48,9 @@ foreach ($users->asHtml() as $user) {
 Value Access
 -------------
 $obj->key               Get a value using property syntax
-->get(key)              Get a value (required for numeric keys or keys with special characters)
+->get(key)              Get a value by key (for numeric keys or keys with special characters)
 ->get(key, default)     Get a value with optional default if key not found
+->set(key, value)       Set a value by key (for numeric keys or keys with special characters)
 ->first()               Get the first element
 ->last()                Get the last element
 ->nth(position)         Get element by position, ignoring keys (0 is first, -1 is last)
@@ -61,14 +62,6 @@ Array Information
 ->isEmpty()             Returns true if array has no elements
 ->isNotEmpty()          Returns true if array has any elements
 ->contains(value)       Check if array contains a specific value
-
-Position & Layout
-------------------
-->isFirst()             Check if first in root array
-->isLast()              Check if last in root array
-->position()            Get position in root array (starting at 1)
-->isMultipleOf(n)       Check if position is multiple of n (3 for every 3rd element)
-->chunk(size)           Split array into smaller arrays of specified size
 
 Sorting & Filtering
 --------------------
@@ -91,7 +84,6 @@ Array Transformation
 ->implode(separator)    Join elements with separator into string (default: '')
 ->sprintf(format)       Apply sprintf format to each element. Also supports {value} and {key} aliases.
 ->map(callback)         Transform each element using callback (callback receives raw values)
-->smartMap(callback)    Transform each element using callback (callback receives SmartStrings and SmartArrays)
 ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
 ->merge(...$arrays)     Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
 

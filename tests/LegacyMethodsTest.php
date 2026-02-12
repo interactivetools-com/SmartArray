@@ -12,24 +12,26 @@ use Itools\SmartArray\SmartArrayHtml;
  * Tests for deprecated/legacy method aliases in SmartArray.
  *
  * These methods are maintained for backwards compatibility but
- * will trigger deprecation warnings when $logDeprecations is enabled.
+ * will trigger deprecation warnings via trigger_error().
  *
  * Purpose: Ensure legacy code continues to work during migration.
  */
 class LegacyMethodsTest extends SmartArrayTestCase
 {
 
-    private bool $originalLogDeprecations;
-
+    /**
+     * Suppress E_USER_DEPRECATED notices during legacy method tests.
+     * These methods intentionally trigger deprecation warnings, but we're testing functionality, not warnings.
+     */
     protected function setUp(): void
     {
         parent::setUp();
-        $this->originalLogDeprecations = SmartArray::$logDeprecations;
+        set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
     }
 
     protected function tearDown(): void
     {
-        SmartArray::$logDeprecations = $this->originalLogDeprecations;
+        restore_error_handler();
         parent::tearDown();
     }
 
@@ -37,8 +39,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testNewSSReturnsSmartArrayHtml(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $result = SmartArray::newSS(['name' => 'John', 'age' => 30]);
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);
@@ -47,8 +47,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testNewSSWithEmptyArray(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $result = SmartArray::newSS([]);
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);
@@ -57,8 +55,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testRawValueStaticAlias(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $result = SmartArray::rawValue('test string');
 
         $this->assertSame('test string', $result);
@@ -69,8 +65,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testExistsAliasForIsNotEmpty(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $nonEmpty = new SmartArray(['a', 'b', 'c']);
         $empty    = new SmartArray([]);
 
@@ -80,8 +74,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testFirstRowAliasForFirst(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['first', 'second', 'third']);
 
         $this->assertSame('first', $smartArray->firstRow());
@@ -89,8 +81,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testGetFirstAliasForFirst(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['first', 'second', 'third']);
 
         $this->assertSame('first', $smartArray->getFirst());
@@ -98,8 +88,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testGetValuesAliasForValues(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['a' => 1, 'b' => 2, 'c' => 3]);
         $result     = $smartArray->getValues();
 
@@ -108,8 +96,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testItemAliasForGet(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['name' => 'John', 'age' => 30]);
 
         $this->assertSame('John', $smartArray->item('name'));
@@ -118,8 +104,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testJoinAliasForImplode(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['a', 'b', 'c']);
 
         $this->assertSame('a, b, c', $smartArray->join(', '));
@@ -127,8 +111,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testRawAliasForToArray(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['name' => 'John', 'age' => 30]);
 
         $this->assertSame(['name' => 'John', 'age' => 30], $smartArray->raw());
@@ -139,8 +121,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testEnableSmartStringsReturnsSmartArrayHtml(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['name' => 'John']);
         $result     = $smartArray->enableSmartStrings();
 
@@ -150,8 +130,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testWithSmartStringsReturnsSmartArrayHtml(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['name' => 'John']);
         $result     = $smartArray->withSmartStrings();
 
@@ -161,8 +139,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testDisableSmartStringsReturnsSmartArray(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = SmartArray::newSS(['name' => 'John']);
         $result     = $smartArray->disableSmartStrings();
 
@@ -172,8 +148,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testNoSmartStringsReturnsSmartArray(): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = SmartArray::newSS(['name' => 'John']);
         $result     = $smartArray->noSmartStrings();
 
@@ -184,12 +158,13 @@ class LegacyMethodsTest extends SmartArrayTestCase
     //endregion
     //region Deprecation warnings
 
-    public function testDeprecationWarningTriggeredWhenEnabled(): void
+    public function testDeprecationWarningTriggered(): void
     {
-        SmartArray::$logDeprecations = true;
+        // Temporarily restore default handler so we can capture the deprecation
+        restore_error_handler();
 
         $deprecationTriggered = false;
-        $previousHandler = set_error_handler(function ($errno, $errstr) use (&$deprecationTriggered) {
+        set_error_handler(function ($errno) use (&$deprecationTriggered) {
             if ($errno === E_USER_DEPRECATED) {
                 $deprecationTriggered = true;
             }
@@ -200,40 +175,21 @@ class LegacyMethodsTest extends SmartArrayTestCase
             $smartArray = new SmartArray(['a', 'b', 'c']);
             $smartArray->exists();
 
-            $this->assertTrue($deprecationTriggered, 'Deprecation warning should be triggered when $logDeprecations is true');
+            $this->assertTrue($deprecationTriggered, 'Deprecation warning should be triggered');
         } finally {
             restore_error_handler();
+            // Re-install the suppressor for tearDown consistency
+            set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
         }
     }
 
-    public function testNoDeprecationWarningWhenDisabled(): void
+    public function testNewSSTriggersDeprecation(): void
     {
-        SmartArray::$logDeprecations = false;
+        // Temporarily restore default handler so we can capture the deprecation
+        restore_error_handler();
 
         $deprecationTriggered = false;
-        $previousHandler = set_error_handler(function ($errno, $errstr) use (&$deprecationTriggered) {
-            if ($errno === E_USER_DEPRECATED) {
-                $deprecationTriggered = true;
-            }
-            return true;
-        });
-
-        try {
-            $smartArray = new SmartArray(['a', 'b', 'c']);
-            $smartArray->exists();
-
-            $this->assertFalse($deprecationTriggered, 'No deprecation warning should be triggered when $logDeprecations is false');
-        } finally {
-            restore_error_handler();
-        }
-    }
-
-    public function testNewSSTriggersDeprecationWhenEnabled(): void
-    {
-        SmartArray::$logDeprecations = true;
-
-        $deprecationTriggered = false;
-        set_error_handler(function ($errno, $errstr) use (&$deprecationTriggered) {
+        set_error_handler(function ($errno) use (&$deprecationTriggered) {
             if ($errno === E_USER_DEPRECATED) {
                 $deprecationTriggered = true;
             }
@@ -246,6 +202,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
             $this->assertTrue($deprecationTriggered, 'newSS() should trigger deprecation warning');
         } finally {
             restore_error_handler();
+            set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
         }
     }
 
@@ -257,8 +214,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
      */
     public function testLegacyMethodsReturnCorrectValues(string $method, array $args, mixed $expected): void
     {
-        SmartArray::$logDeprecations = false;
-
         $smartArray = new SmartArray(['a' => 1, 'b' => 2, 'c' => 3]);
         $result     = $smartArray->$method(...$args);
 
@@ -335,7 +290,8 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testLegacyConstructorTriggersDeprecationBeforeException(): void
     {
-        SmartArray::$logDeprecations = true;
+        // Temporarily restore default handler so we can capture the deprecation
+        restore_error_handler();
 
         $deprecationTriggered = false;
         set_error_handler(function ($errno, $errstr) use (&$deprecationTriggered) {
@@ -353,6 +309,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         }
         finally {
             restore_error_handler();
+            set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
         }
 
         $this->assertTrue($deprecationTriggered, 'Deprecation warning should be triggered before exception');

@@ -186,22 +186,35 @@ class ErrorHandlersTest extends SmartArrayTestCase
     }
 
     /**
-     * Test that orRedirect throws when headers already sent.
-     * This is the fail-fast check that happens before testing if empty.
+     * Test that orRedirect throws immediately when headers are already sent,
+     * regardless of whether the array is empty or not (fail-fast design).
      */
-    public function testOrRedirectThrowsWhenHeadersSent(): void
+    public function testOrRedirectThrowsWhenHeadersSentNonEmpty(): void
     {
         $smartArray = new SmartArray(['item1', 'item2']);
 
-        // In PHPUnit, headers are always sent, so this should throw
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Cannot redirect: headers already sent/');
+        $this->expectExceptionMessageMatches('/orRedirect\(\): headers already sent/');
 
         $smartArray->orRedirect('/login');
     }
 
     /**
-     * Note: Testing empty array redirect behavior is not possible in PHPUnit
+     * Test that orRedirect throws immediately when headers are already sent,
+     * regardless of whether the array is empty or not (fail-fast design).
+     */
+    public function testOrRedirectThrowsWhenHeadersSentEmpty(): void
+    {
+        $smartArray = new SmartArray([]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/orRedirect\(\): headers already sent/');
+
+        $smartArray->orRedirect('/login');
+    }
+
+    /**
+     * Note: Testing empty array redirect behavior with headers NOT sent is not possible in PHPUnit
      * because orRedirect() calls exit() which terminates the process.
      * The expected behavior for empty arrays (when headers not sent):
      * - Sets HTTP response code to 302

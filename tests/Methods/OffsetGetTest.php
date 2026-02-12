@@ -13,7 +13,7 @@ use Itools\SmartArray\Tests\SmartArrayTestCase;
  *
  * Array syntax is deprecated - use $arr->key or $arr->get('key') instead.
  * Array syntax routes through offsetGet() which triggers deprecation warnings
- * when SmartArray::$logDeprecations is enabled.
+ * which always triggers deprecation warnings.
  *
  * @see PropertyGetTest for preferred property syntax ($arr->key)
  */

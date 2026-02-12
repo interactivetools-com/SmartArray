@@ -16,7 +16,7 @@ use stdClass;
  *
  * Array syntax is deprecated - use $arr->key = value instead.
  * Array syntax routes through offsetSet() which triggers deprecation warnings
- * when SmartArray::$logDeprecations is enabled.
+ * which always triggers deprecation warnings.
  *
  * @see PropertySetTest for preferred property syntax ($arr->key = value)
  *

@@ -81,34 +81,6 @@ class PluckTest extends SmartArrayTestCase
         $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray does not match expected output.");
     }
 
-    public function testPluckMissingKeyWithWarnIfMissingDisabled(): void
-    {
-        $smartArray = new SmartArray([
-            ['id' => 1, 'name' => 'Alice'],
-            ['id' => 2, 'name' => 'Charlie'],
-        ]);
-
-        $originalWarnIfMissing = SmartArray::$warnIfMissing;
-
-        try {
-            SmartArray::$warnIfMissing = false;
-
-            ob_start();
-            $plucked = $smartArray->pluck('city');
-            $output  = ob_get_clean();
-
-            // Method argument warnings still show regardless of setting
-            $expectedWarningPattern = "/Warning: pluck\(\): 'city' doesn't exist/s";
-            $this->assertMatchesRegularExpression($expectedWarningPattern, $output,
-                "Method argument warnings should still be shown for pluck() even with warnIfMissing disabled");
-
-            $expected = [];
-            $this->assertEquals($expected, $plucked->toArray(), "Plucked SmartArray should be empty when key doesn't exist");
-        } finally {
-            SmartArray::$warnIfMissing = $originalWarnIfMissing;
-        }
-    }
-
     public static function pluckProvider(): array
     {
         return [

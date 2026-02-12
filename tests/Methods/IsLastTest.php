@@ -22,10 +22,10 @@ class IsLastTest extends SmartArrayTestCase
      */
     public function testIsLast(array $input): void
     {
-        $smartArray     = new SmartArray($input);
-        $smartArrayData = $smartArray->getArrayCopy();
-        $lastKey        = array_key_last($smartArrayData);
-        $assertionMade  = false;
+        $smartArray    = new SmartArray($input);
+        $keys          = $smartArray->keys()->toArray();
+        $lastKey       = $keys[count($keys) - 1] ?? null;
+        $assertionMade = false;
 
         foreach ($smartArray as $key => $value) {
             // Only nested SmartArrays have isLast()

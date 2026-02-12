@@ -147,32 +147,6 @@ final class SmartArrayHtml extends SmartArrayBase
     }
 
     //endregion
-    //region Position & Layout
-
-    /**
-     * Splits the SmartArray into smaller SmartArrays of a specified size.
-     *
-     * This method divides the current SmartArray into multiple SmartArrays, each containing
-     * at most the specified number of elements. The last chunk may contain fewer elements
-     * if the original SmartArray's count is not divisible by the chunk size.
-     *
-     * @param int $size The size of each chunk. Must be greater than 0.
-     * @return SmartArrayHtml A new SmartArray containing SmartArrays of the specified size.
-     * @example
-     * $arr = new SmartArray([1, 2, 3, 4, 5, 6, 7]);
-     * $chunks = $arr->chunk(3); // $chunks is now a SmartArray containing:
-     * [
-     *     SmartArray([1, 2, 3]),
-     *     SmartArray([4, 5, 6]),
-     *     SmartArray([7])
-     * ]
-     */
-    public function chunk(int $size): static
-    {
-        return parent::chunk($size);
-    }
-
-    //endregion
     //region Sorting & Filtering
 
     /**
@@ -464,36 +438,6 @@ final class SmartArrayHtml extends SmartArrayBase
     }
 
     /**
-     * Applies a callback to each element *as Smart objects* (i.e., SmartString or nested SmartArray),
-     * and returns a new SmartArray with the results.
-     *
-     * The callback receives two parameters:
-     *   - $value SmartString|SmartArray
-     *   - $key   (int|string, the array key)
-     *
-     * Because built-in PHP functions may not expect these Smart objects (and could fail or behave
-     * unpredictably), this method restricts to Closures, which can handle them safely.
-     *
-     * Preserves array keys in the returned SmartArray.
-     *
-     * Note: When using arrow functions (fn()), use print instead of echo for output.
-     * Echo cannot be used in arrow function expressions.
-     *
-     * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
-     *
-     * @return self A new SmartArray containing the transformed elements.
-     *
-     * @example
-     *  $arr = new SmartArray(['hello', 'world'], true); // with SmartStrings
-     *  $exclaimed = $arr->smartMap(fn($str, $k) => $str->upper()->append('!'));
-     *  // $exclaimed -> ['HELLO!', 'WORLD!']
-     */
-    public function smartMap(closure $callback): static
-    {
-        return parent::smartMap($callback);
-    }
-
-    /**
      * Calls the given callback on each element in the SmartArray (as SmartString or nested SmartArray),
      * primarily for side effects. Returns $this for chaining.
      *
@@ -506,7 +450,7 @@ final class SmartArrayHtml extends SmartArrayBase
      *      echo "$user->num - $user->name\n";
      *  });
      *
-     * If you need to transform or collect results, consider ->map() or ->smartMap() instead.
+     * If you need to transform or collect results, consider ->map() instead.
      */
     public function each(Closure $callback): static
     {
@@ -544,61 +488,6 @@ final class SmartArrayHtml extends SmartArrayBase
     public function load(string $column): static|SmartNull
     {
         return parent::load($column);
-    }
-
-    //endregion
-    //region Debugging and Help
-
-    //endregion
-    //region Error Handling
-
-    /**
-     * Sends a 404 header and message if the array is empty, then exits.
-     *
-     * @param string|null $message The message to display when sending 404.
-     * @return SmartArrayHtml Returns self if not empty, exits with 404 if empty
-     */
-    public function or404(?string $message = null): static
-    {
-        return parent::or404($message);
-    }
-
-    /**
-     * Dies with a message if the array is empty
-     *
-     * @param string $message Error message to show
-     * @return self Returns $this for method chaining if not empty, dies if empty
-     */
-    public function orDie(string $message): static
-    {
-        return parent::orDie($message);
-    }
-
-    /**
-     * Throws Exception if the array is empty
-     *
-     * @param string $message Error message to show
-     * @return self Returns $this for method chaining if not empty
-     * @throws RuntimeException If array is empty
-     */
-    public function orThrow(string $message): static
-    {
-        return parent::orThrow($message);
-    }
-
-    /**
-     * Redirects to a URL if the array is empty
-     *
-     * Uses a simple Location header redirect (HTTP 302 Temporary Redirect).
-     * If headers have already been sent, this method will throw an exception.
-     *
-     * @param string $url The URL to redirect to if array is empty
-     * @return self Returns $this for method chaining if not empty, redirects if empty
-     * @throws RuntimeException If headers have already been sent
-     */
-    public function orRedirect(string $url): static
-    {
-        return parent::orRedirect($url);
     }
 
     //endregion

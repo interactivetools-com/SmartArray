@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests;
 
 use BadMethodCallException, InvalidArgumentException;
-use ReflectionException, ReflectionObject;
+use ReflectionClass, ReflectionException, ReflectionMethod, ReflectionObject;
 use PHPUnit\Framework\TestCase;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
@@ -23,20 +23,20 @@ class SmartArrayTest extends TestCase
     private function verifyObjectStructure(SmartArrayBase $obj, string $path = '$obj', ?SmartArrayBase $actualRoot = null): void
     {
         $weAreRoot = $path === '$obj'; // e.g., depth is 0, not path set
-        $arrayCopy = $obj->getArrayCopy();
+        $keys      = $obj->keys()->toArray();
 
-        // Check for allowed types: SmartArrayBase, scalar, or null
-        foreach ($arrayCopy as $element) {
-            if (!$element instanceof SmartArrayBase && !is_scalar($element) && !is_null($element)) {
-                throw new InvalidArgumentException("Invalid type at $path : " . get_debug_type($obj) . ". Must be SmartArrayBase, scalar, or null.");
+        // Check for allowed types: SmartArrayBase, SmartString, scalar, or null
+        foreach ($obj as $element) {
+            if (!$element instanceof SmartArrayBase && !$element instanceof SmartString && !is_scalar($element) && !is_null($element)) {
+                throw new InvalidArgumentException("Invalid type at $path : " . get_debug_type($obj) . ". Must be SmartArrayBase, SmartString, scalar, or null.");
             }
         }
 
         // Check position properties
         $position = 0;
-        $firstKey = array_key_first($arrayCopy);
-        $lastKey  = array_key_last($arrayCopy);
-        foreach ($arrayCopy as $key => $el) {
+        $firstKey = $keys[0] ?? null;
+        $lastKey  = $keys[count($keys) - 1] ?? null;
+        foreach ($obj as $key => $el) {
             $position++;
 
             // skip non-SmartArrayBase elements
@@ -84,7 +84,7 @@ class SmartArrayTest extends TestCase
 
         // Recurse over child SmartArrays
         $actualRoot ??= $obj;
-        foreach ($arrayCopy as $key => $element) {
+        foreach ($obj as $key => $element) {
             if ($element instanceof SmartArrayBase) {
                 $this->verifyObjectStructure($element, "$path->$key", $actualRoot);
             }
@@ -445,9 +445,75 @@ class SmartArrayTest extends TestCase
         $this->assertStringContainsString('<xmp>', $output, "Help output should be wrapped in <xmp> tags");
         $this->assertStringContainsString('SmartArray:', $output, "Help output should contain introductory text");
         $this->assertStringContainsString('contains(value)', $output, "Help output should mention contains() method");
-        $this->assertStringContainsString('smartMap', $output, "Help output should mention smartMap() method");
         $this->assertStringContainsString('each', $output, "Help output should mention each() method");
         $this->assertStringContainsString('pluck', $output, "Help output should mention pluck() method");
+    }
+
+    /**
+     * Returns public API method names that should be documented, excluding internal/deprecated methods.
+     */
+    private function getDocumentedMethodNames(array $additionalSkips = []): array
+    {
+        $reflection = new ReflectionClass(SmartArrayBase::class);
+        $methods    = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
+
+        // Methods not part of the public API (internal, interface, or deprecated)
+        $skipMethods = [
+            'set',              // Public but rarely used directly (property syntax preferred)
+            'column',           // Alias for pluck/indexBy
+            'offsetExists',     // ArrayAccess interface
+            'getIterator',      // IteratorAggregate interface
+            'jsonSerialize',    // JsonSerializable interface
+            'newSmartNull',     // Internal
+            'isFlat',           // Internal helper
+            'isNested',         // Internal helper
+            'usingSmartStrings', // Internal
+            'setLoadHandler',   // Advanced/internal (set by ZenDB)
+            'root',             // Advanced/internal
+            'smartMap',         // Deprecated (in DeprecationsTrait)
+            'chunk',            // Deprecated (in DeprecationsTrait)
+            'offsetGet',        // Deprecated array access (in DeprecationsTrait)
+            'offsetSet',        // Deprecated array access (in DeprecationsTrait)
+            'offsetUnset',      // Deprecated array access (in DeprecationsTrait)
+            ...$additionalSkips,
+        ];
+
+        $names = [];
+        foreach ($methods as $method) {
+            $name = $method->getName();
+            if (str_starts_with($name, '__')) { continue; }
+            if ($method->getDeclaringClass()->getName() !== SmartArrayBase::class) { continue; }
+            if (in_array($name, $skipMethods, true)) { continue; }
+            $names[] = $name;
+        }
+        return $names;
+    }
+
+    /**
+     * Verify help.txt documents all public API methods.
+     * Catches drift when methods are added to SmartArrayBase but not documented.
+     */
+    public function testHelpTextCoversAllPublicMethods(): void
+    {
+        $helpText = file_get_contents(__DIR__ . '/../src/help.txt');
+
+        // asHtml/asRaw are documented in help.txt's "Creating SmartArrays" section without ->method() format
+        foreach ($this->getDocumentedMethodNames(['asHtml', 'asRaw']) as $name) {
+            $this->assertStringContainsString("$name(", $helpText, "help.txt is missing documentation for $name()");
+        }
+    }
+
+    /**
+     * Verify README.md method reference table documents all public API methods.
+     * Catches drift when methods are added to SmartArrayBase but not documented.
+     */
+    public function testReadmeCoversAllPublicMethods(): void
+    {
+        $readme = file_get_contents(__DIR__ . '/../README.md');
+
+        foreach ($this->getDocumentedMethodNames() as $name) {
+            $this->assertStringContainsString("$name(", $readme, "README.md is missing documentation for $name()");
+        }
     }
 
 //endregion
@@ -483,62 +549,6 @@ class SmartArrayTest extends TestCase
 
         // Assert that there is no warning output
         $this->assertEmpty($output, "No warning should be output when the array is empty.");
-    }
-
-    public function testWarnIfMissingOffsetWithGlobalSettingDisabled(): void
-    {
-        $smartArray = new SmartArray([
-            'id'   => 1,
-            'name' => 'Alice',
-        ]);
-
-        // Store original setting
-        $originalWarnIfMissing = SmartArray::$warnIfMissing;
-
-        try {
-            // Disable warnings globally
-            SmartArray::$warnIfMissing = false;
-
-            // For offset warnings, the global setting should prevent warnings
-            ob_start();
-            $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'offset']);
-            $output = ob_get_clean();
-
-            // Assert that no warning is shown when globally disabled
-            $this->assertEmpty($output, "No warning should be output for offset access when warnIfMissing is disabled");
-        } finally {
-            // Restore original setting
-            SmartArray::$warnIfMissing = $originalWarnIfMissing;
-        }
-    }
-
-    public function testWarnIfMissingArgumentWithGlobalSettingDisabled(): void
-    {
-        $smartArray = new SmartArray([
-            'id'   => 1,
-            'name' => 'Alice',
-        ]);
-
-        // Store original setting
-        $originalWarnIfMissing = SmartArray::$warnIfMissing;
-
-        try {
-            // Disable warnings globally
-            SmartArray::$warnIfMissing = false;
-
-            // Method argument warnings should still show even with the global setting disabled
-            ob_start();
-            $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']);
-            $output = ob_get_clean();
-
-            // Assert that the warning is still shown despite the global setting
-            $expectedWarningPattern = "/Warning: .*'age' doesn't exist/s";
-            $this->assertMatchesRegularExpression($expectedWarningPattern, $output,
-                "Method argument warnings should still be shown even with warnIfMissing disabled");
-        } finally {
-            // Restore original setting
-            SmartArray::$warnIfMissing = $originalWarnIfMissing;
-        }
     }
 
 //endregion

@@ -18,26 +18,9 @@ use Itools\SmartString\SmartString;
  */
 abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess, IteratorAggregate, Countable, JsonSerializable
 {
-    //region Global Settings
+    use ErrorHelpersTrait;
+    use DeprecationsTrait;
 
-    /**
-     * Controls whether array key access warnings are shown for missing keys
-     */
-    public static bool $warnIfMissing = true;
-
-    /**
-     * Controls whether deprecation warnings are echoed to output.
-     * Enable during development to see deprecated usage in browser/console.
-     */
-    public static bool $warnIfDeprecated = false;
-
-    /**
-     * Controls whether deprecation notices are logged via trigger_error().
-     * Enable to find deprecated method and array access usage in error logs.
-     */
-    public static bool $logDeprecations = false;
-
-    //endregion
     //region Internal Storage
 
     /**
@@ -169,9 +152,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Show warning if key doesn't exist (only when no default provided)
-        if (self::$warnIfMissing) {
-            $this->warnIfMissing($key, 'offset');
-        }
+        $this->warnIfMissing($key, 'offset');
 
         return $this->newSmartNull();
     }
@@ -281,9 +262,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Show warning if key doesn't exist and array isn't empty
-        if (self::$warnIfMissing) {
-            $this->warnIfMissing($key, 'offset');
-        }
+        $this->warnIfMissing($key, 'offset');
 
         return $this->newSmartNull();
     }
@@ -345,84 +324,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function contains(mixed $value): bool
     {
         return in_array(self::getRawValue($value), $this->toArray());
-    }
-
-    /**
-     * Returns a copy of the internal array.
-     */
-    public function getArrayCopy(): array
-    {
-        return $this->data;
-    }
-
-    //endregion
-    //region Position & Layout
-
-    /**
-     * Checks if first element in root, false if no root.
-     */
-    public function isFirst(): bool
-    {
-        return $this->isFirst;
-    }
-
-    /**
-     * Checks if last element in root, false if no root.
-     */
-    public function isLast(): bool
-    {
-        return $this->isLast;
-    }
-
-    /**
-     * Get position in root (starting at 1, unrelated to keys).  Returns 0 if no root.
-     */
-    public function position(): int
-    {
-        return $this->position;
-    }
-
-    /**
-     * Returns true for every nth element (positions start at 1).
-     * For example, isMultipleOf(3) matches every 3rd element.
-     * Useful for creating grid layouts or other repeating patterns.
-     */
-    public function isMultipleOf(int $value): bool
-    {
-        if ($value <= 0) {
-            throw new InvalidArgumentException("Value must be greater than 0.");
-        }
-        return $this->position() % $value === 0;
-    }
-
-    /**
-     * Splits the SmartArray into smaller SmartArrays of a specified size.
-     *
-     * This method divides the current SmartArray into multiple SmartArrays, each containing
-     * at most the specified number of elements. The last chunk may contain fewer elements
-     * if the original SmartArray's count is not divisible by the chunk size.
-     *
-     * @param int $size The size of each chunk. Must be greater than 0.
-     * @return SmartArray A new SmartArray containing SmartArrays of the specified size.
-     * @throws InvalidArgumentException If the size is less than or equal to 0.
-     *
-     * @example
-     * $arr = new SmartArray([1, 2, 3, 4, 5, 6, 7]);
-     * $chunks = $arr->chunk(3); // $chunks is now a SmartArray containing:
-     * [
-     *     SmartArray([1, 2, 3]),
-     *     SmartArray([4, 5, 6]),
-     *     SmartArray([7])
-     * ]
-     */
-    public function chunk(int $size): static
-    {
-        if ($size <= 0) {
-            throw new InvalidArgumentException("Chunk size must be greater than 0.");
-        }
-
-        $chunks = array_chunk($this->toArray(), $size);
-        return new static($chunks, $this->getInternalProperties());
     }
 
     //endregion
@@ -832,8 +733,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $newArray = [];
         foreach ($this as $key => $value) {
-            $value          = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $newArray[$key] = sprintf($format, $value, $key);
+            $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
+            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8') : $key;
+            $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
         // Return SmartArray (raw) - sprintf output is pre-formatted and shouldn't be re-encoded
@@ -884,44 +786,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Applies a callback to each element *as Smart objects* (i.e., SmartString or nested SmartArray),
-     * and returns a new SmartArray with the results.
-     *
-     * The callback receives two parameters:
-     *   - $value SmartString|SmartArray
-     *   - $key   (int|string, the array key)
-     *
-     * Because built-in PHP functions may not expect these Smart objects (and could fail or behave
-     * unpredictably), this method restricts to Closures, which can handle them safely.
-     *
-     * Preserves array keys in the returned SmartArray.
-     *
-     * Note: When using arrow functions (fn()), use print instead of echo for output.
-     * Echo cannot be used in arrow function expressions.
-     *
-     * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
-     *
-     * @return self A new SmartArray containing the transformed elements.
-     *
-     * @example
-     *  $arr = new SmartArray(['hello', 'world'], true); // with SmartStrings
-     *  $exclaimed = $arr->smartMap(fn($str, $k) => $str->upper()->append('!'));
-     *  // $exclaimed -> ['HELLO!', 'WORLD!']
-     */
-    public function smartMap(closure $callback): self
-    {
-        $newArray        = [];
-        $useSmartStrings = $this->useSmartStrings;
-
-        foreach (array_keys($this->getArrayCopy()) as $key) {
-            $smartValue     = $this->getElement($key, $useSmartStrings);
-            $newArray[$key] = $callback($smartValue, $key);
-        }
-
-        return new static($newArray, $this->getInternalProperties());
-    }
-
-    /**
      * Calls the given callback on each element in the SmartArray (as SmartString or nested SmartArray),
      * primarily for side effects. Returns $this for chaining.
      *
@@ -934,7 +798,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *      echo "$user->num - $user->name\n";
      *  });
      *
-     * If you need to transform or collect results, consider ->map() or ->smartMap() instead.
+     * If you need to transform or collect results, consider ->map() instead.
      */
     public function each(Closure $callback): self
     {
@@ -1272,9 +1136,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Sends a 404 header and message if the array is empty, then exits.
      *
      * @param string|null $message The message to display when sending 404.
-     * @return self Returns self if not empty, exits with 404 if empty
+     * @return static Returns $this if not empty, exits with 404 if empty
      */
-    public function or404(?string $message = null): self
+    public function or404(?string $message = null): static
     {
         if ($this->count() > 0) {
             return $this;
@@ -1305,9 +1169,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Dies with a message if the array is empty
      *
      * @param string $message Error message to show
-     * @return self Returns $this for method chaining if not empty, dies if empty
+     * @return static Returns $this for method chaining if not empty, dies if empty
      */
-    public function orDie(string $message): self
+    public function orDie(string $message): static
     {
         if ($this->count() === 0) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
@@ -1320,10 +1184,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Throws Exception if the array is empty
      *
      * @param string $message Error message to show
-     * @return self Returns $this for method chaining if not empty
+     * @return static Returns $this for method chaining if not empty
      * @throws RuntimeException If array is empty
      */
-    public function orThrow(string $message): self
+    public function orThrow(string $message): static
     {
         if ($this->count() === 0) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
@@ -1339,20 +1203,19 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * If headers have already been sent, this method will throw an exception.
      *
      * @param string $url The URL to redirect to if array is empty
-     * @return self Returns $this for method chaining if not empty, redirects if empty
+     * @return static Returns $this for method chaining if not empty, redirects if empty
      * @throws RuntimeException If headers have already been sent
      */
-    public function orRedirect(string $url): self
+    public function orRedirect(string $url): static
     {
-        // Check if headers have already been sent (fail fast)
+        // Check early so developers find out immediately, not only when count === 0
         if (headers_sent($file, $line)) {
-            throw new RuntimeException("Cannot redirect: headers already sent in $file on line $line");
+            throw new RuntimeException("orRedirect(): headers already sent in $file on line $line");
         }
 
         if ($this->count() === 0) {
-            // Send redirect headers (302 Temporary Redirect)
             http_response_code(302);
-            header("Location: " . $url);
+            header("Location: $url");
             exit;
         }
         return $this;
@@ -1383,10 +1246,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Throws a PHP warning if the specified key isn't in the list of keys, but only if the array isn't empty.
-     * Throws PHP warning if the column is missing in the array to help debugging, but only if the array is not empty
-     *
-     * Method argument warnings always display, but property/offset warnings can be toggled with $warnIfMissing.
+     * Throws a PHP warning if the specified key doesn't exist, but only if the array isn't empty.
+     * Helps debugging by showing where the missing key was accessed.
      *
      * @param string|int $key The key to check for existence
      * @param string $warningType 'offset' for properties, 'argument' for method arguments
@@ -1397,16 +1258,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if ($this->count() === 0 || $this->offsetExists($key)) {
             return;
         }
-
-        // For offset access, respect the global toggle
-        if ($warningType === 'offset' && !self::$warnIfMissing) {
-            return;
-        }
-
-        // Always show warnings for method arguments regardless of global setting
-
-        // If array isn't empty and key doesn't exist, throw warning to help debugging
-        // Note that we only check when array is not empty, so we don't throw warnings for every column on empty arrays
         $caller           = self::getExternalCaller();
         $keyOrEmptyQuotes = $key === "" ? "''" : $key; // Show empty quotes for empty string keys
 
@@ -1427,22 +1278,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Emulate PHP warning: output warning and trigger PHP warning (for logging)
         echo "\nWarning: $warning\n";                  // Output with echo so PHP doesn't add the filename and line number of this function on the end
         @trigger_error($warning, E_USER_WARNING);      // Trigger a PHP warning but hide output with @ so it will still get logged
-    }
-
-    /**
-     * Logs a deprecation warning if logging is enabled
-     */
-    protected static function logDeprecation(string $message): void
-    {
-        $caller   = self::getExternalCaller();
-        $message .= " in {$caller['file']}:{$caller['line']}.";
-
-        if (self::$warnIfDeprecated) {
-            echo "\nWarning: $message\n";
-        }
-        if (self::$logDeprecations) {
-            @trigger_error($message, E_USER_DEPRECATED);
-        }
     }
 
     /**
@@ -1472,179 +1307,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return "";
     }
 
-    /**
-     * @param $method
-     * @param $args
-     * @return mixed
-     *
-     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
-     */
-    public function __call($method, $args)
-    {
-        $methodLc = strtolower($method);
-
-        // Deprecated Warnings: (optionally) log warning and return proper value.  This will be removed in a future version
-        [$return, $deprecationError] = match ($methodLc) {  // use lowercase names below for comparison
-            'getcolumn'                              => [null, "Replace ->$method() with ->pluck() or another method"],
-            'exists'                                 => [$this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"],
-            'firstrow', 'getfirst'                   => [$this->first(), "Replace ->$method() with ->first()"],
-            'getvalues'                              => [$this->values(), "Replace ->$method() with ->values()"],
-            'item'                                   => [$this->get(...$args), "Replace ->$method() with ->get()"],
-            'join'                                   => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
-            'raw'                                    => [$this->toArray(), "Replace ->$method() with ->toArray()"],
-            'toraw'                                  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
-            'tohtml'                                 => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
-            'withsmartstrings', 'enablesmartstrings' => [$this->asHtml(), "Replace ->$method() with ->asHtml() or use SmartArrayHtml::new()"],
-            'nosmartstrings', 'disablesmartstrings'  => [$this->asRaw(), "Replace ->$method() with ->asRaw() or use SmartArray::new()"],
-            default                                  => [null, null],
-        };
-        if ($deprecationError) {
-            self::logDeprecation($deprecationError);
-            return $return;
-        }
-
-        // Common aliases: throw error with suggestion.  These are used by other libraries or common LLM suggestions
-        $methodAliases = [
-            // value access
-            'get'         => ['fetch', 'value'],
-            'first'       => ['head'],
-            'last'        => ['tail'],
-            'nth'         => ['index', 'at'],
-            'getRawValue' => ['raw'],
-
-            // emptiness & search
-            'isEmpty'     => ['empty'],
-            'isNotEmpty'  => ['any', 'not_empty'],
-            'contains'    => ['has', 'includes'],
-
-            // position helpers
-            'position'    => ['pos'],
-            'chunk'       => ['split'],
-
-            // sorting & filtering
-            'sort'        => ['order', 'orderby'],
-            'unique'      => ['distinct', 'uniq'],
-            'filter'      => ['select'],
-            'where'       => ['filter_by'],
-
-            // array transforms
-            'toArray'     => ['array', 'raw'],
-            'keys'        => ['keyset'],
-            'values'      => ['vals', 'list'],
-            'indexBy'     => ['keyby'],
-            'groupBy'     => ['group'],
-            'pluckNth'    => ['columnnth'],
-            'implode'     => ['join', 'concat'],
-            'map'         => ['transform', 'apply'],
-            'each'        => ['foreach', 'iterate'],
-            'merge'       => ['append', 'union'],
-
-            // utilities
-            'help'        => ['docs'],
-            'debug'       => ['dump'],
-        ];
-
-
-        // Check if the called method is an alias
-        $suggestion = null;
-        foreach ($methodAliases as $correctMethod => $aliases) {
-            if (in_array($methodLc, $aliases, true)) {
-                $suggestion = "did you mean ->$correctMethod()?";
-                break;
-            }
-        }
-
-        // throw unknown method exception
-        // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $suggestion ??= "call ->help() for available methods.";
-        $error      = sprintf("Call to undefined method %s->$method(), $suggestion\n", basename(self::class));
-        throw new Error($error . self::occurredInFile());
-    }
-
-    /**
-     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
-     */
-    public static function __callStatic($method, $args): mixed
-    {
-        $methodLc = strtolower($method);
-
-        // Deprecated/renamed methods (case-insensitive)
-        [$return, $deprecationError] = match ($methodLc) {
-            'rawvalue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
-            'newss'    => [new SmartArrayHtml($args[0] ?? []), "Replace ::$method(...) with SmartArrayHtml::new(...)"],
-            default    => null,
-        };
-        if ($deprecationError) {
-            self::logDeprecation($deprecationError);
-            return $return;
-        }
-
-        // throw unknown method exception
-        // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $baseClass = basename(self::class);
-        $error     = "Call to undefined method $baseClass->$method(), call ->help() for available methods.\n";
-        throw new Error($error . self::occurredInFile());
-    }
-
-    /**
-     * Find the first caller outside the SmartArray library directory.
-     * Returns array with 'file' (basename), 'line', and 'function' keys.
-     */
-    private static function getExternalCaller(): array
-    {
-        $smartArrayDir = dirname(__FILE__);
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $caller) {
-            if (!empty($caller['file']) && dirname($caller['file']) !== $smartArrayDir) {
-                return [
-                    'file'     => basename($caller['file']),
-                    'line'     => $caller['line'] ?? "unknown",
-                    'function' => $caller['function'] ?? "unknown",
-                ];
-            }
-        }
-        return ['file' => "unknown", 'line' => "unknown", 'function' => "unknown"];
-    }
-
-    /**
-     * Add "Occurred in file:line" to the end of the error messages with the first non-SmartArray file and line number.
-     */
-    private static function occurredInFile($addReportedFileLine = false): string
-    {
-        $file      = "unknown";
-        $line      = "unknown";
-        $inMethod  = "";
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-
-        // Add Occurred in file:line
-        foreach ($backtrace as $index => $caller) {
-            if (empty($caller['file']) || $caller['file'] !== __FILE__) {
-                $file       = $caller['file'] ?? $file;
-                $line       = $caller['line'] ?? $line;
-                $prevCaller = $backtrace[$index + 1] ?? [];
-                $inMethod   = match (true) {
-                    !empty($prevCaller['class'])    => " in {$prevCaller['class']}{$prevCaller['type']}{$prevCaller['function']}()",
-                    !empty($prevCaller['function']) => " in {$prevCaller['function']}()",
-                    default                         => "",
-                };
-                break;
-            }
-        }
-        $output = "Occurred in $file:$line$inMethod\nReported";
-
-        // Add Reported in file:line (if requested)
-        if ($addReportedFileLine) {
-            $method       = basename($backtrace[1]['class']) . $backtrace[1]['type'] . $backtrace[1]['function'];
-            $reportedFile = $backtrace[0]['file'] ?? "unknown";
-            $reportedLine = $backtrace[0]['line'] ?? "unknown";
-            $output       .= " in $reportedFile:$reportedLine in $method()\n";
-        }
-
-        // return output
-        return $output;
-    }
-
     //endregion
     //region Internal Methods
+
+    /**
+     * Returns a copy of the internal data array without any conversion.
+     * For public use, use toArray() which recursively converts SmartArrays back to plain arrays.
+     */
+    private function getArrayCopy(): array
+    {
+        return $this->data;
+    }
 
     /**
      * Return SmartArrays as is, and raw values as SmartStrings if that's enabled, otherwise as raw
@@ -1717,85 +1390,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
 
     //endregion
-    //region Deprecated Array Access
-
-    /**
-     * Sets a value in the SmartArray using array syntax.
-     *
-     * @deprecated Use ->set('key', $value) or ->key = $value instead of $array['key'] = $value
-     *
-     * Note: If you add a key after the array is created the position properties will not be updated.
-     * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
-     *
-     * @param mixed $offset The key to set. If null, the value is appended to the array.
-     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
-     *
-     * @throws InvalidArgumentException If an unsupported value type is provided.
-     */
-    public function offsetSet(mixed $offset, mixed $value): void
-    {
-        $this->triggerArrayAccessDeprecation($offset, 'set');
-        $this->setElement($offset, $value);
-    }
-
-    /**
-     * Retrieves a value from the SmartArray using array syntax.
-     *
-     * @deprecated Use ->property or ->get('key') instead of $array['key']
-     * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
-     */
-    public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|SmartString|string|int|float|bool|null
-    {
-        $this->triggerArrayAccessDeprecation($offset, 'get');
-        return $this->getElement($offset, $useSmartStrings);
-    }
-
-    /**
-     * Remove a key from the array.
-     *
-     * @deprecated Use transformation methods instead of modifying arrays in place
-     */
-    public function offsetUnset(mixed $offset): void
-    {
-        $this->triggerArrayAccessDeprecation($offset, 'unset');
-        unset($this->data[$offset]);
-    }
-
-    /**
-     * Log a deprecation notice for array access syntax.
-     */
-    private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
-    {
-        if (!self::$warnIfDeprecated && !self::$logDeprecations) {
-            return;
-        }
-
-        $keyStr          = is_string($key) ? "'$key'" : (string) $key;
-        $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
-
-        // Suggest the preferred access method
-        $suggestion = match ($operation) {
-            'set' => match (true) {
-                is_int($key)     => "->set($key, \$value)",
-                $isValidPropName => "->$key = \$value",
-                default          => "->set('$key', \$value) or ->{'$key'} = \$value",
-            },
-            'unset' => match (true) {
-                is_int($key)     => '->{' . $key . '}',
-                $isValidPropName => "->$key",
-                default          => "->{'$key'}",
-            },
-            default => match (true) {
-                is_int($key)     => "->get($key)",
-                $isValidPropName => "->$key",
-                default          => "->get('$key')",
-            },
-        };
-
-        self::logDeprecation("Replace [$keyStr] with $suggestion");
-    }
-
-    //endregion
     //region Instance Properties
 
     /**
@@ -1806,11 +1400,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     protected mixed $loadHandler = null;       // Handler for lazy-loading nested arrays
     protected array $mysqli = [];              // Metadata from last mysqli result
     private ?self $root = null;                // The root SmartArray
-
-    // Position properties - calculated when the SmartArray is created
-    protected bool $isFirst  = false;
-    protected bool $isLast   = false;
-    private int $position = 0;
 
     /**
      * Check if SmartStrings mode is enabled.

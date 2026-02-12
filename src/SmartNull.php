@@ -18,7 +18,7 @@ use stdClass;
  */
 class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, JsonSerializable, Countable
 {
-    //region Constructor
+    //region Creation and Conversion
 
     public function __construct(array $properties = [])
     {
@@ -28,6 +28,52 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
                 $this->{$property} = $value;
             }
         }
+    }
+
+    /**
+     * Convert SmartNull to an empty SmartArray, preserving internal properties.
+     *
+     * Use this when you need a typed SmartArray for IDE autocompletion or to access
+     * metadata like mysqli() on a potentially empty result. Returns raw PHP values
+     * on property access (strings, ints, etc.).
+     *
+     *     $record = DB::get('users', ['num' => $id])->first()->asRaw();
+     *     $record->name;      // Returns string or null (via SmartNull chaining)
+     *     $record->mysqli();  // Access query metadata even if no results
+     *
+     * @return SmartArray An empty SmartArray with preserved internal properties
+     */
+    public function asRaw(): SmartArray
+    {
+        return new SmartArray([], $this->getInternalProperties());
+    }
+
+    /**
+     * Convert SmartNull to an empty SmartArrayHtml, preserving internal properties.
+     *
+     * Use this when you need a typed SmartArrayHtml for IDE autocompletion or to access
+     * metadata like mysqli() on a potentially empty result. Returns HTML-safe SmartString
+     * objects on property access.
+     *
+     *     $record = DB::get('users', ['num' => $id])->first()->asHtml();
+     *     $record->name;      // Returns SmartString or SmartNull (safe for output)
+     *     $record->mysqli();  // Access query metadata even if no results
+     *
+     * @return SmartArrayHtml An empty SmartArrayHtml with preserved internal properties
+     */
+    public function asHtml(): SmartArrayHtml
+    {
+        return new SmartArrayHtml([], $this->getInternalProperties());
+    }
+
+    /**
+     * Return the underlying value (always null for SmartNull).
+     *
+     * @return null
+     */
+    public function value(): mixed
+    {
+        return null;
     }
 
     //endregion
@@ -193,8 +239,22 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     //endregion
     //region Internal Properties
 
-    private bool  $useSmartStrings = false;  // Determines which SmartArray type to create when delegating method calls
-    private array $mysqli          = [];     // Metadata from last mysqli result, accessed via mysqli() method
+    private bool              $useSmartStrings = false;  // Determines which SmartArray type to create when delegating method calls
+    private array             $mysqli          = [];     // Metadata from last mysqli result, accessed via mysqli() method
+    private mixed             $loadHandler     = null;   // Callback for lazy-loading related data
+    private ?SmartArrayBase   $root            = null;   // Reference to root SmartArray (for nested arrays)
+
+    /**
+     * Get internal properties for passing to SmartArray/SmartArrayHtml constructors.
+     */
+    private function getInternalProperties(): array
+    {
+        return [
+            'loadHandler' => $this->loadHandler,
+            'mysqli'      => $this->mysqli,
+            'root'        => $this->root,
+        ];
+    }
 
     //endregion
 }

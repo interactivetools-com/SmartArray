@@ -81,7 +81,7 @@ trait ErrorHelpersTrait
                 break;
             }
         }
-        $output = "Occurred in $file:$line$inMethod";
+        $output = "Occurred in $file:$line$inMethod\nReported"; // "Reported" is a prefix - trigger_error() appends " in file on line X"
 
         // Add Reported in file:line (if requested)
         if ($addReportedFileLine && isset($backtrace[0], $backtrace[1])) {
@@ -90,7 +90,7 @@ trait ErrorHelpersTrait
             $method       = $shortClass . ($backtrace[1]['type'] ?? '') . ($backtrace[1]['function'] ?? '');
             $reportedFile = $backtrace[0]['file'] ?? "unknown";
             $reportedLine = $backtrace[0]['line'] ?? "unknown";
-            $output       .= "\nReported in $reportedFile:$reportedLine in $method()\n";
+            $output       .= " in $reportedFile:$reportedLine in $method()\n";
         }
 
         return $output;

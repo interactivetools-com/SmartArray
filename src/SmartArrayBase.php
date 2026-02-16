@@ -697,32 +697,37 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Applies sprintf formatting to each element and returns SmartArray.
+     * Applies sprintf formatting to each element. Always returns SmartArray (raw).
      *
-     * Supports two placeholder styles:
-     * - Standard sprintf: `%s` (value), `%1$s` (value), `%2$s` (key)
-     * - Named aliases: `{value}` and `{key}` (converted to sprintf format internally)
+     * **How it works:**
+     * - **Encoding:** SmartArrayHtml encodes values/keys before insertion. SmartArray does not.
+     * - **Return type:** Always returns SmartArray (raw), even when called on SmartArrayHtml.
+     *   Pre-formatted HTML should not be re-encoded by subsequent operations like implode().
+     * - **Don't call asHtml() on the result** - it will double-encode your output.
+     * - **Placeholders:** `{value}` or `%1$s`, `{key}` or `%2$s`. All sprintf specifiers work (%d, %f, %05d, etc.).
      *
-     * For SmartArrayHtml, values are automatically HTML-encoded before formatting.
-     * Always returns SmartArray (raw) since pre-formatted HTML shouldn't be re-encoded.
+     *     // Wrap values in HTML (typical usage)
+     *     $fruits->sprintf('<li>{value}</li>')->implode("\n");
      *
-     * Examples:
+     *     // Select options using keys
+     *     $countries->sprintf("<option value='{key}'>{value}</option>")->implode("\n");
      *
-     *     // Simple value wrapping
-     *     $row->sprintf("<td>%s</td>")
-     *     $row->sprintf("<td>{value}</td>")
+     *     // SmartArray vs SmartArrayHtml encoding
+     *     $data = ["O'Brien", '<script>'];
+     *     SmartArray::new($data)->sprintf('<td>{value}</td>')->implode();
+     *     // <td>O'Brien</td><td><script></td>           (no encoding)
+     *     SmartArrayHtml::new($data)->sprintf('<td>{value}</td>')->implode();
+     *     // <td>O&apos;Brien</td><td>&lt;script&gt;</td> (HTML-encoded)
      *
-     *     // Using keys (e.g., for select options)
-     *     $options->sprintf("<option value='{key}'>{value}</option>")
-     *     $options->sprintf("<option value='%2\$s'>%1\$s</option>")  // Same result
+     *     // sprintf specifiers work too
+     *     SmartArray::new([7, 42, 185])->sprintf('%05d')->implode(', '); // 00007, 00042, 00185
      *
-     *     // HTML encoding (SmartArrayHtml)
-     *     $row = SmartArrayHtml::new(["O'Brien", '<script>']);
-     *     $row->sprintf("<td>%s</td>")->implode()
-     *     // Output: <td>O&apos;Brien</td><td>&lt;script&gt;</td>
+     * Notes: Aliases are case-sensitive (only lowercase `{value}` and `{key}`).
+     * Only two parameters available (value and key). Flat arrays only.
      *
-     * @param string $format The sprintf format string (also supports {value}/{key} aliases)
-     * @return SmartArray Pre-formatted strings (won't be re-encoded on output)
+     * @param string $format sprintf format string (supports {value}/{key} aliases)
+     * @return SmartArray Pre-formatted strings that won't be re-encoded on output
+     * @throws \InvalidArgumentException If called on a nested array
      */
     public function sprintf(string $format): SmartArray
     {
@@ -734,7 +739,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $newArray = [];
         foreach ($this as $key => $value) {
             $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8') : $key;
+            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8') : $key;
             $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
@@ -1054,7 +1059,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Wrap output in <xmp> tag if text/html and not called from a function that already added <xmp>
-     * @noinspection SpellCheckingInspection // ignore all lowercase strtolower function name
      */
     private static function xmpWrap($output): string
     {
@@ -1148,7 +1152,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         http_response_code(404);
         header("Content-Type: text/html; charset=utf-8");
         $message ??= "The requested URL was not found on this server.";
-        $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+        $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
 
         echo <<<__HTML__
             <!DOCTYPE html>
@@ -1174,7 +1178,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orDie(string $message): static
     {
         if ($this->count() === 0) {
-            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
             die($message);
         }
         return $this;
@@ -1190,7 +1194,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orThrow(string $message): static
     {
         if ($this->count() === 0) {
-            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
             throw new RuntimeException($message);
         }
         return $this;

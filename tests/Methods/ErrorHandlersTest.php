@@ -188,9 +188,18 @@ class ErrorHandlersTest extends SmartArrayTestCase
     /**
      * Test that orRedirect throws immediately when headers are already sent,
      * regardless of whether the array is empty or not (fail-fast design).
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testOrRedirectThrowsWhenHeadersSentNonEmpty(): void
     {
+        // Flush PHPUnit's output buffers so echo actually sends headers
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        echo ' ';
+
         $smartArray = new SmartArray(['item1', 'item2']);
 
         $this->expectException(RuntimeException::class);
@@ -202,9 +211,18 @@ class ErrorHandlersTest extends SmartArrayTestCase
     /**
      * Test that orRedirect throws immediately when headers are already sent,
      * regardless of whether the array is empty or not (fail-fast design).
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
     public function testOrRedirectThrowsWhenHeadersSentEmpty(): void
     {
+        // Flush PHPUnit's output buffers so echo actually sends headers
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        echo ' ';
+
         $smartArray = new SmartArray([]);
 
         $this->expectException(RuntimeException::class);

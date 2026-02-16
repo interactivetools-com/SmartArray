@@ -82,36 +82,43 @@ trait DeprecationsTrait
         $methodAliases = [
             // value access
             'get'         => ['fetch', 'value'],
-            'first'       => ['head'],
-            'last'        => ['tail'],
+            'first'       => ['head', 'find'],
+            'last'        => ['tail', 'end'],
             'nth'         => ['index', 'at'],
 
             // emptiness & search
+            'count'       => ['length', 'size'],
             'isEmpty'     => ['empty'],
-            'isNotEmpty'  => ['any', 'not_empty'],
-            'contains'    => ['has', 'includes'],
+            'isNotEmpty'  => ['any', 'not_empty', 'notempty', 'hasvalue'],
+            'contains'    => ['has', 'includes', 'in', 'some'],
 
             // sorting & filtering
-            'sort'        => ['order', 'orderby'],
-            'unique'      => ['distinct', 'uniq'],
-            'filter'      => ['select'],
-            'where'       => ['filter_by'],
+            'sort'        => ['order', 'sorted'],
+            'sortBy'      => ['orderby', 'sortbycolumn'],
+            'unique'      => ['distinct', 'uniq', 'dedupe'],
+            'filter'      => ['select', 'keep'],
+            'where'       => ['filter_by', 'findwhere', 'match'],
 
             // array transforms
-            'toArray'     => ['array'],
+            'toArray'     => ['array', 'all', 'unwrap'],
             'keys'        => ['keyset'],
             'values'      => ['vals', 'list'],
             'indexBy'     => ['keyby'],
-            'groupBy'     => ['group'],
+            'groupBy'     => ['group', 'categorize'],
+            'pluck'       => ['extract', 'pick'],
             'pluckNth'    => ['columnnth'],
             'implode'     => ['concat'],
-            'map'         => ['transform', 'apply'],
-            'each'        => ['foreach', 'iterate'],
-            'merge'       => ['append', 'union'],
+            'map'         => ['transform', 'apply', 'collect'],
+            'each'        => ['foreach', 'iterate', 'walk'],
+            'merge'       => ['append', 'union', 'combine', 'extend'],
+
+            // conversion
+            'asHtml'      => ['encode', 'safe', 'escape'],
+            'asRaw'       => ['decode'],
 
             // utilities
             'help'        => ['docs'],
-            'debug'       => ['dump'],
+            'debug'       => ['dump', 'inspect', 'dd'],
         ];
 
         // Check if the called method is an alias
@@ -162,7 +169,7 @@ trait DeprecationsTrait
      *
      * @deprecated Use ->map() instead, which receives raw PHP values
      * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
-     * @return self A new SmartArray containing the transformed elements.
+     * @return static A new SmartArray containing the transformed elements.
      */
     public function smartMap(Closure $callback): self
     {

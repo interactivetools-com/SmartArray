@@ -19,10 +19,10 @@ class MysqliTest extends SmartArrayTestCase
     /**
      * @dataProvider mysqliProvider
      */
-    public function testMysqli(array $input, array $mysqliInfo, ?callable $operation, array $expected): void
+    public function testMysqli(array $input, array $metadata, ?callable $operation, array $expected): void
     {
         // Create initial SmartArray with metadata
-        $properties = ['mysqli' => $mysqliInfo];
+        $properties = ['mysqli' => $metadata];
         $smartArray = new SmartArray($input, $properties);
 
         // Perform operation if specified

@@ -242,16 +242,16 @@ Science Fiction Books:
 - I, Robot (1950)
 
 Jane Austen published 3 books (1813-1818):
-- Pride and Prejudice
-- Emma
-- Persuasion
+- Pride and Prejudice (1813)
+- Emma (1815)
+- Persuasion (1818)
 
 Isaac Asimov published 2 books (1950-1951):
-- I, Robot
-- Foundation
+- I, Robot (1950)
+- Foundation (1951)
 
-George Orwell published 1 book (1949):
-- 1984
+George Orwell published 1 books (1949-1949):
+- 1984 (1949)
 ```
 
 **Common Use Cases for groupBy():**
@@ -274,7 +274,8 @@ George Orwell published 1 book (1949):
 
 ### Extracting Unique Tags with pluck(), unique(), and implode()
 
-When working with collections, you often need to extract a single field, remove duplicates, and produce a display string.
+When working with collections, you often need to extract a single field, remove duplicates, and produce a display
+string.
 Here's how `SmartArray` chains these operations into a single expressive pipeline.
 
 ```php
@@ -452,7 +453,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Value Access          |                       $obj->key | Get a value using property syntax                                                                                          |
 |                       |                       get($key) | Get a value by key (for numeric keys or keys with special characters)                                                      |
 |                       |             get($key, $default) | Get a value with optional default if key not found                                                                         |
-|                       |            set($key, $value) | Set a value by key (for numeric keys or keys with special characters)                                                      |
+|                       |               set($key, $value) | Set a value by key (for numeric keys or keys with special characters)                                                      |
 |                       |                         first() | Get the first element                                                                                                      |
 |                       |                          last() | Get the last element                                                                                                       |
 |                       |                     nth($index) | Get element by position, ignoring keys (0=first, -1=last)                                                                  |
@@ -460,7 +461,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Array Information     |                         count() | Get the number of elements                                                                                                 |                                                                                                                                                             
 |                       |                       isEmpty() | Returns true if array has no elements                                                                                      |
 |                       |                    isNotEmpty() | Returns true if array has any elements                                                                                     |
-|                       |               contains($value) | Returns true if array contains value                                                                                       |
+|                       |                contains($value) | Returns true if array contains value                                                                                       |
 | Sorting & Filtering   |                          sort() | Sorts elements by value (flat arrays only)                                                                                 |
 |                       |                 sortBy($column) | Sorts rows by column value (nested arrays only)                                                                            |
 |                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                |
@@ -473,13 +474,14 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                        values() | Gets array of values, discarding the keys                                                                                  |
 |                       |                indexBy($column) | Indexes rows by column value, latest is kept if duplicates                                                                 |
 |                       |                groupBy($column) | Groups rows by column value, preserving duplicates                                                                         |
-|                       |                     pluck($key) | Gets array of column values from rows                                                                                      |
-|                       |               pluckNth($index) | Gets array of values at position from rows                                                                                 |
+|                       | pluck($valueColumn, $keyColumn) | Gets array of column values from rows, optionally indexed by another column                                                |
+|                       |                pluckNth($index) | Gets array of values at position from rows                                                                                 |
 |                       |             implode($separator) | Joins elements with separator into string                                                                                  |
 |                       |                sprintf($format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                   |
 |                       |                  map($callback) | Transforms each element using callback (callback receives raw values)                                                      |
 |                       |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                               |
 |                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                  |
+|                       |   column($columnKey, $indexKey) | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                 |
 | Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                |
 |                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                        |
 |                       |                    mysqli($key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                          |
@@ -492,8 +494,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                         debug() | Show content of object as well as properties                                                                               |                                                                                                                                                                       
 |                       |                   print_r($obj) | Show array contents of object (useful for debugging)                                                                       |     
 
-**See Also:** For working with `SmartArray` values, check out the included companion
-library `SmartString`, all `SmartArray` values are `SmartString` objects with
+**See Also:** For working with `SmartArrayHtml` values, check out the included companion
+library `SmartString`. `SmartArrayHtml` values are `SmartString` objects with
 automatic HTML encoding and chainable methods:
 https://github.com/interactivetools-com/SmartString?tab=readme-ov-file#method-reference
 

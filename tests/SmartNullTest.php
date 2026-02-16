@@ -20,7 +20,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function methodAccessProvider(): array
+    public static function methodAccessProvider(): array
     {
         return [
             'chained property access returns SmartNull'          => [
@@ -56,7 +56,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function typeConversionProvider(): array
+    public static function typeConversionProvider(): array
     {
         return [
             'string conversion returns empty string' => [
@@ -80,7 +80,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function comparisonProvider(): array
+    public static function comparisonProvider(): array
     {
         // Note: PHP object loose comparison rules:
         // - Object == null → always false (objects never loosely equal null)
@@ -128,7 +128,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function conditionalEvaluationProvider(): array
+    public static function conditionalEvaluationProvider(): array
     {
         return [
             'if statement evaluates as truthy'                       => [
@@ -164,7 +164,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function arrayAccessProvider(): array
+    public static function arrayAccessProvider(): array
     {
         return [
             'array access with string key returns SmartNull'    => [
@@ -200,7 +200,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function iterationProvider(): array
+    public static function iterationProvider(): array
     {
         return [
             'foreach loop does not iterate' => [
@@ -226,7 +226,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function jsonSerializationProvider(): array
+    public static function jsonSerializationProvider(): array
     {
         return [
             'json_encode returns null'                  => [
@@ -250,7 +250,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function specialMethodsProvider(): array
+    public static function specialMethodsProvider(): array
     {
         return [
             '__toString returns empty string' => [
@@ -277,7 +277,7 @@ class SmartNullTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function integrationProvider(): array
+    public static function integrationProvider(): array
     {
         return [
             'SmartArray returns SmartNull for non-existent key'     => [

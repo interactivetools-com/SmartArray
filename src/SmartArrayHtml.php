@@ -3,9 +3,10 @@
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
-use RuntimeException, InvalidArgumentException;
 use Closure;
+use Iterator;
 use Itools\SmartString\SmartString;
+use RuntimeException, InvalidArgumentException;
 
 /**
  * SmartArrayHtml - Collection returning SmartString values for HTML safety.
@@ -18,8 +19,8 @@ use Itools\SmartString\SmartString;
  * - Missing keys return SmartNull, use ->value() for raw null
  *
  * PhpStorm 2025.3.1: Repeated @implements needed - union types in Iterator generics don't work reliably for foreach inference
- * @implements \Iterator<mixed, SmartString>
- * @implements \Iterator<mixed, SmartArrayHtml>
+ * @implements Iterator<mixed, SmartString>
+ * @implements Iterator<mixed, SmartArrayHtml>
  */
 final class SmartArrayHtml extends SmartArrayBase
 {

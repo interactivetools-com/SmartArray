@@ -256,7 +256,7 @@ class SmartArrayTest extends TestCase
         );
     }
 
-    public function constructorProvider(): array
+    public static function constructorProvider(): array
     {
         return [
             'empty array'                => [[]],
@@ -281,21 +281,21 @@ class SmartArrayTest extends TestCase
                     ],
                 ],
             ]],
-            'mixed types'                => [[
+            'mixed types'        => [[
                 'number'      => 42,
                 'string'      => 'hello',
                 'smartString' => '"world"',
                 'array'       => [1, 2, 3],
                 'smartArray'  => [4, 5, 6],
-            ],
-            'using test records'         => TestHelpers::getTestRecords(),
-        ]];
+            ]],
+            'using test records' => [TestHelpers::getTestRecords()],
+        ];
     }
 
 //endregion
 //region SmartStrings Configuration
 
-    public function smartStringsConfigProvider(): array
+    public static function smartStringsConfigProvider(): array
     {
         $testArray = TestHelpers::getTestRecords();
         return [
@@ -569,7 +569,7 @@ class SmartArrayTest extends TestCase
         $this->assertEquals($expectedJson, $jsonSerialized);
     }
 
-    public function jsonSerializeProvider(): array
+    public static function jsonSerializeProvider(): array
     {
         return [
             'Empty array'                        => [

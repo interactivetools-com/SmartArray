@@ -6,8 +6,9 @@ array operations simpler, safer, and more expressive.
 
 Core Concepts
 -------------------
-$obj              = Itools\SmartArray\SmartArray    // Arrays become SmartArray objects (even nested arrays)
-$obj->columnName  = Itools\SmartString\SmartString  // Values become SmartString objects with HTML-encoded output
+$obj              = Itools\SmartArray\SmartArray      // Arrays become SmartArray objects (even nested arrays)
+$obj->columnName  = raw PHP value                    // SmartArray returns raw values (string, int, null, etc.)
+$obj->columnName  = Itools\SmartString\SmartString   // SmartArrayHtml returns SmartString objects with HTML-encoded output
 
 Accessing Elements
 -------------------
@@ -79,10 +80,11 @@ Array Transformation
 ->values()              Get array of just the values
 ->indexBy(column)       Get array using column as keys to single rows (duplicates overwrite)
 ->groupBy(column)       Get array using column as keys to arrays of rows (duplicates group)
-->pluck(column)         Extract single column from nested array
+->pluck(valueColumn, keyColumn)  Extract single column from nested array, optionally indexed by another column
 ->pluckNth(position)    Get array containing nth element from each row
 ->implode(separator)    Join elements with separator into string (default: '')
-->sprintf(format)       Apply sprintf format to each element. Also supports {value} and {key} aliases.
+->sprintf(format)       Apply sprintf format to each element. Always returns SmartArray (raw). SmartArrayHtml HTML-encodes values before formatting.
+                        Also supports {value} and {key} aliases.
 ->map(callback)         Transform each element using callback (callback receives raw values)
 ->each($callback)       Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
 ->merge(...$arrays)     Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
@@ -97,7 +99,7 @@ Error Handling
 ---------------
 ->or404(message)        Returns 404 with message if array is empty (default message: "404 Not Found")
 ->orDie(message)        Exits with message if array is empty
-->orThrow(exception)    Throws exception if array is empty
+->orThrow(message)      Throws exception with message if array is empty
 ->orRedirect(url)       Redirects to URL if array is empty (HTTP 302 redirect)
 
 Debugging

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use RuntimeException, InvalidArgumentException;
+use InvalidArgumentException;
 use Closure;
 
 /**
@@ -17,7 +17,7 @@ use Closure;
  * - Nested arrays return SmartArray, use ->toArray() for raw arrays
  * - Missing keys return SmartNull, use ->value() for raw null
  *
- * PhpStorm 2025.3.1: Repeated @implements needed - union types in Iterator generics don't work reliably for foreach inference
+ * PhpStorm 2025.3.1: Repeated "@implements" needed - union types in Iterator generics don't work reliably for foreach inference
  * @implements \Iterator<mixed, SmartArray>
  * @implements \Iterator<mixed, string>
  * @implements \Iterator<mixed, int>
@@ -103,10 +103,7 @@ class SmartArray extends SmartArrayBase
     //endregion
     //region Value Access
 
-    /**
-     * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
-     * If the key doesn't exist, a SmartNull object is returned to allow further chaining.
-     */
+    /** {@inheritDoc} */
     public function get(int|string $key, mixed $default = null): static|SmartNull|string|int|float|bool|null
     {
         // Must use func_num_args() check here and call parent appropriately,
@@ -117,34 +114,19 @@ class SmartArray extends SmartArrayBase
         return parent::get($key);
     }
 
-    /**
-     * Get first element in array, or SmartNull if array is empty (to allow for further chaining).
-     */
+    /** {@inheritDoc} */
     public function first(): static|SmartNull|string|int|float|bool|null
     {
         return parent::first();
     }
 
-    /**
-     * Get last element in array, or SmartNull if array is empty (to allow for further chaining).
-     */
+    /** {@inheritDoc} */
     public function last(): static|SmartNull|string|int|float|bool|null
     {
         return parent::last();
     }
 
-    /**
-     * Get an element by its position in the array, ignoring keys.
-     *
-     * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
-     * Returns SmartNull if out of bounds.
-     *
-     * Useful for MySQL queries with unaliased columns:
-     * ```
-     * $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
-     * $max    = $result->first()->nth(0)->value(); // Get "MAX(`order`)" column
-     * ```
-     */
+    /** {@inheritDoc} */
     public function nth(int $index): static|SmartNull|string|int|float|bool|null
     {
         return parent::nth($index);
@@ -153,58 +135,31 @@ class SmartArray extends SmartArrayBase
     //endregion
     //region Sorting & Filtering
 
-    /**
-     * Returns a new array sorted by values, using PHP sort() function.
-     */
+    /** {@inheritDoc} */
     public function sort(int $flags = SORT_REGULAR): static
     {
         return parent::sort($flags);
     }
 
-    /**
-     * Returns a new SmartArray sorted by the specified column, using PHP array_multisort().
-     */
+    /** {@inheritDoc} */
     public function sortBy(string $column, int $type = SORT_REGULAR): static
     {
         return parent::sortBy($column, $type);
     }
 
-    /**
-     * Returns a new array with duplicate values removed, keeping only the first
-     * occurrence of each unique value, and preserving keys.
-     */
+    /** {@inheritDoc} */
     public function unique(): static
     {
         return parent::unique();
     }
 
-    /**
-     * Filters elements of the SmartArray using a callback function and returns a new SmartArray with the results.
-     *
-     * The callback received both value and key, and should return true to keep the element, false to remove it.
-     *
-     * The callback function receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray objects,
-     * and should return a boolean indicating whether to include the element in the result.
-     *
-     * @param callable|null $callback A function that tests each element. Should return true to keep the element, false to remove it.
-     *
-     * @return SmartArray A new SmartArray containing only the elements that passed the callback test.
-     */
+    /** {@inheritDoc} */
     public function filter(?callable $callback = null): static
     {
         return parent::filter($callback);
     }
 
-    /**
-     * Returns a new SmartArray containing only the array elements where all conditions match.
-     * Elements that are not arrays are automatically skipped.
-     *
-     * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
-     *
-     * @param array|string $conditions
-     * @param mixed|null $value
-     * @return SmartArray A new SmartArray containing only matching elements
-     */
+    /** {@inheritDoc} */
     public function where(array|string $conditions, mixed $value = null): static
     {
         return parent::where($conditions, $value);
@@ -213,266 +168,73 @@ class SmartArray extends SmartArrayBase
     //endregion
     //region Array Transformation
 
-    /**
-     * Returns a new array of keys
-     */
+    /** {@inheritDoc} */
     public function keys(): static
     {
         return parent::keys();
     }
 
-    /**
-     * Returns a new array of values
-     */
+    /** {@inheritDoc} */
     public function values(): static
     {
         return parent::values();
     }
 
-    /**
-     * Creates a new SmartArray indexed by the specified column.
-     *
-     * This method transforms the current SmartArray (assumed to be a nested array of rows)
-     * into a new SmartArray where each element is indexed by the value of the specified column.
-     *
-     * @param string $column The column name to index the rows by.
-     *
-     * @return SmartArray A new SmartArray indexed by the specified column.
-     * @example
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]);
-     *
-     * // Single row per key (default), no duplicates
-     * $emailToUser = $users->indexBy('email'); // Result:
-     * [
-     *     'john@example.com' => ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     'jane@example.com' => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     'mike@example.com' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]
-     *
-     * // Single row per key (default), duplicates overwrite
-     * $emailToUser = $users->indexBy('city'); // Result:
-     * [
-     *     'New York'  => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
-     * ]
-     */
+    /** {@inheritDoc} */
     public function indexBy(string $column): static
     {
         return parent::indexBy($column);
     }
 
-    /**
-     * Creates a new SmartArray indexed by the specified column.
-     *
-     *  This method transforms the current SmartArray (assumed to be a nested array of rows)
-     *  into a new SmartArray where each element is indexed by the value of the specified column.
-     *
-     * @param string $column The column name to index the rows by.
-     *
-     * @return SmartArray A new SmartArray indexed by the specified column.
-     * @example
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]);
-     *
-     * // Multiple rows per key
-     * $cityToUsers = $users->groupBy('city'); // Result:
-     * [
-     *     'New York' => [
-     *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *         ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ],
-     *     'Vancouver' => [
-     *         ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     *     ],
-     * ]
-     */
+    /** {@inheritDoc} */
     public function groupBy(string $column): static
     {
         return parent::groupBy($column);
     }
 
-    /**
-     * Extracts a single column from a nested SmartArray.
-     *
-     * This method retrieves the values of a specified key from all elements in the nested SmartArray,
-     * returning them as a new SmartArray. It's particularly useful for extracting a specific field
-     * from a collection of records.
-     *
-     * @param string|int $valueColumn The key of the column to extract from each nested element.
-     * @param string|null $keyColumn
-     * @return SmartArray A new SmartArray containing the extracted values.
-     * @example
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
-     * ]);
-     * $userEmails = $users->pluck('email');                        // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
-     * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
-     */
+    /** {@inheritDoc} */
     public function pluck(string|int $valueColumn, ?string $keyColumn = null): static
     {
         return parent::pluck($valueColumn, $keyColumn);
     }
 
-    /**
-     * Extracts values at a specific position from each row in a nested SmartArray, ignoring key names.
-     * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
-     *
-     * @param int $index
-     * @return SmartArray A new SmartArray containing the extracted values.
-     *
-     * @example MySQL `SHOW TABLES LIKE 'cms_%'` returns:
-     *
-     * [
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_accounts'],
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_settings']
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_pages'],
-     * ]
-     *
-     * $tables = $resultSet->pluckNth(0);   // Position 0 (first value): Returns ["cms_accounts", "cms_settings", "cms_pages"]
-     */
+    /** {@inheritDoc} */
     public function pluckNth(int $index): static
     {
         return parent::pluckNth($index);
     }
 
-    /**
-     * Extract a column of values, optionally indexed by another column.
-     * Mirrors PHP's array_column() - accepts int keys for numeric-indexed arrays.
-     *
-     * @param int|string|null $columnKey Column to extract (null = entire rows via indexBy)
-     * @param int|string|null $indexKey  Column to use as array keys
-     * @return SmartArray
-     */
+    /** {@inheritDoc} */
     public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
         return parent::column($columnKey, $indexKey);
     }
 
-    /**
-     * Joins the elements of the SmartArray into a single string with a specified separator.
-     *
-     * This method works on flat SmartArrays only. For SmartString elements,
-     * their original values are used in the resulting string.
-     *
-     * @param string $separator The string to use as a separator between elements.
-     *
-     * @return string The resulting string after joining all elements (raw value, not SmartString).
-     * @throws InvalidArgumentException If the SmartArray is nested.
-     *
-     * @example
-     * $arr = SmartArray::new(['apple', 'banana', 'cherry']);
-     * $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
-     */
+    /** {@inheritDoc} */
     public function implode(string $separator = ''): string
     {
         return parent::implode($separator);
     }
 
-    /**
-     * Applies sprintf formatting to each element and returns SmartArray.
-     *
-     * Supports two placeholder styles:
-     * - Standard sprintf: `%s` (value), `%1$s` (value), `%2$s` (key)
-     * - Named aliases: `{value}` and `{key}` (converted to sprintf format internally)
-     *
-     * Values pass through as-is (no HTML encoding).
-     *
-     * Example:
-     *
-     *     $row = SmartArray::new(['apple', 'banana']);
-     *     $row->sprintf("<li>%s</li>")->implode();
-     *     // Output: <li>apple</li><li>banana</li>
-     *
-     *     $options = SmartArray::new(['us' => 'United States', 'ca' => 'Canada']);
-     *     $options->sprintf("<option value='{key}'>{value}</option>")->implode();
-     *     // Output: <option value='us'>United States</option><option value='ca'>Canada</option>
-     *
-     * @param string $format The sprintf format string (also supports {value}/{key} aliases)
-     * @return SmartArray Pre-formatted strings
-     */
+    /** {@inheritDoc} */
     public function sprintf(string $format): SmartArray
     {
         return parent::sprintf($format);
     }
 
-    /**
-     * Applies a callback to each element *as raw PHP values* (i.e., unwrapped scalars/arrays)
-     * and returns a new SmartArray with the results.
-     *
-     * The callback receives two parameters if it is a Closure:
-     *   - $value (the raw element from ->toArray())
-     *   - $key   (integer or string)
-     *
-     * If it's a built-in function or a non-closure callable, only the $value is passed to avoid
-     * accidental interpretation of $key as an extra parameter. For example, calling `intval($value, $key)`
-     * might parse the key as the base argument, leading to unexpected results.
-     *
-     * Preserves array keys in the returned SmartArray.
-     *
-     * @param callable $callback A function/callable to transform each element.
-     *                           Signature if Closure: fn($value, $key) => mixed
-     *                           Signature if non-Closure: fn($value) => mixed
-     *
-     * @return SmartArray A new SmartArray containing the transformed elements.
-     *
-     * @example
-     *  $arr = new SmartArray(['apple', 'banana', 'cherry']);
-     *  $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
-     *  // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
-     *
-     * @example
-     *  $nested = new SmartArray([['a' => 1], ['a' => 2]]);
-     *  $values = $nested->map(fn(array $item) => $item['a']);
-     *  // $values is now a SmartArray: [1, 2]
-     */
+    /** {@inheritDoc} */
     public function map(callable $callback): static
     {
         return parent::map($callback);
     }
 
-    /**
-     * Calls the given callback on each element in the SmartArray (as SmartString or nested SmartArray),
-     * primarily for side effects. Returns $this for chaining.
-     *
-     * @param closure $callback A callback with the signature: fn(SmartString|SmartArray $value, int|string $key): void
-     * @return $this
-     *
-     * Example:
-     *  $users = new SmartArray($results, true);
-     *  $users->each(function($user, $key) {
-     *      echo "$user->num - $user->name\n";
-     *  });
-     *
-     * If you need to transform or collect results, consider ->map() instead.
-     */
+    /** {@inheritDoc} */
     public function each(Closure $callback): static
     {
         return parent::each($callback);
     }
 
-    /**
-     * Merges the SmartArray with one or more arrays or SmartArrays.
-     * Numeric keys are renumbered, string keys are overwritten by later values.
-     *
-     * @param array|SmartArrayBase ...$arrays Arrays to merge with
-     * @return SmartArray Returns a new SmartArray with the merged results
-     *
-     * @example
-     * $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
-     * $arr2 = ['b' => 3, 'c' => 4];
-     * $arr3 = SmartArray::new(['d' => 5]);
-     *
-     * $result = $arr1->merge($arr2, $arr3);
-     * // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
-     */
+    /** {@inheritDoc} */
     public function merge(array|SmartArrayBase ...$arrays): static
     {
         return parent::merge(...$arrays);
@@ -481,10 +243,7 @@ class SmartArray extends SmartArrayBase
     //endregion
     //region Database Operations
 
-    /**
-     * Returns SmartArray or throws an exception load() handler is not available for column
-     * @throws RuntimeException
-     */
+    /** {@inheritDoc} */
     public function load(string $column): static|SmartNull
     {
         return parent::load($column);
@@ -493,11 +252,7 @@ class SmartArray extends SmartArrayBase
     //endregion
     //region Deprecated Array Access
 
-    /**
-     * Retrieves a value from the SmartArray using array syntax.
-     *
-     * @deprecated Use ->property or ->get('key') instead of $array['key']
-     */
+    /** {@inheritDoc} */
     public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|string|int|float|bool|null
     {
         return parent::offsetGet($offset, $useSmartStrings);

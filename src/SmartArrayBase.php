@@ -121,8 +121,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Value Access
 
     /**
-     * Retrieves an element from the SmartArray, or a SmartNull if not found.
-     * Preferred over array syntax for keys with special characters or numeric keys.
+     * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
+     * If the key doesn't exist, a SmartNull object is returned to allow further chaining.
      *
      * @param int|string $key The key to retrieve
      * @param mixed $default Optional default value if key doesn't exist
@@ -428,6 +428,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             );
         }
 
+        // Unwrap SmartString/SmartArray values in conditions
+        $conditions = array_map([self::class, 'getRawValue'], $conditions);
+
         // Filter rows that match all conditions
         $filtered = array_filter($this->toArray(), static function ($row) use ($conditions) {
             // skip elements that are not arrays
@@ -597,6 +600,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * from a collection of records.
      *
      * @param string|int $valueColumn The key of the column to extract from each nested element.
+     * @param string|null $keyColumn Optional column to use as keys in the resulting array.
      * @return SmartArray A new SmartArray containing the extracted values.
      * @example
      * $users = new SmartArray([
@@ -679,11 +683,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $separator The string to use as a separator between elements.
      *
-     * @return SmartString|string The resulting string after joining all elements.
+     * @return SmartString|string Returns string for SmartArray, SmartString for SmartArrayHtml.
      * @throws InvalidArgumentException If the SmartArray is nested.
      *
      * @example
-     * $arr = new SmartArray(['apple', 'banana', 'cherry']);
+     * $arr = SmartArray::new(['apple', 'banana', 'cherry']);
+     * $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
+     *
+     * $arr = SmartArrayHtml::new(['apple', 'banana', 'cherry']);
      * $result = $arr->implode(', '); // Returns SmartString: "apple, banana, cherry"
      */
     public function implode(string $separator = ''): SmartString|string
@@ -821,7 +828,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Merges the SmartArray with one or more arrays or SmartArrays.
      * Numeric keys are renumbered, string keys are overwritten by later values.
      *
-     * @param array|SmartArray ...$arrays Arrays to merge with
+     * @param array|SmartArrayBase ...$arrays Arrays to merge with
      * @return self Returns a new SmartArray with the merged results
      *
      * @example

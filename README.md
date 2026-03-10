@@ -12,11 +12,13 @@ array operations simpler, safer, and more expressive.
     * [Table of Contents](#table-of-contents)
     * [Quick Start](#quick-start)
     * [Usage Examples](#usage-examples)
+        * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
         * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
         * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
         * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
         * [Extracting Unique Tags with pluck(), unique(), and implode()](#extracting-unique-tags-with-pluck-unique-and-implode)
         * [Building Dynamic HTML Tables with sprintf()](#building-dynamic-html-tables-with-sprintf)
+        * [Creating Grid Layouts with isFirst() and isLast()](#creating-grid-layouts-with-isfirst-and-islast)
         * [Debugging and Help](#debugging-and-help)
     * [Method Reference](#method-reference)
     * [Questions?](#questions)
@@ -81,6 +83,38 @@ $userId = $users->first()->id->value(); // Returns 10 as an integer
 See the [Method Reference](#method-reference) for more information on available methods.
 
 ## Usage Examples
+
+### Highlighting Recent Articles with position()
+
+The `position()` method returns an element's position within its parent array (starting from 1), making it easy to give
+special treatment to important items like featured articles based on their position:
+
+```php
+$articles = [
+    ['title' => 'Astronomers Photograph Distant Galaxy for First Time'],
+    ['title' => 'New Species of Butterfly Found in Amazon Rainforest'],
+    ['title' => 'Ocean Expedition Maps Unexplored Deep Sea Valleys'],
+    ['title' => 'Ancient Star Charts Discovered in Mountain Cave'],
+    ['title' => 'Rare Rainbow Clouds Spotted in Nordic Skies'],
+    ['title' => 'Desert Expedition Reveals Hidden Oasis Ecosystem'],
+    ['title' => 'Mountain Observatory Captures Meteor Shower Images']
+];
+
+$news = SmartArray::new($articles)->asHtml();
+
+// Create a news listing with featured articles
+echo "<div class='news-list'>\n";
+foreach ($news as $article) {
+    // First 3 articles get heading treatment
+    if ($article->position() <= 3) {
+        echo "<h1>$article->title</h1>\n";
+    } else {
+        // Remaining articles as regular text
+        echo "$article->title<br>\n";
+    }
+}
+echo "</div>\n";
+```
 
 ### Accessing Elements by Position with nth()
 
@@ -393,6 +427,26 @@ Output:
 </select>
 ```
 
+### Creating Grid Layouts with isFirst() and isLast()
+
+SmartArray provides `isFirst()` and `isLast()` methods for position-based operations, making it easy to add
+opening and closing markup around iterated elements:
+
+```php
+$records = [
+    ['id' => 10, 'name' => "John O'Connor",  'city' => 'New York'],
+    ['id' => 15, 'name' => 'Xena "X" Smith', 'city' => 'Los Angeles'],
+    ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
+];
+$users = SmartArray::new($records)->asHtml();
+
+foreach ($users as $user) {
+    if ($user->isFirst()) { echo "<table border='1' cellpadding='10' style='text-align: center'>\n<tr>\n"; }
+    echo "<td><h1>$user->name</h1>$user->city</td>\n"; // values are automatically HTML-encoded by SmartString
+    if ($user->isLast())  { echo "</tr>\n</table>\n"; }
+}
+```
+
 ### Debugging and Help
 
 SmartArray provides helpful debugging tools to inspect your data structures and explore available methods.
@@ -443,56 +497,60 @@ $users->help();  // Displays comprehensive documentation and examples
 
 Note: All methods return a new `SmartArray` object unless otherwise specified.
 
-| Category              |                          Method | Description                                                                                                                |
-|-----------------------|--------------------------------:|----------------------------------------------------------------------------------------------------------------------------|
-| Creation & Conversion |         SmartArray::new($array) | Create a SmartArray with raw PHP values for data processing. Arrays become SmartArrays, missing keys become SmartNulls     |
-|                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                    |
-|                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                |
-|                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                         |
-|                       |     SmartArrayHtml::new($array) | Create a SmartArray with HTML-safe SmartString values directly (equivalent to SmartArray::new()->asHtml())                 |
-| Value Access          |                       $obj->key | Get a value using property syntax                                                                                          |
-|                       |                       get($key) | Get a value by key (for numeric keys or keys with special characters)                                                      |
-|                       |             get($key, $default) | Get a value with optional default if key not found                                                                         |
-|                       |               set($key, $value) | Set a value by key (for numeric keys or keys with special characters)                                                      |
-|                       |                         first() | Get the first element                                                                                                      |
-|                       |                          last() | Get the last element                                                                                                       |
-|                       |                     nth($index) | Get element by position, ignoring keys (0=first, -1=last)                                                                  |
-|                       | SmartArray::getRawValue($value) | Converts SmartArray and SmartString objects to their original values while leaving other types unchanged                   |
-| Array Information     |                         count() | Get the number of elements                                                                                                 |                                                                                                                                                             
-|                       |                       isEmpty() | Returns true if array has no elements                                                                                      |
-|                       |                    isNotEmpty() | Returns true if array has any elements                                                                                     |
-|                       |                contains($value) | Returns true if array contains value                                                                                       |
-| Sorting & Filtering   |                          sort() | Sorts elements by value (flat arrays only)                                                                                 |
-|                       |                 sortBy($column) | Sorts rows by column value (nested arrays only)                                                                            |
-|                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                |
-|                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                            |
-|                       |               filter($callback) | Removes elements where callback returns false (callback receives raw values)                                               |
-|                       |              where($conditions) | Removes rows not matching conditions like `['status' => 'active']` (uses loose comparison: '1' matches 1, false matches 0) |
-|                       |           where($field, $value) | Shorthand: Removes rows where field doesn't match value (e.g., `where('status', 'active')`)                                |
-| Array Transformation  |                       toArray() | Converts back to regular PHP array with original values                                                                    |
-|                       |                          keys() | Gets array of keys, discarding the values                                                                                  |
-|                       |                        values() | Gets array of values, discarding the keys                                                                                  |
-|                       |                indexBy($column) | Indexes rows by column value, latest is kept if duplicates                                                                 |
-|                       |                groupBy($column) | Groups rows by column value, preserving duplicates                                                                         |
-|                       | pluck($valueColumn, $keyColumn) | Gets array of column values from rows, optionally indexed by another column                                                |
-|                       |                pluckNth($index) | Gets array of values at position from rows                                                                                 |
-|                       |             implode($separator) | Joins elements with separator into string                                                                                  |
-|                       |                sprintf($format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                   |
-|                       |                  map($callback) | Transforms each element using callback (callback receives raw values)                                                      |
-|                       |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                               |
-|                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                  |
-|                       |   column($columnKey, $indexKey) | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                 |
-| Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                |
-|                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                        |
-|                       |                    mysqli($key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                          |
-|                       |                          load() | Loads related record(s) if available for column                                                                            |
-| Error Handling        |                 or404($message) | Exits with 404 header and message if array is empty, default message: "404 Not Found"                                      |
-|                       |                 orDie($message) | Exits with message if array is empty                                                                                       |
-|                       |               orThrow($message) | Throws exception with message if array is empty                                                                            |
-|                       |                orRedirect($url) | Redirects to URL if array is empty (HTTP 302)                                                                              |
-| Debugging and Help    |                          help() | Displays help information about available methods                                                                          |
-|                       |                         debug() | Show content of object as well as properties                                                                               |                                                                                                                                                                       
-|                       |                   print_r($obj) | Show array contents of object (useful for debugging)                                                                       |     
+| Category              |                          Method | Description                                                                                                                  |
+|-----------------------|--------------------------------:|------------------------------------------------------------------------------------------------------------------------------|
+| Creation & Conversion |         SmartArray::new($array) | Create a SmartArray with raw PHP values for data processing. Arrays become SmartArrays, missing keys become SmartNulls       |
+|                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                      |
+|                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                  |
+|                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                           |
+|                       |     SmartArrayHtml::new($array) | Create a SmartArray with HTML-safe SmartString values directly (equivalent to SmartArray::new()->asHtml())                   |
+| Value Access          |                       $obj->key | Get a value using property syntax                                                                                            |
+|                       |                       get($key) | Get a value by key (for numeric keys or keys with special characters)                                                        |
+|                       |             get($key, $default) | Get a value with optional default if key not found                                                                           |
+|                       |               set($key, $value) | Set a value by key (for numeric keys or keys with special characters)                                                        |
+|                       |                         first() | Get the first element                                                                                                        |
+|                       |                          last() | Get the last element                                                                                                         |
+|                       |                     nth($index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |
+|                       | SmartArray::getRawValue($value) | Converts SmartArray and SmartString objects to their original values while leaving other types unchanged                     |
+| Array Information     |                         count() | Get the number of elements                                                                                                   |                                                                                                                                                             
+|                       |                       isEmpty() | Returns true if array has no elements                                                                                        |
+|                       |                    isNotEmpty() | Returns true if array has any elements                                                                                       |
+|                       |                contains($value) | Returns true if array contains value                                                                                         |
+| Position & Layout     |                       isFirst() | Returns true if first element in parent array                                                                                |
+|                       |                        isLast() | Returns true if last element in parent array                                                                                 |
+|                       |                      position() | Gets position in parent array (starting from 1)                                                                              |
+| Sorting & Filtering   |                          sort() | Sorts elements by value (flat arrays only)                                                                                   |
+|                       |                 sortBy($column) | Sorts rows by column value (nested arrays only)                                                                              |
+|                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                  |
+|                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                              |
+|                       |               filter($callback) | Removes elements where callback returns false (callback receives raw values)                                                 |
+|                       |           where($field, $value) | Keeps rows where field matches value (uses loose comparison: '1' matches 1, false matches 0). Chain for multiple conditions. |
+|                       |        whereNot($field, $value) | Excludes rows where field matches value (inverse of where)                                                                   |
+|                       |     whereInList($field, $value) | Filters rows where tab-delimited field contains value                                                                        |
+| Array Transformation  |                       toArray() | Converts back to regular PHP array with original values                                                                      |
+|                       |                          keys() | Gets array of keys, discarding the values                                                                                    |
+|                       |                        values() | Gets array of values, discarding the keys                                                                                    |
+|                       |                indexBy($column) | Indexes rows by column value, latest is kept if duplicates                                                                   |
+|                       |                groupBy($column) | Groups rows by column value, preserving duplicates                                                                           |
+|                       | pluck($valueColumn, $keyColumn) | Gets array of column values from rows, optionally indexed by another column                                                  |
+|                       |                pluckNth($index) | Gets array of values at position from rows                                                                                   |
+|                       |             implode($separator) | Joins elements with separator into string                                                                                    |
+|                       |                sprintf($format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                     |
+|                       |                  map($callback) | Transforms each element using callback (callback receives raw values)                                                        |
+|                       |                 each($callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
+|                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                    |
+|                       |   column($columnKey, $indexKey) | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                   |
+| Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                  |
+|                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                          |
+|                       |                    mysqli($key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                            |
+|                       |                          load() | Loads related record(s) if available for column                                                                              |
+| Error Handling        |                 or404($message) | Exits with 404 header and message if array is empty, default message: "404 Not Found"                                        |
+|                       |                 orDie($message) | Exits with message if array is empty                                                                                         |
+|                       |               orThrow($message) | Throws exception with message if array is empty                                                                              |
+|                       |                orRedirect($url) | Redirects to URL if array is empty (HTTP 302)                                                                                |
+| Debugging and Help    |                          help() | Displays help information about available methods                                                                            |
+|                       |                         debug() | Show content of object as well as properties                                                                                 |                                                                                                                                                                       
+|                       |                   print_r($obj) | Show array contents of object (useful for debugging)                                                                         |     
 
 **See Also:** For working with `SmartArrayHtml` values, check out the included companion
 library `SmartString`. `SmartArrayHtml` values are `SmartString` objects with

@@ -165,6 +165,18 @@ class SmartArray extends SmartArrayBase
         return parent::where($conditions, $value);
     }
 
+    /** {@inheritDoc} */
+    public function whereNot(string $field, mixed $value): static
+    {
+        return parent::whereNot($field, $value);
+    }
+
+    /** {@inheritDoc} */
+    public function whereInList(string $field, mixed $value): static
+    {
+        return parent::whereInList($field, $value);
+    }
+
     //endregion
     //region Array Transformation
 

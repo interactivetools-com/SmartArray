@@ -29,6 +29,57 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private array $data = [];
 
     //endregion
+    //region Position Properties
+
+    /**
+     * Position metadata for nested SmartArrays (child rows).
+     * Set during parent construction, used for template rendering.
+     */
+    protected bool $isFirst = false;
+    protected bool $isLast  = false;
+    private int $position   = 0;
+
+    /**
+     * Returns true if this element is the first child in its parent SmartArray.
+     *
+     *     foreach ($rows as $row) {
+     *         if ($row->isFirst()) { echo '<ul>'; }
+     *         echo "<li>$row->name</li>";
+     *         if ($row->isLast()) { echo '</ul>'; }
+     *     }
+     *
+     * @return bool
+     */
+    public function isFirst(): bool
+    {
+        return $this->isFirst;
+    }
+
+    /**
+     * Returns true if this element is the last child in its parent SmartArray.
+     *
+     * @return bool
+     */
+    public function isLast(): bool
+    {
+        return $this->isLast;
+    }
+
+    /**
+     * Returns the 1-based position of this element within its parent SmartArray.
+     *
+     *     foreach ($rows as $row) {
+     *         echo "Row {$row->position()} of " . $rows->count();
+     *     }
+     *
+     * @return int 1-based position (0 if not a child element)
+     */
+    public function position(): int
+    {
+        return $this->position;
+    }
+
+    //endregion
     //region Creation and Conversion
 
     /**
@@ -382,28 +433,28 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param callable|null $callback A function that tests each element. Should return true to keep the element, false to remove it.
      *
-     * @return self A new SmartArray containing only the elements that passed the callback test.
+     * @return static A new SmartArray containing only the elements that passed the callback test.
      */
-    public function filter(?callable $callback = null): self
+    public function filter(?callable $callback = null): static
     {
         $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
         return new static($values, $this->getInternalProperties());
     }
 
     /**
-     * Returns a new SmartArray containing only the array elements where all conditions match.
+     * Returns a new SmartArray containing only elements where a field matches a value.
      * Elements that are not arrays are automatically skipped.
      *
      * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
+     * Chain multiple where() calls to filter by multiple fields.
      *
-     * Examples:
-     *   $data->where(['status' => 'active'])           // Array of conditions
-     *   $data->where(['status' => 'active', 'type' => 'user'])  // Multiple conditions
-     *   $data->where('status', 'active')               // Two arguments shorthand
+     *     $active   = $users->where('status', 'active');
+     *     $admins   = $users->where('status', 'active')->where('role', 'admin');
+     *     $featured = $products->where('featured', 1);
      *
-     * @param array|string $conditions Key-value pairs to match against each element, or field name if using two-arg syntax
-     * @param mixed $value Optional value when using two-argument syntax
-     * @return SmartArray A new SmartArray containing only matching elements
+     * @param array|string $conditions Field name to compare, or associative array of field=>value pairs
+     * @param mixed        $value      Value to match
+     * @return static A new SmartArray containing only matching elements
      */
     public function where(array|string $conditions, mixed $value = null): static
     {
@@ -446,6 +497,76 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 }
             }
             return true;
+        });
+
+        return new static($filtered, $this->getInternalProperties());
+    }
+
+    /**
+     * Returns a new SmartArray excluding elements where the condition matches.
+     * The inverse of where() - removes elements that match instead of keeping them.
+     * Elements that are not arrays are automatically skipped.
+     *
+     * Uses loose comparison (==) to match where() behavior.
+     *
+     *     $otherPages = $pages->whereNot('num', $currentPage->num);
+     *     $published  = $articles->whereNot('status', 'draft');
+     *     $visible    = $records->whereNot('hidden', 1);
+     *
+     * @param string $field Field name to compare
+     * @param mixed  $value Value to exclude
+     * @return static A new SmartArray excluding matching elements
+     */
+    public function whereNot(string $field, mixed $value): static
+    {
+        $value = self::getRawValue($value);
+
+        $filtered = array_filter($this->toArray(), static function ($row) use ($field, $value) {
+            if (!is_array($row)) {
+                return false;
+            }
+
+            /** @noinspection TypeUnsafeComparisonInspection */
+            return !array_key_exists($field, $row) || $row[$field] != $value;  // intentional non-strict comparison
+        });
+
+        return new static($filtered, $this->getInternalProperties());
+    }
+
+    /**
+     * Returns elements where a tab-separated list field contains the specified value.
+     * Matches discrete values within tab-delimited fields (e.g., checkbox groups,
+     * multi-select fields). Does not perform substring matching.
+     *
+     * Handles both delimited format ("\tmenu\tfooter\t") and plain single values ("menu").
+     *
+     *     $menuPages   = $pages->whereInList('show_on', 'menu');
+     *     $footerPages = $pages->whereInList('show_on', 'footer');
+     *
+     * @param string $field Field name containing tab-separated values
+     * @param mixed  $value Value to search for (exact match, not substring)
+     * @return static A new SmartArray containing only matching elements
+     *
+     * @noinspection SpellCheckingInspection
+     */
+    public function whereInList(string $field, mixed $value): static
+    {
+        $value = (string) self::getRawValue($value);
+
+        // Wrap needle in tabs for exact matching: "\tvalue\t"
+        $wrappedNeedle = "\t" . $value . "\t";
+
+        $filtered = array_filter($this->toArray(), static function ($row) use ($field, $wrappedNeedle) {
+            if (!is_array($row) || !array_key_exists($field, $row) || $row[$field] === null) {
+                return false;
+            }
+
+            $fieldValue   = (string) $row[$field];
+            $wrappedField = str_contains($fieldValue, "\t")
+                ? $fieldValue                          // already delimited (e.g., "\tmenu\tfooter\t")
+                : "\t" . $fieldValue . "\t";           // single value, wrap it
+
+            return str_contains($wrappedField, $wrappedNeedle);
         });
 
         return new static($filtered, $this->getInternalProperties());
@@ -585,7 +706,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $values = [];
         foreach ($this->toArray() as $row) {
-            $key            = $row[$column];
+            $key            = $row[$column] ?? null;
             $values[$key][] = $row;
         }
 
@@ -734,7 +855,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws \InvalidArgumentException If called on a nested array
+     * @throws InvalidArgumentException If called on a nested array
      */
     public function sprintf(string $format): SmartArray
     {
@@ -785,7 +906,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *  $values = $nested->map(fn(array $item) => $item['a']);
      *  // $values is now a SmartArray: [1, 2]
      */
-    public function map(callable $callback): self
+    public function map(callable $callback): static
     {
         $newArray  = [];
         $isClosure = $callback instanceof Closure;
@@ -812,7 +933,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * If you need to transform or collect results, consider ->map() instead.
      */
-    public function each(Closure $callback): self
+    public function each(Closure $callback): static
     {
         $useSmartStrings = $this->useSmartStrings;
 
@@ -829,7 +950,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Numeric keys are renumbered, string keys are overwritten by later values.
      *
      * @param array|SmartArrayBase ...$arrays Arrays to merge with
-     * @return self Returns a new SmartArray with the merged results
+     * @return static Returns a new SmartArray with the merged results
      *
      * @example
      * $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
@@ -839,7 +960,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * $result = $arr1->merge($arr2, $arr3);
      * // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
      */
-    public function merge(array|SmartArrayBase ...$arrays): self
+    public function merge(array|SmartArrayBase ...$arrays): static
     {
         $arrays = array_map([self::class, 'getRawValue'], $arrays); // convert SmartArrays to arrays
         $merged = array_merge($this->toArray(), ...$arrays);

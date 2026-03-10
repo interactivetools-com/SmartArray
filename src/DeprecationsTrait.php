@@ -21,14 +21,6 @@ use Itools\SmartString\SmartString;
 trait DeprecationsTrait
 {
 
-    //region Deprecated Position Properties
-
-    // Calculated during construction, accessed via deprecated __call() methods
-    protected bool $isFirst  = false;
-    protected bool $isLast   = false;
-    private int $position = 0;
-
-    //endregion
     //region Deprecated Method Handling
 
     /**
@@ -44,13 +36,6 @@ trait DeprecationsTrait
 
         // Deprecated method aliases: log warning and return proper value
         [$return, $deprecationError] = match ($methodLc) {  // use lowercase names below for comparison
-            'getcolumn'                              => [null, "Replace ->$method() with ->pluck() or another method"],
-            'exists'                                 => [$this->isNotEmpty(), "Replace ->$method() with ->isNotEmpty()"],
-            'firstrow', 'getfirst'                   => [$this->first(), "Replace ->$method() with ->first()"],
-            'getvalues'                              => [$this->values(), "Replace ->$method() with ->values()"],
-            'item'                                   => [$this->get(...$args), "Replace ->$method() with ->get()"],
-            'join'                                   => [$this->implode(...$args), "Replace ->$method() with ->implode()"],
-            'raw'                                    => [$this->toArray(), "Replace ->$method() with ->toArray()"],
             'toraw'                                  => [$this->asRaw(), "Replace ->$method() with ->asRaw()"],
             'tohtml'                                 => [$this->asHtml(), "Replace ->$method() with ->asHtml()"],
             'withsmartstrings', 'enablesmartstrings' => [$this->asHtml(), "Replace ->$method() with ->asHtml() or use SmartArrayHtml::new()"],
@@ -62,34 +47,28 @@ trait DeprecationsTrait
             return $return;
         }
 
-        // Deprecated position methods: log warning and return value
-        if (in_array($methodLc, ['isfirst', 'islast', 'position', 'ismultipleof'], true)) {
+        // Deprecated position method: isMultipleOf
+        if ($methodLc === 'ismultipleof') {
             self::logDeprecation("->$method() is deprecated and will be removed in a future version");
-            return match ($methodLc) {
-                'isfirst'  => $this->isFirst,
-                'islast'   => $this->isLast,
-                'position' => $this->position,
-                'ismultipleof' => (function () use ($args): bool {
-                    $value = $args[0] ?? throw new InvalidArgumentException("isMultipleOf() requires a value argument.");
-                    if ($value <= 0) {
-                        throw new InvalidArgumentException("Value must be greater than 0.");
-                    }
-                    return $this->position % $value === 0;
-                })(),
-            };
+            $value = $args[0] ?? throw new InvalidArgumentException("isMultipleOf() requires a value argument.");
+            if ($value <= 0) {
+                throw new InvalidArgumentException("Value must be greater than 0.");
+            }
+            return $this->position() % $value === 0;
         }
+
         // Common aliases: throw error with suggestion.  These are used by other libraries or common LLM suggestions
         $methodAliases = [
             // value access
-            'get'         => ['fetch', 'value'],
-            'first'       => ['head', 'find'],
+            'get'         => ['fetch', 'value', 'item'],
+            'first'       => ['head', 'find', 'firstrow', 'getfirst'],
             'last'        => ['tail', 'end'],
             'nth'         => ['index', 'at'],
 
             // emptiness & search
             'count'       => ['length', 'size'],
             'isEmpty'     => ['empty'],
-            'isNotEmpty'  => ['any', 'not_empty', 'notempty', 'hasvalue'],
+            'isNotEmpty'  => ['any', 'not_empty', 'notempty', 'hasvalue', 'exists'],
             'contains'    => ['has', 'includes', 'in', 'some'],
 
             // sorting & filtering
@@ -100,14 +79,14 @@ trait DeprecationsTrait
             'where'       => ['filter_by', 'findwhere', 'match'],
 
             // array transforms
-            'toArray'     => ['array', 'all', 'unwrap'],
+            'toArray'     => ['array', 'all', 'unwrap', 'raw'],
             'keys'        => ['keyset'],
-            'values'      => ['vals', 'list'],
+            'values'      => ['vals', 'list', 'getvalues'],
             'indexBy'     => ['keyby'],
             'groupBy'     => ['group', 'categorize'],
-            'pluck'       => ['extract', 'pick'],
+            'pluck'       => ['extract', 'pick', 'getcolumn'],
             'pluckNth'    => ['columnnth'],
-            'implode'     => ['concat'],
+            'implode'     => ['concat', 'join'],
             'map'         => ['transform', 'apply', 'collect'],
             'each'        => ['foreach', 'iterate', 'walk'],
             'merge'       => ['append', 'union', 'combine', 'extend'],
@@ -143,17 +122,6 @@ trait DeprecationsTrait
     public static function __callStatic($method, $args): mixed
     {
         $methodLc = strtolower($method);
-
-        // Deprecated/renamed methods (case-insensitive)
-        [$return, $deprecationError] = match ($methodLc) {
-            'rawvalue' => [self::getRawValue(...$args), "Replace ::$method() with ::getRawValue()"],
-            'newss'    => [new SmartArrayHtml($args[0] ?? []), "Replace ::$method(...) with SmartArrayHtml::new(...)"],
-            default    => [null, null],
-        };
-        if ($deprecationError) {
-            self::logDeprecation($deprecationError);
-            return $return;
-        }
 
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123

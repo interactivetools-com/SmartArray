@@ -35,88 +35,6 @@ class LegacyMethodsTest extends SmartArrayTestCase
         parent::tearDown();
     }
 
-    //region Static factory methods
-
-    public function testNewSSReturnsSmartArrayHtml(): void
-    {
-        $result = SmartArray::newSS(['name' => 'John', 'age' => 30]);
-
-        $this->assertInstanceOf(SmartArrayHtml::class, $result);
-        $this->assertTrue($result->usingSmartStrings());
-    }
-
-    public function testNewSSWithEmptyArray(): void
-    {
-        $result = SmartArray::newSS([]);
-
-        $this->assertInstanceOf(SmartArrayHtml::class, $result);
-        $this->assertCount(0, $result);
-    }
-
-    public function testRawValueStaticAlias(): void
-    {
-        $result = SmartArray::rawValue('test string');
-
-        $this->assertSame('test string', $result);
-    }
-
-    //endregion
-    //region Instance method aliases via __call
-
-    public function testExistsAliasForIsNotEmpty(): void
-    {
-        $nonEmpty = new SmartArray(['a', 'b', 'c']);
-        $empty    = new SmartArray([]);
-
-        $this->assertTrue($nonEmpty->exists());
-        $this->assertFalse($empty->exists());
-    }
-
-    public function testFirstRowAliasForFirst(): void
-    {
-        $smartArray = new SmartArray(['first', 'second', 'third']);
-
-        $this->assertSame('first', $smartArray->firstRow());
-    }
-
-    public function testGetFirstAliasForFirst(): void
-    {
-        $smartArray = new SmartArray(['first', 'second', 'third']);
-
-        $this->assertSame('first', $smartArray->getFirst());
-    }
-
-    public function testGetValuesAliasForValues(): void
-    {
-        $smartArray = new SmartArray(['a' => 1, 'b' => 2, 'c' => 3]);
-        $result     = $smartArray->getValues();
-
-        $this->assertSame([1, 2, 3], $result->toArray());
-    }
-
-    public function testItemAliasForGet(): void
-    {
-        $smartArray = new SmartArray(['name' => 'John', 'age' => 30]);
-
-        $this->assertSame('John', $smartArray->item('name'));
-        $this->assertSame(30, $smartArray->item('age'));
-    }
-
-    public function testJoinAliasForImplode(): void
-    {
-        $smartArray = new SmartArray(['a', 'b', 'c']);
-
-        $this->assertSame('a, b, c', $smartArray->join(', '));
-    }
-
-    public function testRawAliasForToArray(): void
-    {
-        $smartArray = new SmartArray(['name' => 'John', 'age' => 30]);
-
-        $this->assertSame(['name' => 'John', 'age' => 30], $smartArray->raw());
-    }
-
-    //endregion
     //region SmartStrings toggle aliases
 
     public function testEnableSmartStringsReturnsSmartArrayHtml(): void
@@ -139,7 +57,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testDisableSmartStringsReturnsSmartArray(): void
     {
-        $smartArray = SmartArray::newSS(['name' => 'John']);
+        $smartArray = SmartArrayHtml::new(['name' => 'John']);
         $result     = $smartArray->disableSmartStrings();
 
         $this->assertInstanceOf(SmartArray::class, $result);
@@ -148,7 +66,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
     public function testNoSmartStringsReturnsSmartArray(): void
     {
-        $smartArray = SmartArray::newSS(['name' => 'John']);
+        $smartArray = SmartArrayHtml::new(['name' => 'John']);
         $result     = $smartArray->noSmartStrings();
 
         $this->assertInstanceOf(SmartArray::class, $result);
@@ -173,35 +91,12 @@ class LegacyMethodsTest extends SmartArrayTestCase
 
         try {
             $smartArray = new SmartArray(['a', 'b', 'c']);
-            $smartArray->exists();
+            $smartArray->enableSmartStrings();
 
             $this->assertTrue($deprecationTriggered, 'Deprecation warning should be triggered');
         } finally {
             restore_error_handler();
             // Re-install the suppressor for tearDown consistency
-            set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
-        }
-    }
-
-    public function testNewSSTriggersDeprecation(): void
-    {
-        // Temporarily restore default handler so we can capture the deprecation
-        restore_error_handler();
-
-        $deprecationTriggered = false;
-        set_error_handler(function ($errno) use (&$deprecationTriggered) {
-            if ($errno === E_USER_DEPRECATED) {
-                $deprecationTriggered = true;
-            }
-            return true;
-        });
-
-        try {
-            SmartArray::newSS(['test']);
-
-            $this->assertTrue($deprecationTriggered, 'newSS() should trigger deprecation warning');
-        } finally {
-            restore_error_handler();
             set_error_handler(fn($errno) => $errno === E_USER_DEPRECATED, E_USER_DEPRECATED);
         }
     }
@@ -212,26 +107,21 @@ class LegacyMethodsTest extends SmartArrayTestCase
     /**
      * @dataProvider legacyMethodsProvider
      */
-    public function testLegacyMethodsReturnCorrectValues(string $method, array $args, mixed $expected): void
+    public function testLegacyMethodsReturnCorrectValues(string $method, array $args, string $expectedClass): void
     {
         $smartArray = new SmartArray(['a' => 1, 'b' => 2, 'c' => 3]);
         $result     = $smartArray->$method(...$args);
 
-        // Normalize result for comparison
-        if ($result instanceof SmartArray) {
-            $result = $result->toArray();
-        }
-
-        $this->assertSame($expected, $result);
+        $this->assertInstanceOf($expectedClass, $result);
     }
 
     public static function legacyMethodsProvider(): array
     {
         return [
-            'exists on non-empty' => ['exists', [], true],
-            'getValues'           => ['getValues', [], [1, 2, 3]],
-            'item with key'       => ['item', ['a'], 1],
-            'raw'                 => ['raw', [], ['a' => 1, 'b' => 2, 'c' => 3]],
+            'toRaw'              => ['toRaw', [], SmartArray::class],
+            'toHtml'             => ['toHtml', [], SmartArrayHtml::class],
+            'enableSmartStrings' => ['enableSmartStrings', [], SmartArrayHtml::class],
+            'withSmartStrings'   => ['withSmartStrings', [], SmartArrayHtml::class],
         ];
     }
 

@@ -483,20 +483,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Deprecated: legacy array syntax, use chained ->where('field', value) calls instead
-        $conditions  = array_map([self::class, 'getRawValue'], $field);
-        $whereCalls  = [];
-        foreach ($conditions as $key => $value) {
-            $valuePart    = is_numeric($value) ? $value : "'$value'";
-            $whereCalls[] = "->where('$key', $valuePart)";
-        }
+        $conditions = array_map([self::class, 'getRawValue'], $field);
+        $whereCalls = array_map(fn($k, $v) => "->where('$k', " . (is_numeric($v) ? $v : "'$v'") . ")", array_keys($conditions), $conditions);
         self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
 
-        $matches = array_filter($this->toArray(), 'is_array');
+        $result = $this;
         foreach ($conditions as $key => $value) {
-            $matches = array_filter($matches, fn($row) => array_key_exists($key, $row) && $row[$key] == $value); // intentional loose comparison
+            $result = $result->where($key, $value);
         }
 
-        return new static($matches, $this->getInternalProperties());
+        return $result;
     }
 
     /**

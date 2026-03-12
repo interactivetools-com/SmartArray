@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpLoopCanBeConvertedToArrayFilterInspection - foreach is faster than array_filter with closure */
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
@@ -83,12 +84,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Creation and Conversion
 
     /**
-     * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
-     * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the root array.
+     * Constructs a new SmartArray from an array, recursively converting nested arrays
+     * into child SmartArray instances. Scalar values are stored as-is and wrapped in
+     * SmartString on access (when enabled). Sets position metadata on child SmartArrays.
      *
-     * @param array $array The input array to convert into a SmartArray.
-     * @param bool|array $properties either a boolean to enable/disable SmartStrings, or an associative array of custom internal properties.
+     *     $sa = new SmartArray(['name' => 'Alice', 'age' => 30]);
+     *     $sa = new SmartArray($records); // nested arrays become child SmartArrays
+     *
+     * @param array      $array      The input array to convert into a SmartArray.
+     * @param bool|array $properties An associative array of internal properties. Boolean is deprecated.
      *
      * @noinspection UnusedConstructorDependenciesInspection
      */
@@ -126,15 +130,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Create a new SmartArray instance.
+     * Create a new instance of the current SmartArray type.
      *
-     * ```php
-     * $data = SmartArray::new($records)->filter(...)->map(...);
-     * ```
+     *     $data = SmartArray::new($records)->filter(...)->map(...);
+     *     $html = SmartArrayHtml::new($records)->first();
      *
-     * @param array $array The input array to convert
-     * @param array|bool $properties Optional properties array, or boolean for backward compatibility (deprecated)
-     * @return static A SmartArray (raw mode) or SmartArrayHtml (HTML mode)
+     * @param array      $array      The input array to convert
+     * @param array|bool $properties Optional properties array. Boolean is deprecated.
+     * @return static A new instance of the called class
      */
     public static function new(array $array = [], array|bool $properties = []): static
     {
@@ -172,11 +175,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Value Access
 
     /**
-     * Retrieves an element from the SmartArray, or a SmartNull if not found, providing an alternative to $array[$key] or $array->key syntax.
-     * If the key doesn't exist, a SmartNull object is returned to allow further chaining.
+     * Retrieves an element by key, or returns a default value or SmartNull if not found.
      *
-     * @param int|string $key The key to retrieve
-     * @param mixed $default Optional default value if key doesn't exist
+     *     $value = $array->get('name');              // returns element or SmartNull
+     *     $value = $array->get('name', 'fallback');  // returns element or 'fallback'
+     *
+     * @param int|string $key     The key to retrieve
+     * @param mixed      $default Optional default value if key doesn't exist
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
     public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
@@ -185,7 +190,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if (func_num_args() >= 2 && !$this->offsetExists($key)) {
             $isDefaultSmartObject = $default instanceof self || $default instanceof SmartString;
             return match (true) {
-                is_scalar($default), is_null($default) => $this->encodeOutput($default, $key, $this->useSmartStrings),
+                is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
                 is_array($default)                     => new static($default, $this->getInternalProperties()),
                 $isDefaultSmartObject                  => $default,
                 default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
@@ -193,7 +198,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // skip if empty
-        if ($this->count() === 0) {
+        if (empty($this->data)) {
             return $this->newSmartNull();
         }
 
@@ -226,7 +231,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function first(): static|SmartString|SmartNull|string|int|float|bool|null
     {
-        return $this->nth(0);
+        $key = array_key_first($this->data);
+        return $key !== null ? $this->getElement($key) : $this->newSmartNull();
     }
 
     /**
@@ -234,7 +240,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function last(): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        return $this->nth(-1);
+        $key = array_key_last($this->data);
+        return $key !== null ? $this->getElement($key) : $this->newSmartNull();
     }
 
     /**
@@ -243,17 +250,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
      * Returns SmartNull if out of bounds.
      *
-     * Useful for MySQL queries with unaliased columns:
-     * ```
-     * $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
-     * $max    = $result->first()->nth(0)->value(); // Get "MAX(`order`)" column
-     * ```
+     *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
+     *     $max    = $result->first()->nth(0)->value(); // Get unaliased column by position
      */
     public function nth(int $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        $count = count($this);
+        $count = count($this->data);
         $index = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
-        $keys  = array_keys($this->getArrayCopy());
+        $keys  = array_keys($this->data);
 
         if (array_key_exists($index, $keys)) {
             return $this->getElement($keys[$index]);
@@ -264,8 +268,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
 
     /**
-     * Internal method to set an element without triggering deprecation warning.
-     * Used by constructor and preferred access methods.
+     * Stores an element with automatic type conversion.
+     * Scalars and nulls are stored as-is; arrays are converted to SmartArray instances.
      */
     private function setElement(int|string|null $key, mixed $value): void
     {
@@ -298,18 +302,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Internal method to get an element without triggering deprecation warning.
-     * Used by magic methods and preferred access methods.
+     * Returns the element at the given key, optionally wrapped in SmartString.
+     * Returns SmartNull with a warning if the key doesn't exist.
      */
-    private function getElement(int|string $key, ?bool $useSmartStrings = null): static|SmartNull|SmartString|string|int|float|bool|null
+    private function getElement(int|string $key): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        $key             = self::getRawValue($key); // Convert SmartString keys to raw values
-        $useSmartStrings ??= $this->useSmartStrings;
-
         // Return value if key exists, or SmartNull if not found
         if ($this->offsetExists($key)) {
             $value = $this->data[$key];
-            return $this->encodeOutput($value, $key, $useSmartStrings);
+            return $this->useSmartStrings && !$value instanceof self
+                ? new SmartString($value)
+                : $value;
         }
 
         // Show warning if key doesn't exist and array isn't empty
@@ -327,8 +330,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Converts Smart* objects to their original values while leaving other types unchanged,
-     * useful if you don't know the type but want the original value.
+     * Converts Smart* objects to their original values while leaving other types unchanged.
+     * Recursively unwraps arrays containing Smart* objects.
+     *
+     *     SmartArrayBase::getRawValue($smartString); // returns original string
+     *     SmartArrayBase::getRawValue($smartArray);  // returns plain array
+     *     SmartArrayBase::getRawValue('plain');       // returns 'plain' unchanged
      */
     public static function getRawValue(mixed $value): mixed
     {
@@ -358,7 +365,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function isEmpty(): bool
     {
-        return $this->count() === 0;
+        return empty($this->data);
     }
 
     /**
@@ -366,11 +373,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function isNotEmpty(): bool
     {
-        return $this->count() !== 0;
+        return !empty($this->data);
     }
 
     /**
-     * Check if array contains a specific value.
+     * Check if array contains a specific value (loose comparison).
      */
     public function contains(mixed $value): bool
     {
@@ -381,7 +388,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Sorting & Filtering
 
     /**
-     * Returns a new array sorted by values, using PHP sort() function.
+     * Returns a new SmartArray sorted by values, using PHP sort() function.
+     * Only works on flat arrays (throws on nested).
      */
     public function sort(int $flags = SORT_REGULAR): static
     {
@@ -393,27 +401,26 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Returns a new SmartArray sorted by the specified column, using PHP array_multisort().
+     * Returns a new SmartArray sorted ascending by the specified field.
+     * Only works on nested arrays (throws on flat).
      */
-    public function sortBy(string $column, int $type = SORT_REGULAR): static
+    public function sortBy(string $field, int $type = SORT_REGULAR): static
     {
         $this->assertNestedArray();
-        if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column);
-        }
-
+        $this->warnIfMissing($field);
 
         // sort by key
-        $sorted       = $this->toArray();
-        $columnValues = array_column($sorted, $column);
-        array_multisort($columnValues, SORT_ASC, $type, $sorted);
+        $sorted      = $this->toArray();
+        $fieldValues = array_column($sorted, $field);
+        array_multisort($fieldValues, SORT_ASC, $type, $sorted);
 
         return new static($sorted, $this->getInternalProperties());
     }
 
     /**
-     * Returns a new array with duplicate values removed, keeping only the first
+     * Returns a new SmartArray with duplicate values removed, keeping only the first
      * occurrence of each unique value, and preserving keys.
+     * Only works on flat arrays (throws on nested).
      */
     public function unique(): static
     {
@@ -424,16 +431,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Filters elements of the SmartArray using a callback function and returns a new SmartArray with the results.
+     * Filters elements using a callback and returns a new SmartArray with the results.
      *
-     * The callback received both value and key, and should return true to keep the element, false to remove it.
+     * The callback receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray
+     * objects, and should return true to keep the element, false to remove it.
+     * When called without a callback, removes all falsy values (empty strings, 0, null, false).
      *
-     * The callback function receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray objects,
-     * and should return a boolean indicating whether to include the element in the result.
+     *     $active   = $users->filter(fn($row) => $row['status'] === 'active');
+     *     $nonEmpty = $values->filter();
      *
-     * @param callable|null $callback A function that tests each element. Should return true to keep the element, false to remove it.
-     *
-     * @return static A new SmartArray containing only the elements that passed the callback test.
+     * @param callable|null $callback A function($value, $key) that returns true to keep, false to remove.
+     * @return static A new SmartArray containing only the elements that passed the test.
      */
     public function filter(?callable $callback = null): static
     {
@@ -443,7 +451,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Returns a new SmartArray containing only elements where a field matches a value.
-     * Elements that are not arrays are automatically skipped.
+     * Only works on nested arrays (throws on flat).
      *
      * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
      * Chain multiple where() calls to filter by multiple fields.
@@ -452,60 +460,48 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     $admins   = $users->where('status', 'active')->where('role', 'admin');
      *     $featured = $products->where('featured', 1);
      *
-     * @param array|string $conditions Field name to compare, or associative array of field=>value pairs
-     * @param mixed        $value      Value to match
+     * @param array|string $field Field name to compare, or associative array of field=>value pairs (deprecated)
+     * @param mixed        $value Value to match (supports SmartString, automatically unwrapped)
      * @return static A new SmartArray containing only matching elements
      */
-    public function where(array|string $conditions, mixed $value = null): static
+    public function where(array|string $field, mixed $value = null): static
     {
-        // Convert two-argument syntax to array format
-        if (is_string($conditions) && func_num_args() === 2) {
-            $conditions = [$conditions => $value];
-        }
+        $this->assertNestedArray();
 
-        // Type check after conversion
-        if (!is_array($conditions)) {
-            throw new InvalidArgumentException(
-                "SmartArray::where() expects an array of conditions or two arguments (field, value). Got: " . gettype($conditions)
-            );
-        }
-
-        // Guard against common mistake: passing ['field', 'value'] instead of ['field' => 'value']
-        // Prevents silent failures where filter returns empty results with no explanation
-        if (!empty($conditions) && array_is_list($conditions)) {
-            throw new InvalidArgumentException(
-                "SmartArray::where() expects an associative array of key=>value pairs. " .
-                "Got a list array. Use format: ['field' => 'value'] not ['field', 'value']"
-            );
-        }
-
-        // Unwrap SmartString/SmartArray values in conditions
-        $conditions = array_map([self::class, 'getRawValue'], $conditions);
-
-        // Filter rows that match all conditions
-        $filtered = array_filter($this->toArray(), static function ($row) use ($conditions) {
-            // skip elements that are not arrays
-            if (!is_array($row)) {
-                return false;
-            }
-
-            // check if all conditions are met (using non-strict comparison)
-            foreach ($conditions as $key => $value) {
-                /** @noinspection TypeUnsafeComparisonInspection */
-                if (!array_key_exists($key, $row) || $row[$key] != $value) {    // intentional non-strict comparison
-                    return false;
+        // Two-argument syntax: where('field', value)
+        if (is_string($field) && func_num_args() === 2) {
+            $this->warnIfMissing($field);
+            $value   = self::getRawValue($value);
+            $matches = [];
+            foreach ($this->toArray() as $key => $row) {
+                if (is_array($row) && array_key_exists($field, $row) && $row[$field] == $value) {  // intentional loose comparison
+                    $matches[$key] = $row;
                 }
             }
-            return true;
-        });
 
-        return new static($filtered, $this->getInternalProperties());
+            return new static($matches, $this->getInternalProperties());
+        }
+
+        // Deprecated: legacy array syntax, use chained ->where('field', value) calls instead
+        $conditions  = array_map([self::class, 'getRawValue'], $field);
+        $whereCalls  = [];
+        foreach ($conditions as $key => $value) {
+            $valuePart    = is_numeric($value) ? $value : "'$value'";
+            $whereCalls[] = "->where('$key', $valuePart)";
+        }
+        self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
+
+        $matches = array_filter($this->toArray(), 'is_array');
+        foreach ($conditions as $key => $value) {
+            $matches = array_filter($matches, fn($row) => array_key_exists($key, $row) && $row[$key] == $value); // intentional loose comparison
+        }
+
+        return new static($matches, $this->getInternalProperties());
     }
 
     /**
-     * Returns a new SmartArray excluding elements where the condition matches.
-     * The inverse of where() - removes elements that match instead of keeping them.
-     * Elements that are not arrays are automatically skipped.
+     * Returns a new SmartArray excluding elements where a field matches a value.
+     * The inverse of where(). Only works on nested arrays (throws on flat).
      *
      * Uses loose comparison (==) to match where() behavior.
      *
@@ -519,18 +515,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function whereNot(string $field, mixed $value): static
     {
-        $value = self::getRawValue($value);
-
-        $filtered = array_filter($this->toArray(), static function ($row) use ($field, $value) {
-            if (!is_array($row)) {
-                return false;
+        $this->assertNestedArray();
+        $this->warnIfMissing($field);
+        $value   = self::getRawValue($value);
+        $matches = [];
+        foreach ($this->toArray() as $key => $row) {
+            if (is_array($row) && (!array_key_exists($field, $row) || $row[$field] != $value)) {  // intentional loose comparison
+                $matches[$key] = $row;
             }
+        }
 
-            /** @noinspection TypeUnsafeComparisonInspection */
-            return !array_key_exists($field, $row) || $row[$field] != $value;  // intentional non-strict comparison
-        });
-
-        return new static($filtered, $this->getInternalProperties());
+        return new static($matches, $this->getInternalProperties());
     }
 
     /**
@@ -551,25 +546,20 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function whereInList(string $field, mixed $value): static
     {
-        $value = (string) self::getRawValue($value);
-
-        // Wrap needle in tabs for exact matching: "\tvalue\t"
-        $wrappedNeedle = "\t" . $value . "\t";
-
-        $filtered = array_filter($this->toArray(), static function ($row) use ($field, $wrappedNeedle) {
-            if (!is_array($row) || !array_key_exists($field, $row) || $row[$field] === null) {
-                return false;
+        $this->assertNestedArray();
+        $this->warnIfMissing($field);
+        $value   = (string) self::getRawValue($value);
+        $matches = [];
+        foreach ($this->toArray() as $key => $row) {
+            if (!isset($row[$field])) {
+                continue;
             }
+            if ($row[$field] == $value || (is_string($row[$field]) && str_contains($row[$field], "\t$value\t"))) {  // intentional loose comparison
+                $matches[$key] = $row;
+            }
+        }
 
-            $fieldValue   = (string) $row[$field];
-            $wrappedField = str_contains($fieldValue, "\t")
-                ? $fieldValue                          // already delimited (e.g., "\tmenu\tfooter\t")
-                : "\t" . $fieldValue . "\t";           // single value, wrap it
-
-            return str_contains($wrappedField, $wrappedNeedle);
-        });
-
-        return new static($filtered, $this->getInternalProperties());
+        return new static($matches, $this->getInternalProperties());
     }
 
     //endregion
@@ -578,10 +568,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Recursively converts SmartArray back to a standard PHP array with original values.
      *
-     * This method creates an array representation of the SmartArray object's elements,
-     * converting nested structures as follows:
      * - SmartArray objects are recursively converted to arrays
-     * - SmartString objects are converted to their original values
+     * - Scalar values and nulls are returned as-is
      * - SmartNull objects are converted to null
      * - Unexpected types will throw an InvalidArgumentException
      *
@@ -591,7 +579,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         // Future options: We could add a default arg $smartStringsToValues = true to allow SmartStrings to be returned as objects
         $array = [];
-        foreach ($this->getArrayCopy() as $key => $value) {  // getArrayCopy so getIterator doesn't convert everything to SmartStrings
+        foreach ($this->data as $key => $value) {  // $this->data so getIterator doesn't convert to SmartStrings
             $array[$key] = match (true) {
                 $value instanceof self             => $value->toArray(),   // Recursively convert nested SmartArrays
                 is_scalar($value), is_null($value) => $value,              // Scalars and nulls are returned as-is
@@ -604,16 +592,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Returns a new array of keys
+     * Returns a new SmartArray containing the keys of this SmartArray.
      */
     public function keys(): static
     {
-        $keys = array_keys($this->getArrayCopy());
+        $keys = array_keys($this->data);
         return new static($keys, $this->getInternalProperties());
     }
 
     /**
-     * Returns a new array of values
+     * Returns a new SmartArray containing the values, re-indexed numerically.
      */
     public function values(): static
     {
@@ -623,17 +611,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
 
     /**
-     * Creates a new SmartArray indexed by the specified column.
+     * Creates a new SmartArray indexed by the specified field.
      *
      * This method transforms the current SmartArray (assumed to be a nested array of rows)
-     * into a new SmartArray where each element is indexed by the value of the specified column.
+     * into a new SmartArray where each element is indexed by the value of the specified field.
      *
-     * @param string $column The column name to index the rows by.
+     * @param string $field The field name to index the rows by.
      *
-     * @return SmartArray A new SmartArray indexed by the specified column.
+     * @return static A new SmartArray indexed by the specified field.
      * @throws InvalidArgumentException If the SmartArray is not nested.
      *
-     * @example
      * $users = new SmartArray([
      *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
      *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
@@ -655,30 +642,27 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
      * ]
      */
-    public function indexBy(string $column): static
+    public function indexBy(string $field): static
     {
         $this->assertNestedArray();
-        if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column);
-        }
+        $this->warnIfMissing($field);
 
-        // Index by column
-        $values = array_column($this->toArray(), null, $column);
+        // Index by field
+        $values = array_column($this->toArray(), null, $field);
         return new static($values, $this->getInternalProperties());
     }
 
     /**
-     * Creates a new SmartArray indexed by the specified column.
+     * Creates a new SmartArray grouped by the specified field.
      *
-     *  This method transforms the current SmartArray (assumed to be a nested array of rows)
-     *  into a new SmartArray where each element is indexed by the value of the specified column.
+     * This method transforms the current SmartArray (assumed to be a nested array of rows)
+     * into a new SmartArray where each element is grouped by the value of the specified field.
      *
-     * @param string $column The column name to index the rows by.
+     * @param string $field The field name to group the rows by.
      *
-     * @return SmartArray A new SmartArray indexed by the specified column.
+     * @return static A new SmartArray grouped by the specified field.
      * @throws InvalidArgumentException If the SmartArray is not nested.
      *
-     * @example
      * $users = new SmartArray([
      *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
      *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
@@ -697,16 +681,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     ],
      * ]
      */
-    public function groupBy(string $column): static
+    public function groupBy(string $field): static
     {
         $this->assertNestedArray();
-        if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($column);
-        }
+        $this->warnIfMissing($field);
 
         $values = [];
         foreach ($this->toArray() as $row) {
-            $key            = $row[$column] ?? null;
+            $key            = $row[$field] ?? null;
             $values[$key][] = $row;
         }
 
@@ -714,16 +696,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Extracts a single column from a nested SmartArray.
+     * Extracts a single field from a nested SmartArray.
      *
      * This method retrieves the values of a specified key from all elements in the nested SmartArray,
      * returning them as a new SmartArray. It's particularly useful for extracting a specific field
      * from a collection of records.
      *
-     * @param string|int $valueColumn The key of the column to extract from each nested element.
-     * @param string|null $keyColumn Optional column to use as keys in the resulting array.
-     * @return SmartArray A new SmartArray containing the extracted values.
-     * @example
+     * @param string|int  $valueField The key of the field to extract from each nested element.
+     * @param string|null $keyField   Optional field to use as keys in the resulting array.
+     * @return static A new SmartArray containing the extracted values.
+     *
      * $users = new SmartArray([
      *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
      *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
@@ -731,14 +713,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * $userEmails = $users->pluck('email');                        // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
      * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
      */
-    public function pluck(string|int $valueColumn, ?string $keyColumn = null): static
+    public function pluck(string|int $valueField, ?string $keyField = null): static
     {
         $this->assertNestedArray();
-        if ($this->first() instanceof self) {
-            $this->first()->warnIfMissing($valueColumn);
-        }
+        $this->warnIfMissing($valueField);
 
-        $values = array_column($this->toArray(), $valueColumn, $keyColumn);
+        $values = array_column($this->toArray(), $valueField, $keyField);
         return new static($values, $this->getInternalProperties());
     }
 
@@ -746,10 +726,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Extracts values at a specific position from each row in a nested SmartArray, ignoring key names.
      * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
      *
-     * @param int $index
-     * @return SmartArray A new SmartArray containing the extracted values.
+     * @param int $index Zero-based position (supports negative indices: -1=last)
+     * @return static A new SmartArray containing the extracted values.
      *
-     * @example MySQL `SHOW TABLES LIKE 'cms_%'` returns:
+     * MySQL `SHOW TABLES LIKE 'cms_%'` returns:
      *
      * [
      *   ['Tables_in_yourDbName (cms_%)' => 'cms_accounts'],
@@ -784,7 +764,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param int|string|null $columnKey Column to extract (null = entire rows via indexBy)
      * @param int|string|null $indexKey  Column to use as array keys
-     * @return SmartArray
+     * @return static
      */
     public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
@@ -807,12 +787,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * @return SmartString|string Returns string for SmartArray, SmartString for SmartArrayHtml.
      * @throws InvalidArgumentException If the SmartArray is nested.
      *
-     * @example
-     * $arr = SmartArray::new(['apple', 'banana', 'cherry']);
-     * $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
+     *     $arr = SmartArray::new(['apple', 'banana', 'cherry']);
+     *     $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
      *
-     * $arr = SmartArrayHtml::new(['apple', 'banana', 'cherry']);
-     * $result = $arr->implode(', '); // Returns SmartString: "apple, banana, cherry"
+     *     $arr = SmartArrayHtml::new(['apple', 'banana', 'cherry']);
+     *     $result = $arr->implode(', '); // Returns SmartString: "apple, banana, cherry"
      */
     public function implode(string $separator = ''): SmartString|string
     {
@@ -821,7 +800,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $values = array_map('strval', $this->toArray());
         $value  = implode($separator, $values);
 
-        return $this->encodeOutput($value, null, $this->useSmartStrings);
+        return $this->useSmartStrings ? new SmartString($value) : $value;
     }
 
     /**
@@ -894,17 +873,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *                           Signature if Closure: fn($value, $key) => mixed
      *                           Signature if non-Closure: fn($value) => mixed
      *
-     * @return self A new SmartArray containing the transformed elements.
+     * @return static A new SmartArray containing the transformed elements.
      *
-     * @example
-     *  $arr = new SmartArray(['apple', 'banana', 'cherry']);
-     *  $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
-     *  // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
+     *     $arr   = new SmartArray(['apple', 'banana', 'cherry']);
+     *     $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
+     *     // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
      *
-     * @example
-     *  $nested = new SmartArray([['a' => 1], ['a' => 2]]);
-     *  $values = $nested->map(fn(array $item) => $item['a']);
-     *  // $values is now a SmartArray: [1, 2]
+     *     $nested = new SmartArray([['a' => 1], ['a' => 2]]);
+     *     $values = $nested->map(fn(array $item) => $item['a']);
+     *     // $values is now a SmartArray: [1, 2]
      */
     public function map(callable $callback): static
     {
@@ -919,26 +896,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Calls the given callback on each element in the SmartArray (as SmartString or nested SmartArray),
-     * primarily for side effects. Returns $this for chaining.
+     * Calls the given callback on each element, primarily for side effects.
+     * Returns $this for chaining.
      *
-     * @param closure $callback A callback with the signature: fn(SmartString|SmartArray $value, int|string $key): void
-     * @return $this
+     * For SmartArrayHtml: callback receives SmartString values (or nested SmartArrayHtml).
+     * For SmartArray: callback receives raw PHP values (or nested SmartArray).
      *
-     * Example:
-     *  $users = new SmartArray($results, true);
-     *  $users->each(function($user, $key) {
-     *      echo "$user->num - $user->name\n";
-     *  });
+     *     $users->each(function($user, $key) {
+     *         echo "$user->num - $user->name\n";
+     *     });
      *
      * If you need to transform or collect results, consider ->map() instead.
+     *
+     * @param Closure $callback A callback: fn($value, int|string $key): void
+     * @return $this
      */
     public function each(Closure $callback): static
     {
-        $useSmartStrings = $this->useSmartStrings;
-
-        foreach (array_keys($this->getArrayCopy()) as $key) {
-            $smartValue = $this->getElement($key, $useSmartStrings);
+        foreach (array_keys($this->data) as $key) {
+            $smartValue = $this->getElement($key);
             $callback($smartValue, $key);
         }
 
@@ -952,7 +928,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * @param array|SmartArrayBase ...$arrays Arrays to merge with
      * @return static Returns a new SmartArray with the merged results
      *
-     * @example
      * $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
      * $arr2 = ['b' => 3, 'c' => 4];
      * $arr3 = SmartArray::new(['d' => 5]);
@@ -988,13 +963,20 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Returns SmartArray or throws an exception load() handler is not available for column
-     * @throws RuntimeException
+     * Lazy-load related data using the registered load handler.
+     * Returns SmartNull if the array is empty.
+     *
+     *     $user->load('orders');   // SmartArray of related orders
+     *
+     * @param string $field The relationship field name to load.
+     * @return static|SmartNull Loaded data as SmartArray, or SmartNull if array is empty.
+     * @throws RuntimeException If no load handler is defined or field has invalid characters.
+     * @throws InvalidArgumentException If field name is empty.
      */
-    public function load(string $column): static|SmartNull
+    public function load(string $field): static|SmartNull
     {
         // return SmartNull if array is empty (or is SmartNull already)
-        if ($this->count() === 0) {
+        if (empty($this->data)) {
             return $this->newSmartNull();
         }
 
@@ -1003,18 +985,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // error checking
         match (true) {
-            !$loadHandler                         => throw new RuntimeException("No loadHandler property is defined"),
-            !is_callable($loadHandler)            => throw new RuntimeException("Load handler is not callable"),
-            empty($column)                        => throw new InvalidArgumentException("Column name is required for load() method."),
-            (bool)preg_match('/[^\w-]/', $column) => throw new RuntimeException("Column name contains invalid characters: $column"),
-            $this->isNested()                     => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
-            default                               => null,
+            !$loadHandler                        => throw new RuntimeException("No loadHandler property is defined"),
+            !is_callable($loadHandler)           => throw new RuntimeException("Load handler is not callable"),
+            empty($field)                        => throw new InvalidArgumentException("Field name is required for load() method."),
+            (bool)preg_match('/[^\w-]/', $field) => throw new RuntimeException("Field name contains invalid characters: $field"),
+            $this->isNested()                    => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
+            default                              => null,
         };
 
         // get handler output
-        $result = $loadHandler($this, $column);
+        $result = $loadHandler($this, $field);
         if ($result === false) {
-            throw new Error("Load handler not available for '$column'\n" . self::occurredInFile());
+            throw new Error("Load handler not available for '$field'\n" . self::occurredInFile());
         }
 
         // output error checking
@@ -1039,6 +1021,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Set the load handler for lazy-loading nested arrays.
+     *
+     * @param callable $customLoadHandler Handler: fn(SmartArray $row, string $field): array|false
      * @noinspection PhpUnused
      */
     public function setLoadHandler(callable $customLoadHandler): void
@@ -1075,10 +1059,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Displays help information about available methods and properties.
-     * @throws RuntimeException
+     * Displays diagnostic output: array contents, mysqli metadata, and object properties.
+     *
+     * @param int $debugLevel 0 for compact, 1+ for verbose with type info and object IDs
      */
-    public function debug($debugLevel = 0): void
+    public function debug(int $debugLevel = 0): void
     {
         // show data header
         $className = static::class;
@@ -1132,7 +1117,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // get output
 
         if ($var instanceof self || is_array($var)) {
-            $arrayCopy    = is_array($var) ? $var : $var->getArrayCopy();
+            $arrayCopy    = is_array($var) ? $var : $var->data;
             $maxKeyLength = max(array_map('strlen', array_filter(array_keys($arrayCopy), 'is_string')) + [0]) + 2; // skip numeric keys
 
             if ($debugLevel > 0 && $var instanceof self) {
@@ -1200,9 +1185,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Show internal array data print_r() is used to examine object.
-     *
-     * You can temporarily comment out this function to see the properties while debugging.
+     * Customizes print_r() and var_dump() output for this object.
+     * Comment out this method to see all internal properties while debugging.
      */
     public function __debugInfo(): array
     {
@@ -1218,14 +1202,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // show array data
-        $output += $this->getArrayCopy();
+        $output += $this->data;
         return $output;
     }
 
     /**
      * Magic method for property access: $array->key
      *
-     * This is the PREFERRED way to access array elements (no deprecation warning).
+     * This is the preferred way to access array elements.
      * For keys with special characters or numeric keys, use ->get('key') instead.
      */
     public function __get(string $name): static|SmartNull|SmartString|string|int|float|bool|null
@@ -1237,7 +1221,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Magic method for property assignment: $array->key = $value
      *
-     * This is the PREFERRED way to set array elements (no deprecation warning).
+     * This is the preferred way to set array elements.
      * For keys with special characters or numeric keys, use ->set('key', $value) instead.
      */
     public function __set(string $name, mixed $value): void
@@ -1272,7 +1256,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function or404(?string $message = null): static
     {
-        if ($this->count() > 0) {
+        if (!empty($this->data)) {
             return $this;
         }
 
@@ -1305,7 +1289,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function orDie(string $message): static
     {
-        if ($this->count() === 0) {
+        if (empty($this->data)) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
             die($message);
         }
@@ -1313,7 +1297,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Throws Exception if the array is empty
+     * Throws RuntimeException if the array is empty
      *
      * @param string $message Error message to show
      * @return static Returns $this for method chaining if not empty
@@ -1321,7 +1305,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function orThrow(string $message): static
     {
-        if ($this->count() === 0) {
+        if (empty($this->data)) {
             $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
             throw new RuntimeException($message);
         }
@@ -1345,7 +1329,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             throw new RuntimeException("orRedirect(): headers already sent in $file on line $line");
         }
 
-        if ($this->count() === 0) {
+        if (empty($this->data)) {
             http_response_code(302);
             header("Location: $url");
             exit;
@@ -1354,11 +1338,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Assert that array has no nested arrays
+     * Assert that array has no nested arrays.
+     *
+     * @throws InvalidArgumentException If the array is nested.
      */
     private function assertFlatArray(): void
     {
-        if ($this->count() > 0 && $this->isNested()) {
+        if (!empty($this->data) && $this->isNested()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a flat array, but got a nested array";
             throw new InvalidArgumentException($error);
@@ -1366,11 +1352,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Assert that array has at least one nested array in values
+     * Assert that array has at least one nested array in values.
+     *
+     * @throws InvalidArgumentException If the array is flat.
      */
     private function assertNestedArray(): void
     {
-        if ($this->count() > 0 && $this->isFlat()) {
+        if (!empty($this->data) && $this->isFlat()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a nested array, but got a flat array";
             throw new InvalidArgumentException($error);
@@ -1378,8 +1366,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Throws a PHP warning if the specified key doesn't exist, but only if the array isn't empty.
-     * Helps debugging by showing where the missing key was accessed.
+     * Emits a PHP warning if the specified key doesn't exist, but only if the array isn't empty.
+     * For nested arrays, checks the first row's keys.
      *
      * @param string|int $key The key to check for existence
      * @param string $warningType 'offset' for properties, 'argument' for method arguments
@@ -1387,7 +1375,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private function warnIfMissing(string|int $key, string $warningType = 'argument'): void
     {
         // Skip warning if the array is empty or if the key exists
-        if ($this->count() === 0 || $this->offsetExists($key)) {
+        // For nested arrays, check the first row's keys (e.g., where('status', ...) checks first row for 'status')
+        $first  = $this->first();
+        $target = $first instanceof self ? $first : $this;
+        if (empty($target->data) || $target->offsetExists($key)) {
             return;
         }
         $caller           = self::getExternalCaller();
@@ -1443,30 +1434,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Internal Methods
 
     /**
-     * Returns a copy of the internal data array without any conversion.
-     * For public use, use toArray() which recursively converts SmartArrays back to plain arrays.
-     */
-    private function getArrayCopy(): array
-    {
-        return $this->data;
-    }
-
-    /**
-     * Return SmartArrays as is, and raw values as SmartStrings if that's enabled, otherwise as raw
-     */
-    private function encodeOutput(mixed $value, string|int|null $key = null, bool $useSmartStrings = false): mixed
-    {
-        static $errorFormat = __METHOD__ . ": SmartArray doesn't support '%s' values.%s";
-
-        return match (true) {
-            is_scalar($value) || is_null($value) => $useSmartStrings ? new SmartString($value) : $value,
-            $value instanceof self               => $value,
-            default                              => throw new InvalidArgumentException(sprintf($errorFormat, get_debug_type($value), !is_null($key) ? " Key '$key'." : "")),
-        };
-    }
-
-    /**
-     * Return a new SmartNull object with the same SmartString setting as the current SmartArray.
+     * Return a new SmartNull object with internal properties from the current SmartArray.
      */
     public function newSmartNull(): SmartNull
     {
@@ -1476,17 +1444,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Check if array doesn't contain any nested arrays.
      */
-    public function isFlat(): bool
+    private function isFlat(): bool
     {
         return !$this->isNested();
     }
 
     /**
-     * Check if array contains any nested arrays.  Does not check if all values are arrays, only if any are.
+     * Check if array contains ANY nested arrays.  Does not check if all values are arrays, only if any are.
      */
-    public function isNested(): bool
+    private function isNested(): bool
     {
-        foreach ($this->getArrayCopy() as $value) {
+        foreach ($this->data as $value) {
             if ($value instanceof self) {
                 return true;
             }
@@ -1494,30 +1462,29 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return false;
     }
 
+    /**
+     * Returns a generator that yields elements, wrapping scalars in SmartString when enabled.
+     * Nested SmartArrays are yielded as-is (not wrapped).
+     */
     public function getIterator(): Iterator
     {
         // Return an iterator that yields encoded values for each element
         foreach ($this->data as $key => $value) {
-            yield $key => $this->encodeOutput($value, $key, $this->useSmartStrings);
+            yield $key => $this->useSmartStrings && !$value instanceof self
+                ? new SmartString($value)
+                : $value;
         }
     }
 
     /**
-     * This function is called by json_encode() via JsonSerializable to get serializable data.
-     * Returns an array of original values, not SmartArray or SmartString wrappers.
+     * Returns serializable data for `json_encode()` via JsonSerializable.
+     * Returns the raw internal array so nested SmartArrays serialize as plain arrays.
      *
-     * For list-like arrays, produces a JSON "array" instead of ArrayObject's default JSON "object".
-     * Associative arrays retain default JSON object serialization.
-     *
-     * Example of difference:
-     * echo json_encode(new ArrayObject(['zero','one','two','three']));  // Output: {"0":"zero","1":"one","2":"two","3":"three"}
-     * echo json_encode(new SmartArray(['zero','one','two','three']));   // Output: ["zero","one","two","three"]
-     *
-     * @return array
+     * @return array The internal data array.
      */
     public function jsonSerialize(): array
     {
-        return $this->getArrayCopy();
+        return $this->data;
     }
 
 

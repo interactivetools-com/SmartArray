@@ -11,7 +11,7 @@ use Itools\SmartArray\Tests\SmartArrayTestCase;
 /**
  * Tests for SmartArray::sortBy() method.
  *
- * sortBy($column, $flags) sorts a nested array by a specific column.
+ * sortBy($field, $flags) sorts a nested array by a specific field.
  * Returns a new SmartArray (immutable). Throws InvalidArgumentException for flat arrays.
  */
 class SortByTest extends SmartArrayTestCase
@@ -22,7 +22,7 @@ class SortByTest extends SmartArrayTestCase
      */
     public function testSortBy(
         array $input,
-        string $column,
+        string $field,
         int $type = SORT_REGULAR,
         array $expected = [],
         bool $shouldThrowException = false
@@ -33,13 +33,13 @@ class SortByTest extends SmartArrayTestCase
         if ($shouldThrowException) {
             $this->expectException(InvalidArgumentException::class);
             $this->expectExceptionMessage("Expected a nested array, but got a flat array");
-            $smartArray->sortBy($column, $type);
+            $smartArray->sortBy($field, $type);
             return;
         }
 
         // Capture any warnings about missing columns
         ob_start();
-        $sorted = $smartArray->sortBy($column, $type);
+        $sorted = $smartArray->sortBy($field, $type);
         ob_end_clean();
 
         // Verify sort worked correctly
@@ -58,7 +58,7 @@ class SortByTest extends SmartArrayTestCase
                     ['name' => 'Alice', 'age' => 25],
                     ['name' => 'Bob', 'age' => 35],
                 ],
-                'column'   => 'name',
+                'field'    => 'name',
                 'type'     => SORT_STRING,
                 'expected' => [
                     ['name' => 'Alice', 'age' => 25],
@@ -72,7 +72,7 @@ class SortByTest extends SmartArrayTestCase
                     ['id' => 1, 'value' => 'a'],
                     ['id' => 2, 'value' => 'b'],
                 ],
-                'column'   => 'id',
+                'field'    => 'id',
                 'type'     => SORT_NUMERIC,
                 'expected' => [
                     ['id' => 1, 'value' => 'a'],
@@ -82,13 +82,13 @@ class SortByTest extends SmartArrayTestCase
             ],
             'empty array' => [
                 'input'    => [],
-                'column'   => 'name',
+                'field'    => 'name',
                 'type'     => SORT_REGULAR,
                 'expected' => [],
             ],
             'flat array throws exception' => [
                 'input'                => [1, 2, 3],
-                'column'               => 'any',
+                'field'                => 'any',
                 'type'                 => SORT_REGULAR,
                 'expected'             => [],
                 'shouldThrowException' => true,

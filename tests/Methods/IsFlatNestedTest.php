@@ -7,9 +7,11 @@ namespace Itools\SmartArray\Tests\Methods;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
+use ReflectionException;
+use ReflectionMethod;
 
 /**
- * Tests for SmartArray::isFlat() and SmartArray::isNested() methods.
+ * Tests for SmartArray::isFlat() and SmartArray::isNested() private methods.
  *
  * isFlat() returns true if the array contains no nested arrays.
  * isNested() returns true if the array contains at least one nested array.
@@ -19,14 +21,16 @@ class IsFlatNestedTest extends SmartArrayTestCase
 
     /**
      * @dataProvider isFlatProvider
+     * @throws ReflectionException
      */
     public function testIsFlat(array $input, bool $expected): void
     {
         foreach ([new SmartArray($input), new SmartArrayHtml($input)] as $smartArray) {
-            $varExport  = var_export($smartArray->toArray(), true);
+            $method    = new ReflectionMethod($smartArray, 'isFlat');
+            $varExport = var_export($smartArray->toArray(), true);
             $this->assertSame(
                 $expected,
-                $smartArray->isFlat(),
+                $method->invoke($smartArray),
                 "Expected isFlat() = " . var_export($expected, true) . " with structure:\n$varExport"
             );
         }
@@ -34,16 +38,18 @@ class IsFlatNestedTest extends SmartArrayTestCase
 
     /**
      * @dataProvider isFlatProvider
+     * @throws ReflectionException
      */
     public function testIsNested(array $input, bool $expected): void
     {
         $expected = !$expected; // isNested is opposite of isFlat
 
         foreach ([new SmartArray($input), new SmartArrayHtml($input)] as $smartArray) {
-            $varExport  = var_export($smartArray->toArray(), true);
+            $method    = new ReflectionMethod($smartArray, 'isNested');
+            $varExport = var_export($smartArray->toArray(), true);
             $this->assertSame(
                 $expected,
-                $smartArray->isNested(),
+                $method->invoke($smartArray),
                 "Expected isNested() = " . var_export($expected, true) . " with structure:\n$varExport"
             );
         }

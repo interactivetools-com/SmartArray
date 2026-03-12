@@ -14,7 +14,7 @@ use RuntimeException;
 /**
  * Tests for SmartArray::load() and SmartArray::setLoadHandler() methods.
  *
- * load($column) lazily loads related data using a handler function.
+ * load($field) lazily loads related data using a handler function.
  * setLoadHandler($handler) sets the handler for lazy loading.
  */
 class LoadTest extends SmartArrayTestCase
@@ -26,7 +26,7 @@ class LoadTest extends SmartArrayTestCase
     {
         $smartArray = new SmartArray(['id' => 1, 'name' => 'Test']);
 
-        $handler = function ($smartArray, $column) {
+        $handler = function ($smartArray, $field) {
             return [['child' => 'data'], []];
         };
 
@@ -46,9 +46,9 @@ class LoadTest extends SmartArrayTestCase
     {
         $smartArray = new SmartArray(['id' => 1, 'name' => 'Test']);
 
-        $smartArray->setLoadHandler(function ($row, $column) {
+        $smartArray->setLoadHandler(function ($row, $field) {
             $this->assertInstanceOf(SmartArray::class, $row);
-            $this->assertSame('products', $column);
+            $this->assertSame('products', $field);
             return [
                 ['product1', 'product2', 'product3'],
                 ['query' => 'SELECT * FROM products']
@@ -66,7 +66,7 @@ class LoadTest extends SmartArrayTestCase
         $smartArray = new SmartArray(['user_id' => 42, 'name' => 'John']);
         $receivedRow = null;
 
-        $smartArray->setLoadHandler(function ($row, $column) use (&$receivedRow) {
+        $smartArray->setLoadHandler(function ($row, $field) use (&$receivedRow) {
             $receivedRow = $row->toArray();
             return [[], []];
         });
@@ -76,19 +76,19 @@ class LoadTest extends SmartArrayTestCase
         $this->assertSame(['user_id' => 42, 'name' => 'John'], $receivedRow);
     }
 
-    public function testLoadPassesColumnNameToHandler(): void
+    public function testLoadPassesFieldNameToHandler(): void
     {
         $smartArray = new SmartArray(['id' => 1]);
-        $receivedColumn = null;
+        $receivedField = null;
 
-        $smartArray->setLoadHandler(function ($row, $column) use (&$receivedColumn) {
-            $receivedColumn = $column;
+        $smartArray->setLoadHandler(function ($row, $field) use (&$receivedField) {
+            $receivedField = $field;
             return [[], []];
         });
 
         $smartArray->load('invoices');
 
-        $this->assertSame('invoices', $receivedColumn);
+        $this->assertSame('invoices', $receivedField);
     }
 
     public function testLoadPreservesLoadHandlerInResult(): void
@@ -96,7 +96,7 @@ class LoadTest extends SmartArrayTestCase
         $handlerCalled = 0;
 
         $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(function ($row, $column) use (&$handlerCalled) {
+        $smartArray->setLoadHandler(function ($row, $field) use (&$handlerCalled) {
             $handlerCalled++;
             return [['nested' => 'data'], []];
         });
@@ -113,7 +113,7 @@ class LoadTest extends SmartArrayTestCase
     public function testLoadStoresMysqliMetadata(): void
     {
         $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(function ($row, $column) {
+        $smartArray->setLoadHandler(function ($row, $field) {
             return [
                 ['data' => 'value'],
                 ['query' => 'SELECT * FROM related', 'affected_rows' => 1]
@@ -133,7 +133,7 @@ class LoadTest extends SmartArrayTestCase
     {
         $smartArray = new SmartArray([]);
 
-        $smartArray->setLoadHandler(function ($row, $column) {
+        $smartArray->setLoadHandler(function ($row, $field) {
             $this->fail('Handler should not be called for empty array');
             return [[], []];
         });
@@ -156,13 +156,13 @@ class LoadTest extends SmartArrayTestCase
         $smartArray->load('products');
     }
 
-    public function testLoadThrowsWithEmptyColumnName(): void
+    public function testLoadThrowsWithEmptyFieldName(): void
     {
         $smartArray = new SmartArray(['id' => 1]);
         $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Column name is required');
+        $this->expectExceptionMessage('Field name is required');
 
         $smartArray->load('');
     }
@@ -204,22 +204,22 @@ class LoadTest extends SmartArrayTestCase
     }
 
     //endregion
-    //region load() - Valid column names
+    //region load() - Valid field names
 
     /**
-     * @dataProvider validColumnNamesProvider
+     * @dataProvider validFieldNamesProvider
      */
-    public function testLoadAcceptsValidColumnNames(string $columnName): void
+    public function testLoadAcceptsValidFieldNames(string $fieldName): void
     {
         $smartArray = new SmartArray(['id' => 1]);
         $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
 
-        $result = $smartArray->load($columnName);
+        $result = $smartArray->load($fieldName);
 
         $this->assertInstanceOf(SmartArray::class, $result);
     }
 
-    public static function validColumnNamesProvider(): array
+    public static function validFieldNamesProvider(): array
     {
         return [
             'simple name'      => ['products'],
@@ -232,20 +232,20 @@ class LoadTest extends SmartArrayTestCase
     }
 
     /**
-     * @dataProvider invalidColumnNamesProvider
+     * @dataProvider invalidFieldNamesProvider
      */
-    public function testLoadRejectsInvalidColumnNames(string $columnName): void
+    public function testLoadRejectsInvalidFieldNames(string $fieldName): void
     {
         $smartArray = new SmartArray(['id' => 1]);
         $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Column name contains invalid characters');
+        $this->expectExceptionMessage('Field name contains invalid characters');
 
-        $smartArray->load($columnName);
+        $smartArray->load($fieldName);
     }
 
-    public static function invalidColumnNamesProvider(): array
+    public static function invalidFieldNamesProvider(): array
     {
         return [
             'with dot'       => ['table.column'],

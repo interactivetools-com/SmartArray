@@ -1,5 +1,4 @@
 <?php
-/** @noinspection PhpUnnecessaryStaticReferenceInspection */
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
@@ -139,9 +138,9 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function sortBy(string $column, int $type = SORT_REGULAR): static
+    public function sortBy(string $field, int $type = SORT_REGULAR): static
     {
-        return parent::sortBy($column, $type);
+        return parent::sortBy($field, $type);
     }
 
     /** {@inheritDoc} */
@@ -157,9 +156,9 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function where(array|string $conditions, mixed $value = null): static
+    public function where(array|string $field, mixed $value = null): static
     {
-        return parent::where($conditions, $value);
+        return parent::where($field, $value);
     }
 
     /** {@inheritDoc} */
@@ -191,21 +190,21 @@ class SmartArrayHtml extends SmartArrayBase
 
 
     /** {@inheritDoc} */
-    public function indexBy(string $column): static
+    public function indexBy(string $field): static
     {
-        return parent::indexBy($column);
+        return parent::indexBy($field);
     }
 
     /** {@inheritDoc} */
-    public function groupBy(string $column): static
+    public function groupBy(string $field): static
     {
-        return parent::groupBy($column);
+        return parent::groupBy($field);
     }
 
     /** {@inheritDoc} */
-    public function pluck(string|int $valueColumn, ?string $keyColumn = null): static
+    public function pluck(string|int $valueField, ?string $keyField = null): static
     {
-        return parent::pluck($valueColumn, $keyColumn);
+        return parent::pluck($valueField, $keyField);
     }
 
     /** {@inheritDoc} */
@@ -255,18 +254,18 @@ class SmartArrayHtml extends SmartArrayBase
     //region Database Operations
 
     /** {@inheritDoc} */
-    public function load(string $column): static|SmartNull
+    public function load(string $field): static|SmartNull
     {
-        return parent::load($column);
+        return parent::load($field);
     }
 
     //endregion
     //region Deprecated Array Access
 
     /** {@inheritDoc} */
-    public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|SmartString
+    public function offsetGet(mixed $offset): static|SmartNull|SmartString
     {
-        return parent::offsetGet($offset, $useSmartStrings);
+        return parent::offsetGet($offset);
     }
 
     //endregion

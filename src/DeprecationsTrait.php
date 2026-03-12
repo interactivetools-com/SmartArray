@@ -121,8 +121,6 @@ trait DeprecationsTrait
      */
     public static function __callStatic($method, $args): mixed
     {
-        $methodLc = strtolower($method);
-
         // throw unknown method exception
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $className = substr(strrchr(static::class, '\\'), 1) ?: static::class;
@@ -139,13 +137,12 @@ trait DeprecationsTrait
      * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
      * @return static A new SmartArray containing the transformed elements.
      */
-    public function smartMap(Closure $callback): self
+    public function smartMap(Closure $callback): static
     {
         self::logDeprecation("->smartMap() is deprecated, use ->map() instead");
-        $newArray        = [];
-        $useSmartStrings = $this->useSmartStrings;
-        foreach (array_keys($this->getArrayCopy()) as $key) {
-            $smartValue     = $this->getElement($key, $useSmartStrings);
+        $newArray = [];
+        foreach (array_keys($this->data) as $key) {
+            $smartValue     = $this->getElement($key);
             $newArray[$key] = $callback($smartValue, $key);
         }
         return new static($newArray, $this->getInternalProperties());
@@ -195,10 +192,10 @@ trait DeprecationsTrait
      * @deprecated Use ->property or ->get('key') instead of $array['key']
      * @noinspection SpellCheckingInspection // ignore lowercase method names in match block
      */
-    public function offsetGet(mixed $offset, ?bool $useSmartStrings = null): static|SmartNull|SmartString|string|int|float|bool|null
+    public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
         $this->triggerArrayAccessDeprecation($offset, 'get');
-        return $this->getElement($offset, $useSmartStrings);
+        return $this->getElement($offset);
     }
 
     /**

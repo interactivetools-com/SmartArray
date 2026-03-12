@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Methods;
 
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
@@ -308,15 +309,16 @@ class WhereInListTest extends SmartArrayTestCase
     }
 
     /**
-     * Test that whereInList on a flat array returns empty (no rows are arrays)
+     * Test that whereInList throws on flat array
      */
-    public function testWhereInListOnFlatArrayReturnsEmpty(): void
+    public function testWhereInListThrowsOnFlatArray(): void
     {
         $arr = new SmartArray(['apple', 'banana', 'cherry']);
 
-        $result = $arr->whereInList('placement', 'menu');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Expected a nested array, but got a flat array");
 
-        $this->assertSame([], $result->toArray());
+        $arr->whereInList('placement', 'menu');
     }
 
     /**

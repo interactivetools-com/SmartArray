@@ -1,8 +1,8 @@
 # SmartArray Changelog
 
-## [2.6.2] - 2026-03-09
+## [2.6.3] - 2026-03-11
 > **Bundled with CMS Builder v3.83**
-> Roll-up release - every change from **v2.4.3 → v2.6.2** is now part of this version.
+> Roll-up release - every change from **v2.4.3 → v2.6.3** is now part of this version.
 
 ### Added
 - `whereNot($field, $value)` - Returns elements where a field does NOT match the value. Inverse of `where()`. Uses loose comparison. Rows with a missing field are kept.
@@ -31,7 +31,6 @@
 - **Architecture**: New `SmartArrayBase` abstract class contains all implementation; `SmartArray` and `SmartArrayHtml` are thin subclasses
 - `implode($separator)` - Separator parameter now optional, defaults to empty string
 - Replaced `$warnIfDeprecated`, `$warnIfMissing`, and `$logDeprecations` settings with PHP's native `@trigger_error()`
-- `getArrayCopy()` is now private - use `->toArray()` instead
 - Deprecation warnings now include file and line number for easier debugging
 - Updated docs to use property syntax (`->key`) instead of array brackets
 - Error messages now show the correct class name (`SmartArray` or `SmartArrayHtml`)

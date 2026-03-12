@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Methods;
 
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
@@ -236,16 +237,16 @@ class WhereNotTest extends SmartArrayTestCase
     }
 
     /**
-     * Test whereNot() on a flat array returns empty (non-array elements are skipped)
+     * Test whereNot() throws on flat array
      */
-    public function testWhereNotOnFlatArrayReturnsEmpty(): void
+    public function testWhereNotThrowsOnFlatArray(): void
     {
         $arr = new SmartArray(['a', 'b', 'c']);
 
-        // Flat array elements are skipped (not arrays), so result is empty
-        $result = $arr->whereNot('key', 'value');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Expected a nested array, but got a flat array");
 
-        $this->assertSame([], $result->toArray());
+        $arr->whereNot('key', 'value');
     }
 
     /**

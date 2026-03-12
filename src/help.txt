@@ -7,8 +7,8 @@ array operations simpler, safer, and more expressive.
 Core Concepts
 -------------------
 $obj              = Itools\SmartArray\SmartArray      // Arrays become SmartArray objects (even nested arrays)
-$obj->columnName  = raw PHP value                    // SmartArray returns raw values (string, int, null, etc.)
-$obj->columnName  = Itools\SmartString\SmartString   // SmartArrayHtml returns SmartString objects with HTML-encoded output
+$obj->fieldName   = raw PHP value                    // SmartArray returns raw values (string, int, null, etc.)
+$obj->fieldName   = Itools\SmartString\SmartString   // SmartArrayHtml returns SmartString objects with HTML-encoded output
 
 Accessing Elements
 -------------------
@@ -16,13 +16,13 @@ foreach ($users as $user) {          // Foreach over a SmartArray just like a re
     echo "Name: $user->name\n";      // SmartString output is automatically HTML-encoded, no need for htmlspecialchars()
 
     // For more complex expressions, curly braces are still required
-    echo "Bio: {$user->bio->textOnly()->maxChars(120, '...')}\n";  // Chain SmartString methods on column values
+    echo "Bio: {$user->bio->textOnly()->maxChars(120, '...')}\n";  // Chain SmartString methods on field values
 }
 
 Original Values
 -------------------
 $obj->toArray()                      // Get original array with raw values
-$obj->columnName->value()            // Get original unencoded field value
+$obj->fieldName->value()             // Get original unencoded field value
 "Bio: {$user->wysiwyg->rawHtml()}"   // Alias for value(), clearer when handling trusted WYSIWYG/HTML content
 
 Creating SmartArrays
@@ -54,7 +54,7 @@ $obj->key               Get a value using property syntax
 ->set(key, value)       Set a value by key (for numeric keys or keys with special characters)
 ->first()               Get the first element
 ->last()                Get the last element
-->nth(position)         Get element by position, ignoring keys (0 is first, -1 is last)
+->nth(index)            Get element by index, ignoring keys (0 is first, -1 is last)
 SmartArray::getRawValue($value)  Convert Smart* objects to original values, leave other types unchanged
 
 Array Information
@@ -72,39 +72,41 @@ Position & Layout
 
 Sorting & Filtering
 --------------------
-->sort()                     Sort elements by value, reindexing keys
-->sortBy(column)             Sort nested array by column value, reindexing keys
-->unique()                   Remove duplicate values, keeping first occurrence
-->filter(callback)           Keep elements where callback returns true, using raw values
-->where(field, value)        Keep elements where field matches value (uses == for type-tolerant matching)
-->whereNot(field, value)     Exclude elements where field matches value (inverse of where)
-->whereInList(field, value)  Keep elements where tab-delimited field contains value
+->sort()                      Sort elements by value, reindexing keys
+->sortBy(field)               Sort nested array by field value, reindexing keys
+->sortBy(field, type)         Sort with type: SORT_STRING, SORT_NUMERIC, SORT_REGULAR (default)
+->unique()                    Remove duplicate values, keeping first occurrence
+->filter(callback)            Keep elements where callback returns true, using raw values
+->where(field, value)         Keep elements where field matches value (uses == for type-tolerant matching)
+->whereNot(field, value)      Exclude elements where field matches value (inverse of where)
+->whereInList(field, value)   Keep elements where tab-delimited field contains value
 
 Array Transformation
 ---------------------
 ->toArray()                 Convert SmartArray/SmartString structure back to array/values
 ->keys()                    Get array of just the keys
 ->values()                  Get array of just the values
-->indexBy(column)           Get array using column as keys to single rows (duplicates overwrite)
-->groupBy(column)           Get array using column as keys to arrays of rows (duplicates group)
-->pluck(column, keyColumn)  Extract single column from nested array, optionally indexed by another column
-->pluckNth(position)        Get array containing nth element from each row
+->indexBy(field)            Get array using field as keys to single rows (duplicates overwrite)
+->groupBy(field)            Get array using field as keys to arrays of rows (duplicates group)
+->pluck(field, keyField)    Extract single field from nested array, optionally indexed by another field
+->pluckNth(index)           Get array containing nth element from each row
+->column(columnKey, indexKey) Mirrors PHP's array_column(). Calls pluck() or indexBy() internally
 ->implode(separator)        Join elements with separator into string (default: '')
 ->sprintf(format)           Apply sprintf format to each element. Always returns SmartArray (raw). SmartArrayHtml HTML-encodes values before formatting.
                             Also supports {value} and {key} aliases.
 ->map(callback)             Transform each element using callback (callback receives raw values)
-->each($callback)           Call callback on each element as Smart objects.  Used for side effects, doesn't modify array.
+->each(callback)            Call callback on each element as Smart objects. Used for side effects, doesn't modify array.
 ->merge(...$arrays)         Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
 
 Database Operations
 --------------------
 ->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
 ->mysqli(key)           Get specific mysqli result metadata (affected_rows, insert_id, etc)
-->load()                Loads related record(s) if available for column
+->load(field)           Loads related record(s) for field using load handler
 
 Error Handling
 ---------------
-->or404(message)        Returns 404 with message if array is empty (default message: "404 Not Found")
+->or404(message)        Returns 404 with message if array is empty (default: "The requested URL was not found...")
 ->orDie(message)        Exits with message if array is empty
 ->orThrow(message)      Throws exception with message if array is empty
 ->orRedirect(url)       Redirects to URL if array is empty (HTTP 302 redirect)

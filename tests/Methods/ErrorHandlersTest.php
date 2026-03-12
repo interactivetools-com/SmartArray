@@ -6,6 +6,8 @@ namespace Itools\SmartArray\Tests\Methods;
 
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
+use ReflectionException;
+use ReflectionMethod;
 use RuntimeException;
 
 /**
@@ -94,6 +96,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
      * - Sends Content-Type: text/html header
      * - Outputs HTML 404 page with message (HTML-encoded)
      * - Calls exit()
+     * @throws ReflectionException
      */
     public function testOr404DocumentedBehavior(): void
     {
@@ -101,7 +104,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
         $this->assertTrue(method_exists(SmartArray::class, 'or404'));
 
         // Verify method signature accepts optional string
-        $method = new \ReflectionMethod(SmartArray::class, 'or404');
+        $method = new ReflectionMethod(SmartArray::class, 'or404');
         $params = $method->getParameters();
 
         $this->assertCount(1, $params);
@@ -144,7 +147,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
         $this->assertTrue(method_exists(SmartArray::class, 'orDie'));
 
         // Verify method requires string parameter
-        $method = new \ReflectionMethod(SmartArray::class, 'orDie');
+        $method = new ReflectionMethod(SmartArray::class, 'orDie');
         $params = $method->getParameters();
 
         $this->assertCount(1, $params);
@@ -244,7 +247,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
         $this->assertTrue(method_exists(SmartArray::class, 'orRedirect'));
 
         // Verify method requires string parameter
-        $method = new \ReflectionMethod(SmartArray::class, 'orRedirect');
+        $method = new ReflectionMethod(SmartArray::class, 'orRedirect');
         $params = $method->getParameters();
 
         $this->assertCount(1, $params);

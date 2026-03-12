@@ -143,33 +143,16 @@ class WhereTest extends SmartArrayTestCase
     }
 
     /**
-     * Test that where() throws on list array format (common mistake)
+     * Test where() throws on flat array
      */
-    public function testWhereThrowsOnListArrayConditions(): void
-    {
-        $arr = new SmartArray([
-            ['id' => 1, 'status' => 'active'],
-            ['id' => 2, 'status' => 'inactive'],
-        ]);
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Got a list array");
-
-        // Wrong format: should be ['status' => 'active'] not ['status', 'active']
-        $arr->where(['status', 'active']);
-    }
-
-    /**
-     * Test where() with flat array returns empty (doesn't throw)
-     */
-    public function testWhereOnFlatArrayReturnsEmpty(): void
+    public function testWhereThrowsOnFlatArray(): void
     {
         $arr = new SmartArray(['a', 'b', 'c']);
 
-        // Flat array elements are skipped (not arrays), so result is empty
-        $result = $arr->where(['key' => 'value']);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Expected a nested array, but got a flat array");
 
-        $this->assertSame([], $result->toArray());
+        $arr->where(['key' => 'value']);
     }
 
     /**

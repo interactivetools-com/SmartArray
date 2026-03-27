@@ -1362,17 +1362,21 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Emits a PHP warning if the specified key doesn't exist, but only if the array isn't empty.
-     * For nested arrays, checks the first row's keys.
+     * Emits a PHP warning if $key is missing. Skips the check when the array is empty.
+     * Skipped for 'argument' checks on mixed data (scalar config + array fields)
+     * since there's no first row to check against.
      *
-     * @param string|int $key The key to check for existence
-     * @param string $warningType 'offset' for properties, 'argument' for method arguments
+     * @param string|int $key         The key to check for
+     * @param string     $warningType 'argument' for method args (default), 'offset' for key access
      */
     private function warnIfMissing(string|int $key, string $warningType = 'argument'): void
     {
-        // Skip warning if the array is empty or if the key exists
-        // For nested arrays, check the first row's keys (e.g., where('status', ...) checks first row for 'status')
+        // For nested method args (where, sortBy, etc.) - check first row's keys
+        // For property access (offset) - check this array's own keys
         $first  = $this->first();
+        if ($warningType === 'argument' && !($first instanceof self)) {
+            return; // Non-uniform data (e.g., schemas with scalar config + array fields)
+        }
         $target = $first instanceof self ? $first : $this;
         if (empty($target->data) || $target->offsetExists($key)) {
             return;

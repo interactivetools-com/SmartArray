@@ -519,36 +519,92 @@ class SmartArrayTest extends TestCase
 //endregion
 //region Error Handling
 
-    public function testWarnIfMissingOnNonEmptyArrayOutputsWarning(): void
+    public function testWarnIfMissingOffsetOnNonEmptyFlatArray(): void
     {
         $smartArray = new SmartArray([
             'id'   => 1,
             'name' => 'Alice',
         ]);
 
-        // Start output buffering to capture the warning output
+        // 'age' doesn't exist as a key — should warn with offset type
         ob_start();
-        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']); // 'age' key does not exist
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'offset']);
         $output = ob_get_clean();
 
-        // Build the expected warning message pattern
-        $expectedWarningPattern = "/Warning: .*'age' doesn't exist/s";
+        $this->assertMatchesRegularExpression("/Warning: .*age is undefined/s", $output, "Expected offset warning for missing key 'age'.");
+    }
 
-        // Assert that the output contains the expected warning message
-        $this->assertMatchesRegularExpression($expectedWarningPattern, $output, "Expected warning message not found in output.");
+    public function testWarnIfMissingArgumentOnNestedArray(): void
+    {
+        $smartArray = new SmartArray([
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Bob'],
+        ]);
+
+        // 'age' doesn't exist in nested rows — should warn with argument type
+        ob_start();
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']);
+        $output = ob_get_clean();
+
+        $this->assertMatchesRegularExpression("/Warning: .*'age' doesn't exist/s", $output, "Expected argument warning for missing field 'age'.");
+    }
+
+    public function testWarnIfMissingOffsetOnExistingKeyNoWarning(): void
+    {
+        $smartArray = new SmartArray([
+            'id'   => 1,
+            'name' => 'Alice',
+        ]);
+
+        // 'name' exists — should not warn
+        ob_start();
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['name', 'offset']);
+        $output = ob_get_clean();
+
+        $this->assertEmpty($output, "No warning should be output when the key exists.");
+    }
+
+    public function testWarnIfMissingArgumentOnExistingFieldNoWarning(): void
+    {
+        $smartArray = new SmartArray([
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Bob'],
+        ]);
+
+        // 'name' exists in nested rows — should not warn
+        ob_start();
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['name', 'argument']);
+        $output = ob_get_clean();
+
+        $this->assertEmpty($output, "No warning should be output when the field exists.");
     }
 
     public function testWarnIfMissingOnEmptyArrayDoesNotOutputWarning(): void
     {
         $smartArray = new SmartArray([]);
 
-        // Start output buffering to capture any output
+        // Empty array — should not warn for either type
         ob_start();
-        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']); // Any key
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'offset']);
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['age', 'argument']);
         $output = ob_get_clean();
 
-        // Assert that there is no warning output
         $this->assertEmpty($output, "No warning should be output when the array is empty.");
+    }
+
+    public function testWarnIfMissingArgumentSkipsMixedData(): void
+    {
+        // Mixed data: scalars + arrays — argument type should silently return
+        $smartArray = new SmartArray([
+            'tableName'  => 'users',
+            'maxRecords' => 100,
+        ]);
+
+        ob_start();
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['nonexistent', 'argument']);
+        $output = ob_get_clean();
+
+        $this->assertEmpty($output, "No warning should be output for argument type on mixed/flat data.");
     }
 
 //endregion

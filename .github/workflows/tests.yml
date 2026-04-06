@@ -27,6 +27,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Checkout SmartString
+        uses: actions/checkout@v5
+        with:
+          repository: interactivetools-com/SmartString
+          path: ../SmartString
+
       - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:

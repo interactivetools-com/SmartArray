@@ -6,6 +6,7 @@ namespace Itools\SmartArray;
 use Closure;
 use Error;
 use InvalidArgumentException;
+use RuntimeException;
 use Itools\SmartString\SmartString;
 
 /**
@@ -210,7 +211,9 @@ trait DeprecationsTrait
     }
 
     /**
-     * Log a deprecation notice for array access syntax.
+     * Surface a deprecation notice for array access syntax, dispatched per $onOffsetAccess mode.
+     *
+     * @see SmartArrayBase::$onOffsetAccess
      */
     private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
     {
@@ -236,7 +239,21 @@ trait DeprecationsTrait
             },
         };
 
-        self::logDeprecation("Replace [$keyStr] with $suggestion");
+        $caller  = self::getExternalCaller();
+        $message = "Replace [$keyStr] with $suggestion in {$caller['file']}:{$caller['line']}.";
+
+        // Dispatch per $onOffsetAccess mode. 'throw' and invalid values exit via exception;
+        // 'notify' prints then falls through to trigger_error; 'log' is trigger_error only.
+        match (SmartArrayBase::$onOffsetAccess) {
+            'log'    => null,
+            'notify' => print "\nDeprecated: $message\n",
+            'throw'  => throw new RuntimeException($message),
+            default  => throw new InvalidArgumentException(
+                "Invalid SmartArrayBase::\$onOffsetAccess value: '" . SmartArrayBase::$onOffsetAccess . "'. Expected 'log', 'notify', or 'throw'.",
+            ),
+        };
+
+        @trigger_error($message, E_USER_DEPRECATED);
     }
 
     //endregion

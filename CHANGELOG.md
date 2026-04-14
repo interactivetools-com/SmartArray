@@ -1,10 +1,18 @@
 # SmartArray Changelog
 
-## [2.6.4] - 2026-03-11
+## [2.6.5] - 2026-04-13
 > **Bundled with CMS Builder v3.83**
-> Roll-up release - every change from **v2.4.3 → v2.6.4** is now part of this version.
+> Roll-up release - every change from **v2.4.3 → v2.6.5** is now part of this version.
 
 ### Added
+- `SmartArrayBase::$onOffsetAccess` - Controls how deprecated `$array['key']` offset access is surfaced. Three modes:
+  - `'log'` - `trigger_error(E_USER_DEPRECATED)` only (silent unless surfaced by error handler)
+  - `'notify'` - Echoes a visible `Deprecated:` notice + `trigger_error()` (default)
+  - `'throw'` - Throws `RuntimeException` (strict mode for new installs)
+  - Apps running legacy code can downgrade to `'log'` during migration:
+```php
+    SmartArrayBase::$onOffsetAccess = 'log';
+    ```
 - `whereNot($field, $value)` - Returns elements where a field does NOT match the value. Inverse of `where()`. Uses loose comparison. Rows with a missing field are kept.
 - `whereInList($field, $value)` - Returns elements where a tab-delimited list field contains the specified value. Matches discrete values (not substrings). Designed for CMS Builder checkbox groups and multi-select fields.
 - `sprintf($format)` - Applies sprintf formatting to each element, useful for wrapping values in HTML tags
@@ -27,6 +35,7 @@
 - **IDE support**: Added `@implements \Iterator` annotations for PhpStorm foreach type inference
 
 ### Changed
+- **Default offset-access behavior is now visible.** Offset-access deprecations now echo a `Deprecated:` notice to output in addition to `trigger_error(E_USER_DEPRECATED)` (matches the `warnIfMissing()` pattern). Apps that need silent deprecations should set `SmartArrayBase::$onOffsetAccess = 'log'`.
 - **Performance**: ~50% better performance via internal architecture rewrite
 - **Architecture**: New `SmartArrayBase` abstract class contains all implementation; `SmartArray` and `SmartArrayHtml` are thin subclasses
 - `implode($separator)` - Separator parameter now optional, defaults to empty string

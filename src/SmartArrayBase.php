@@ -22,6 +22,29 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     use ErrorHelpersTrait;
     use DeprecationsTrait;
 
+    //region Global Settings
+
+    /**
+     * Controls how deprecated `$array['key']` offset access is surfaced.
+     *
+     * Offset access (`[]` syntax) is deprecated in favor of property access
+     * (`$array->key`) or the explicit `->get()` / `->set()` methods. This setting
+     * controls how the library signals that deprecation at runtime.
+     *
+     *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
+     *                by PHP's error handling. Use for legacy codebases mid-migration.
+     *     'notify' - Echo a visible "Deprecated:" notice + trigger_error(). Default.
+     *                Developer sees the signal immediately, independent of error-handler
+     *                configuration. Mirrors the pattern used by warnIfMissing().
+     *     'throw'  - Throw a RuntimeException. Halts execution on any offset access.
+     *                Use for new installs to enforce migration.
+     *
+     *     SmartArrayBase::$onOffsetAccess = 'log';    // quiet for legacy installs
+     *     SmartArrayBase::$onOffsetAccess = 'throw';  // strict mode
+     */
+    public static string $onOffsetAccess = 'notify';
+
+    //endregion
     //region Internal Storage
 
     /**

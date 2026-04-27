@@ -289,7 +289,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return $this->newSmartNull();
     }
 
-
     /**
      * Stores an element with automatic type conversion.
      * Scalars and nulls are stored as-is; arrays are converted to SmartArray instances.
@@ -628,7 +627,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return new static($values, $this->getInternalProperties());
     }
 
-
     /**
      * Creates a new SmartArray indexed by the specified field.
      *
@@ -961,7 +959,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return new static($merged, $this->getInternalProperties());
     }
 
-
     //endregion
     //region Database Operations
 
@@ -1114,15 +1111,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if ($debugLevel > 0) {
             $output             .= "\n";
             $properties         = $this->getInternalProperties(); // gets public properties
+            $rootShort          = self::stripNamespace(get_debug_type($properties['root']));
             $properties['root'] = get_debug_type($properties['root']) . " #" . spl_object_id($properties['root']);
             $output             .= self::prettyPrintR($properties, $debugLevel, 0, "Object Properties");
-            $output             = preg_replace("/^(\s+'root'\s+=> ).*?(\d+).*?$/m", "$1SmartArray #$2", $output); // format root property as: SmartArray #123
+            $output             = preg_replace("/^(\s+'root'\s+=> ).*?(\d+).*?$/m", "$1$rootShort #$2", $output); // format root property as: SmartArrayHtml #123
         }
 
         $output .= "\n";
         echo self::xmpWrap($output);
     }
-
 
     private static function prettyPrintR(mixed $var, int $debugLevel = 0, int $depth = 0, string $keyPrefix = '', string $loadComment = ""): array|string|null
     {
@@ -1130,7 +1127,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $commentOffset = $debugLevel > 0 ? 81 - (strlen($indent) * $depth) : 0;
 
         // get var type
-        $debugType = basename(get_debug_type($var));
+        $debugType = self::stripNamespace(get_debug_type($var));
         $comment   = $debugLevel > 0 ? " // $debugType" : "";
 
         // get output
@@ -1213,7 +1210,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $output = [];
         if ($this === $this->root()) {
             // Call ->help() for usage examples and documentation, or ->debug() to view metadata
-            $output["README:" . basename(static::class) . ":private"] = "Call \$obj->help() for documentation, or ->debug() to view metadata";
+            $output["README:" . self::stripNamespace(static::class) . ":private"] = "Call \$obj->help() for documentation, or ->debug() to view metadata";
             $output["*useSmartStrings*:private"] = match ($this->useSmartStrings) {
                 true  => "true, // Values are returned as SmartString objects on access\n",
                 false => "false, // Values are returned **as-is** on access (no extra encoding)\n",
@@ -1394,13 +1391,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private function warnIfMissing(string|int $key, string $warningType = 'argument'): void
     {
-        // For nested method args (where, sortBy, etc.) - check first row's keys
-        // For property access (offset) - check this array's own keys
-        $first  = $this->first();
-        if ($warningType === 'argument' && !($first instanceof self)) {
-            return; // Non-uniform data (e.g., schemas with scalar config + array fields)
+        // For property access (offset) - check this array's own keys.
+        // For nested method args (where, sortBy, etc.) - check the first row's keys.
+        $target = $this;
+        if ($warningType === 'argument') {
+            $first = $this->first();
+            if (!($first instanceof self)) {
+                return; // Non-uniform data (e.g., schemas with scalar config + array fields)
+            }
+            $target = $first;
         }
-        $target = $first instanceof self ? $first : $this;
         if (empty($target->data) || $target->offsetExists($key)) {
             return;
         }
@@ -1458,10 +1458,21 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Return a new SmartNull object with internal properties from the current SmartArray.
+     *
+     * `useSmartStrings` is added explicitly because `getInternalProperties()` omits it.
+     * The omission is deliberate: SmartArray/SmartArrayHtml constructors throw if passed
+     * a mismatched `useSmartStrings`, which is what makes cross-type construction
+     * (`->asHtml()` / `->asRaw()`) safe. SmartNull doesn't enforce a type, so it needs
+     * the flag to pick the right SmartArray class when `__call` delegates a method.
+     * Without it, a SmartNull born from a SmartArrayHtml would silently fall back to a
+     * plain SmartArray, dropping the HTML-encoded return type.
+     *
+     * The spread (`...`) is intentional: if `getInternalProperties()` ever starts
+     * including `useSmartStrings`, the explicit value here will still override it.
      */
     public function newSmartNull(): SmartNull
     {
-        return new SmartNull($this->getInternalProperties());
+        return new SmartNull([...$this->getInternalProperties(), 'useSmartStrings' => $this->useSmartStrings]);
     }
 
     /**
@@ -1509,7 +1520,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         return $this->data;
     }
-
 
     //endregion
     //region Instance Properties

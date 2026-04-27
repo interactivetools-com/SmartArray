@@ -1,8 +1,8 @@
 # SmartArray Changelog
 
-## [2.6.5] - 2026-04-13
+## [2.6.6] - 2026-04-27
 > **Bundled with CMS Builder v3.83**
-> Roll-up release - every change from **v2.4.3 → v2.6.5** is now part of this version.
+> Roll-up release - every change from **v2.4.3 → v2.6.6** is now part of this version.
 
 ### Added
 - `SmartArrayBase::$onOffsetAccess` - Controls how deprecated `$array['key']` offset access is surfaced. Three modes:
@@ -51,6 +51,11 @@
 - `toRaw()` and `toHtml()` - use `asRaw()` and `asHtml()` instead
 
 ### Fixed
+- **SmartNull HTML mode.** Method chains from a missing key on `SmartArrayHtml` now return `SmartArrayHtml`, not `SmartArray`.
+- **`warnIfMissing()` offset mode.** Checks the array's own keys instead of the first row's keys. A key in row 0 was masking a missing top-level key.
+- **`$arr[] = $value` deprecation suggestion.** Now reads `->set($key, $value) using an explicit key` instead of suggesting an empty-string key.
+- **Class short names on Linux.** `print_r` and `->debug()` show `SmartArrayHtml` instead of the full `Itools\SmartArray\SmartArrayHtml`.
+- **`->debug(1)` root label.** Shows the actual class instead of always saying `SmartArray`.
 - `where()` now handles SmartString values passed as conditions
 
 ---

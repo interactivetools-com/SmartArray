@@ -6,6 +6,7 @@ namespace Itools\SmartArray\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\SmartNull;
 
 class SmartNullTest extends TestCase
@@ -303,5 +304,21 @@ class SmartNullTest extends TestCase
                 'expected'  => " appended",
             ],
         ];
+    }
+
+    /**
+     * SmartNull must carry `useSmartStrings` from its parent SmartArray so that
+     * method chains off a missing key on a SmartArrayHtml keep returning HTML-safe
+     * SmartString values instead of silently falling back to raw SmartArray output.
+     */
+    public function testSmartNullFromHtmlArrayDelegatesToHtmlArray(): void
+    {
+        $array = new SmartArrayHtml([]);
+
+        ob_start();
+        $result = $array->newSmartNull()->filter(fn() => true);
+        ob_end_clean();
+
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
     }
 }

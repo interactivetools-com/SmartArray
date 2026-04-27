@@ -188,7 +188,6 @@ class SmartArrayHtml extends SmartArrayBase
         return parent::values();
     }
 
-
     /** {@inheritDoc} */
     public function indexBy(string $field): static
     {
@@ -248,7 +247,6 @@ class SmartArrayHtml extends SmartArrayBase
     {
         return parent::merge(...$arrays);
     }
-
 
     //endregion
     //region Database Operations

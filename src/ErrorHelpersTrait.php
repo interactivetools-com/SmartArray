@@ -86,7 +86,7 @@ trait ErrorHelpersTrait
         // Add Reported in file:line (if requested)
         if ($addReportedFileLine && isset($backtrace[0], $backtrace[1])) {
             $class        = $backtrace[1]['class'] ?? '';
-            $shortClass   = $class ? (substr(strrchr($class, '\\'), 1) ?: $class) : '';
+            $shortClass   = $class ? self::stripNamespace($class) : '';
             $method       = $shortClass . ($backtrace[1]['type'] ?? '') . ($backtrace[1]['function'] ?? '');
             $reportedFile = $backtrace[0]['file'] ?? "unknown";
             $reportedLine = $backtrace[0]['line'] ?? "unknown";
@@ -94,6 +94,22 @@ trait ErrorHelpersTrait
         }
 
         return $output;
+    }
+
+    /**
+     * Strip the namespace prefix from a class or type name. No-op when there's no '\\'.
+     *
+     *     self::stripNamespace('Itools\SmartArray\SmartArrayHtml'); // 'SmartArrayHtml'
+     *     self::stripNamespace('SmartArrayHtml');                   // 'SmartArrayHtml'
+     *     self::stripNamespace('string');                           // 'string'
+     *
+     * basename() on its own only splits on '/' on Linux, so calling it on a PHP
+     * class name leaves the backslashes in place. Normalize '\\' to '/' first so
+     * the result comes back consistently on any platform.
+     */
+    protected static function stripNamespace(string $typeOrClass): string
+    {
+        return basename(str_replace('\\', '/', $typeOrClass));
     }
 
 }

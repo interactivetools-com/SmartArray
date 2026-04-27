@@ -607,6 +607,27 @@ class SmartArrayTest extends TestCase
         $this->assertEmpty($output, "No warning should be output for argument type on mixed/flat data.");
     }
 
+    public function testWarnIfMissingOffsetOnNestedArrayChecksOwnKeys(): void
+    {
+        // Nested rows have 'name'; the top-level array's keys are [0, 1].
+        // Offset mode must check the top-level keys, not the first row's keys,
+        // otherwise the first row masks a missing top-level key.
+        $smartArray = new SmartArray([
+            ['name' => 'Alice'],
+            ['name' => 'Bob'],
+        ]);
+
+        ob_start();
+        $this->callPrivateMethod($smartArray, 'warnIfMissing', ['name', 'offset']);
+        $output = ob_get_clean();
+
+        $this->assertMatchesRegularExpression(
+            "/Warning: .*name is undefined/s",
+            $output,
+            "Expected offset warning: nested array's top-level keys are [0, 1], so 'name' is missing at this level.",
+        );
+    }
+
 //endregion
 //region Internal Methods
 

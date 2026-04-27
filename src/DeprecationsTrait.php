@@ -220,9 +220,12 @@ trait DeprecationsTrait
         $keyStr          = is_string($key) ? "'$key'" : (string) $key;
         $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
 
-        // Suggest the preferred access method
+        // Suggest the preferred access method. A null key only reaches 'set' via
+        // the append syntax `$arr[] = $value`; for 'unset'/'get' it indicates a
+        // programmer error that PHP itself treats as an empty-string key.
         $suggestion = match ($operation) {
             'set' => match (true) {
+                is_null($key)    => "->set(\$key, \$value) using an explicit key",
                 is_int($key)     => "->set($key, \$value)",
                 $isValidPropName => "->$key = \$value",
                 default          => "->set('$key', \$value) or ->{'$key'} = \$value",

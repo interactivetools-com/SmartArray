@@ -1,8 +1,8 @@
 # SmartArray Changelog
 
-## [2.6.6] - 2026-04-27
+## [2.6.7] - 2026-04-27
 > **Bundled with CMS Builder v3.83**
-> Roll-up release - every change from **v2.4.3 → v2.6.6** is now part of this version.
+> Roll-up release - every change from **v2.4.3 → v2.6.7** is now part of this version.
 
 ### Added
 - `SmartArrayBase::$onOffsetAccess` - Controls how deprecated `$array['key']` offset access is surfaced. Three modes:

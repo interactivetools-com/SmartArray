@@ -22,6 +22,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     use ErrorHelpersTrait;
     use DeprecationsTrait;
 
+    /**
+     * Flags for HTML-encoding output. ENT_DISALLOWED substitutes code points HTML5 forbids
+     * (C1 controls, noncharacters) with � so they can't hide in page source.
+     */
+    private const HTML_ENCODE_FLAGS = ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5;
+
     //region Global Settings
 
     /**
@@ -863,7 +869,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $newArray = [];
         foreach ($this as $key => $value) {
             $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8') : $key;
+            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
             $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
@@ -1267,10 +1273,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Sends a 404 header and message if the array is empty, then exits.
      *
-     * @param string|null $message The message to display when sending 404.
+     * @param string|null $text Plain-text message; HTML-encoded automatically before output. Defaults to "The requested URL was not found on this server."
      * @return static Returns $this if not empty, exits with 404 if empty
      */
-    public function or404(?string $message = null): static
+    public function or404(?string $text = null): static
     {
         if (!empty($this->data)) {
             return $this;
@@ -1279,8 +1285,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Send 404 header and message
         http_response_code(404);
         header("Content-Type: text/html; charset=utf-8");
-        $message ??= "The requested URL was not found on this server.";
-        $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
+        $text ??= "The requested URL was not found on this server.";
+        $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8');
 
         echo <<<__HTML__
             <!DOCTYPE html>
@@ -1290,7 +1296,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             </head>
             <body>
                 <h1>Not Found</h1>
-                <p>$message</p>
+                <p>$text</p>
             </body>
             </html>
             __HTML__;
@@ -1300,14 +1306,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Dies with a message if the array is empty
      *
-     * @param string $message Error message to show
+     * SECURITY: The message is intentionally HTML-encoded: die() sends it straight to the browser, and
+     * messages often interpolate user input (e.g. ->orDie("No results for '$keyword'")). The only cost
+     * is encoded entities in CLI output, which is cosmetic.
+     *
+     * @param string $text Plain-text message; HTML-encoded automatically before output.
      * @return static Returns $this for method chaining if not empty, dies if empty
      */
-    public function orDie(string $message): static
+    public function orDie(string $text): static
     {
         if (empty($this->data)) {
-            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
-            die($message);
+            $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
+            die($text);
         }
         return $this;
     }
@@ -1315,15 +1325,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Throws RuntimeException if the array is empty
      *
-     * @param string $message Error message to show
+     * SECURITY: The message is intentionally HTML-encoded: exception handlers often echo messages into
+     * a page, and messages often interpolate user input (e.g. ->orThrow("No results for '$keyword'")).
+     * Encoding at throw time keeps every handler safe. Handlers that want plain text (CLI, logs) can
+     * decode with:
+     *
+     *     htmlspecialchars_decode($e->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5)
+     *
+     * Pass those exact flags - the ENT_HTML401 default doesn't decode the &apos; this encoding produces.
+     *
+     * @param string $text Plain-text message; HTML-encoded automatically before output.
      * @return static Returns $this for method chaining if not empty
      * @throws RuntimeException If array is empty
      */
-    public function orThrow(string $message): static
+    public function orThrow(string $text): static
     {
         if (empty($this->data)) {
-            $message = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
-            throw new RuntimeException($message);
+            $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
+            throw new RuntimeException($text);
         }
         return $this;
     }
@@ -1514,11 +1533,20 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns serializable data for `json_encode()` via JsonSerializable.
      * Returns the raw internal array so nested SmartArrays serialize as plain arrays.
      *
+     * Substitutes malformed UTF-8 with � (U+FFFD) so json_encode($smartArray) returns valid JSON
+     * instead of false. Nested SmartArrays scrub themselves when json_encode() descends into them.
+     *
      * @return array The internal data array.
      */
     public function jsonSerialize(): array
     {
-        return $this->data;
+        $data = $this->data;
+        foreach ($data as $key => $value) {
+            if (is_string($value) && preg_match('//u', $value) !== 1) { // isMalformed: ~5x faster than mb_check_encoding()
+                $data[$key] = json_decode(json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE)); // json_encode's own U+FFFD substitution
+            }
+        }
+        return $data;
     }
 
     //endregion

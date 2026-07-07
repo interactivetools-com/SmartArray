@@ -509,8 +509,8 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |     SmartArrayHtml::new($array) | Create a SmartArray with HTML-safe SmartString values directly (equivalent to SmartArray::new()->asHtml())                   |
 | Value Access          |                       $obj->key | Get a value using property syntax                                                                                            |
 |                       |                        get(key) | Get a value by key (for numeric keys or keys with special characters)                                                        |
-|                       |              get(key, default)  | Get a value with optional default if key not found                                                                           |
-|                       |                set(key, value)  | Set a value by key (for numeric keys or keys with special characters)                                                        |
+|                       |               get(key, default) | Get a value with optional default if key not found                                                                           |
+|                       |                 set(key, value) | Set a value by key (for numeric keys or keys with special characters)                                                        |
 |                       |                         first() | Get the first element                                                                                                        |
 |                       |                          last() | Get the last element                                                                                                         |
 |                       |                      nth(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |
@@ -518,7 +518,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Array Information     |                         count() | Get the number of elements                                                                                                   |
 |                       |                       isEmpty() | Returns true if array has no elements                                                                                        |
 |                       |                    isNotEmpty() | Returns true if array has any elements                                                                                       |
-|                       |                contains(value)  | Returns true if array contains value                                                                                         |
+|                       |                 contains(value) | Returns true if array contains value                                                                                         |
 | Position & Layout     |                       isFirst() | Returns true if first element in parent array                                                                                |
 |                       |                        isLast() | Returns true if last element in parent array                                                                                 |
 |                       |                      position() | Gets position in parent array (starting from 1)                                                                              |
@@ -526,30 +526,30 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                   sortBy(field) | Sorts rows by field value (nested arrays only)                                                                               |
 |                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                  |
 |                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                              |
-|                       |              filter(callback)   | Removes elements where callback returns false (callback receives raw values)                                                 |
-|                       |          where(field, value)    | Keeps rows where field matches value (uses loose comparison: '1' matches 1, false matches 0). Chain for multiple conditions. |
-|                       |       whereNot(field, value)    | Excludes rows where field matches value (inverse of where)                                                                   |
-|                       |    whereInList(field, value)    | Filters rows where tab-delimited field contains value                                                                        |
+|                       |                filter(callback) | Removes elements where callback returns false (callback receives raw values)                                                 |
+|                       |             where(field, value) | Keeps rows where field matches value (uses loose comparison: '1' matches 1, false matches 0). Chain for multiple conditions. |
+|                       |          whereNot(field, value) | Excludes rows where field matches value (inverse of where)                                                                   |
+|                       |       whereInList(field, value) | Filters rows where tab-delimited field contains value                                                                        |
 | Array Transformation  |                       toArray() | Converts back to regular PHP array with original values                                                                      |
 |                       |                          keys() | Gets array of keys, discarding the values                                                                                    |
 |                       |                        values() | Gets array of values, discarding the keys                                                                                    |
 |                       |                  indexBy(field) | Indexes rows by field value, latest is kept if duplicates                                                                    |
 |                       |                  groupBy(field) | Groups rows by field value, preserving duplicates                                                                            |
-|                       |    pluck(valueField, keyField)  | Gets array of field values from rows, optionally indexed by another field                                                    |
+|                       |     pluck(valueField, keyField) | Gets array of field values from rows, optionally indexed by another field                                                    |
 |                       |                 pluckNth(index) | Gets array of values at position from rows                                                                                   |
-|                       |            implode(separator)   | Joins elements with separator into string                                                                                    |
+|                       |              implode(separator) | Joins elements with separator into string                                                                                    |
 |                       |                 sprintf(format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                     |
-|                       |                  map(callback)  | Transforms each element using callback (callback receives raw values)                                                        |
-|                       |                 each(callback)  | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
+|                       |                   map(callback) | Transforms each element using callback (callback receives raw values)                                                        |
+|                       |                  each(callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
 |                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                    |
-|                       |   column(columnKey, indexKey)   | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                   |
+|                       |     column(columnKey, indexKey) | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                   |
 | Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                  |
 |                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                          |
 |                       |                     mysqli(key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                            |
 |                       |                     load(field) | Loads related record(s) for field using load handler                                                                         |
-| Error Handling        |                or404(message)   | Exits with 404 header and message if array is empty, default: "The requested URL was not found on this server."              |
-|                       |                 orDie(message)  | Exits with message if array is empty                                                                                         |
-|                       |               orThrow(message)  | Throws exception with message if array is empty                                                                              |
+| Error Handling        |                     or404(text) | Exits with 404 header and message if array is empty, default: "The requested URL was not found on this server."              |
+|                       |                     orDie(text) | Exits with message if array is empty                                                                                         |
+|                       |                   orThrow(text) | Throws exception with message if array is empty                                                                              |
 |                       |                 orRedirect(url) | Redirects to URL if array is empty (HTTP 302)                                                                                |
 | Debugging and Help    |                          help() | Displays help information about available methods                                                                            |
 |                       |                         debug() | Show content of object as well as properties                                                                                 |

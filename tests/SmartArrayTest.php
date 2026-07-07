@@ -646,6 +646,20 @@ class SmartArrayTest extends TestCase
         $this->assertEquals($expectedJson, $jsonSerialized);
     }
 
+    /**
+     * Test json_encode($smartArray) substitutes malformed UTF-8 instead of returning false
+     */
+    public function testJsonSerializeSubstitutesMalformedUtf8(): void
+    {
+        // corrupt byte becomes U+FFFD instead of json_encode() returning false
+        $flat = new SmartArray(['name' => "a\xC3(b", 'id' => 7]);
+        $this->assertSame('{"name":"a\ufffd(b","id":7}', json_encode($flat));
+
+        // nested rows scrub themselves when json_encode() descends
+        $nested = new SmartArray(['rows' => [['title' => "x\xC3(y"]]]);
+        $this->assertSame('{"rows":[{"title":"x\ufffd(y"}]}', json_encode($nested));
+    }
+
     public static function jsonSerializeProvider(): array
     {
         return [

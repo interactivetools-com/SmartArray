@@ -1,5 +1,13 @@
 # SmartArray Changelog
 
+## [2.7.0] - 2026-07-07
+
+### Security
+- `json_encode($smartArray)` now substitutes malformed UTF-8 bytes with � (U+FFFD) instead of returning false, so one corrupt byte in a value no longer breaks the whole page (matches SmartString v2.7.0)
+
+### Changed
+- `or404()`, `orDie()`, `orThrow()` message parameter renamed to `$text` and documented as HTML-encoded before output
+
 ## [2.6.7] - 2026-04-27
 > **Bundled with CMS Builder v3.83**
 > Roll-up release - every change from **v2.4.3 → v2.6.7** is now part of this version.

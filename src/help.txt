@@ -106,9 +106,9 @@ Database Operations
 
 Error Handling
 ---------------
-->or404(message)        Returns 404 with message if array is empty (default: "The requested URL was not found...")
-->orDie(message)        Exits with message if array is empty
-->orThrow(message)      Throws exception with message if array is empty
+->or404(text)           Returns 404 with message if array is empty (default: "The requested URL was not found...")
+->orDie(text)           Exits with message if array is empty
+->orThrow(text)         Throws exception with message if array is empty
 ->orRedirect(url)       Redirects to URL if array is empty (HTTP 302 redirect)
 
 Debugging

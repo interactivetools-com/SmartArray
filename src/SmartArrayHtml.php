@@ -37,12 +37,14 @@ class SmartArrayHtml extends SmartArrayBase
      */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {
-        // Handle deprecated boolean parameter
+        // Handle deprecated boolean parameter: false contradicts this class (throw),
+        // true is redundant (deprecation only)
         if ($properties === false) {
             self::logDeprecation("new SmartArrayHtml(\$data, false) is deprecated. Use new SmartArray(\$data) instead.");
             throw new InvalidArgumentException("Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray(\$data) instead.");
         }
-        elseif (is_bool($properties)) {
+        if ($properties === true) {
+            self::logDeprecation("Passing true to SmartArrayHtml is deprecated. Just use SmartArrayHtml(\$data)");
             $properties = [];
         }
 
@@ -63,14 +65,11 @@ class SmartArrayHtml extends SmartArrayBase
      * Create a new SmartArrayHtml that returns SmartString objects for HTML safety.
      *
      * @param array $array The input array to convert
-     * @param array|bool $properties Optional properties to pass to the constructor
+     * @param array|bool $properties Optional properties to pass to the constructor (legacy boolean handled by the constructor)
      * @return static A new SmartArrayHtml instance
      */
     public static function new(array $array = [], array|bool $properties = []): static
     {
-        if (is_bool($properties)) {
-            $properties = [];
-        }
         return new static($array, $properties);
     }
 

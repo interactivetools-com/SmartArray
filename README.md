@@ -215,7 +215,7 @@ By: Isaac Asimov (Science Fiction)
 > - If multiple records have the same key value, later records will overwrite earlier ones
 > - For collections with duplicate keys, use `groupBy()` instead to preserve all records
 > - Keys are automatically converted to strings (as per PHP array key behavior)
-> - Missing keys in the source data will be skipped with a warning
+> - Rows with a null or missing key value are indexed under `''` (PHP's array-key form of null)
 
 Need to preserve duplicate keys? Consider using `groupBy()` instead.
 
@@ -303,7 +303,7 @@ George Orwell published 1 books (1949-1949):
 - Each group contains a new SmartArray of all matching records
 - Original record order is preserved within groups
 - Groups are created in order of first appearance
-- Missing or null values in the group key will be skipped with a warning
+- Rows with a null or missing group value are grouped under `''`, like SQL GROUP BY keeps a NULL group - no rows are dropped
 - Use `indexBy()` instead if you only need one record per key
 
 ### Extracting Unique Tags with pluck(), unique(), and implode()

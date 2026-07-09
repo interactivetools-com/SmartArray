@@ -120,19 +120,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     $sa = new SmartArray(['name' => 'Alice', 'age' => 30]);
      *     $sa = new SmartArray($records); // nested arrays become child SmartArrays
      *
-     * @param array      $array      The input array to convert into a SmartArray.
-     * @param bool|array $properties An associative array of internal properties. Boolean is deprecated.
+     * @param array $array      The input array to convert into a SmartArray.
+     * @param array $properties An associative array of internal properties.
+     *                          (Legacy boolean arguments are handled by the SmartArray/SmartArrayHtml constructors.)
      *
      * @noinspection UnusedConstructorDependenciesInspection
      */
-    public function __construct(array $array = [], bool|array $properties = [])
+    public function __construct(array $array = [], array $properties = [])
     {
-        // Convert boolean to array format for backward compatibility
-        if (is_bool($properties)) {
-            self::logDeprecation("Passing boolean to SmartArray constructor is deprecated. Use ->asHtml() for HTML-safe SmartStrings or ->asRaw() for raw values");
-            $properties = ['useSmartStrings' => $properties];
-        }
-
         // Set internal properties from properties array
         foreach ($properties as $property => $value) {
             if (property_exists($this, $property)) {
@@ -156,30 +151,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $element->isLast   = $position === $count;
             }
         }
-    }
-
-    /**
-     * Create a new instance of the current SmartArray type.
-     *
-     *     $data = SmartArray::new($records)->filter(...)->map(...);
-     *     $html = SmartArrayHtml::new($records)->first();
-     *
-     * @param array      $array      The input array to convert
-     * @param array|bool $properties Optional properties array. Boolean is deprecated.
-     * @return static A new instance of the called class
-     */
-    public static function new(array $array = [], array|bool $properties = []): static
-    {
-        // Backward compatibility: handle boolean for SmartStrings toggle
-        if (is_bool($properties)) {
-            match ($properties) {
-                true  => self::logDeprecation("Passing `true` as the second argument to SmartArray::new(...) is deprecated. Use SmartArrayHtml::new(...) instead"),
-                false => self::logDeprecation("Passing `false` as the second argument to SmartArray::new(...) is deprecated. Just use SmartArray::new(...)"),
-            };
-            $properties = ['useSmartStrings' => $properties];
-        }
-
-        return new static($array, $properties);
     }
 
     /**
@@ -273,6 +244,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Sets a value by key. Preferred over array assignment syntax.
      *
+     * Smart values are unwrapped on storage: a SmartString stores its raw
+     * value, a SmartArray stores as a child array of this array's mode, and
+     * a SmartNull stores as null. So `$a->set('x', $b->x)` works in any mode.
+     *
      * @param int|string $key The key to set
      * @param mixed $value The value to set
      * @return static Returns $this for method chaining
@@ -326,9 +301,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Stores an element with automatic type conversion.
      * Scalars and nulls are stored as-is; arrays are converted to SmartArray instances.
+     * Smart values are unwrapped first, so `$a->key = $b->key` works in any mode.
      */
     private function setElement(int|string|null $key, mixed $value): void
     {
+        // Unwrap Smart values (SmartString, SmartArray, SmartNull) to their raw
+        // equivalents; nested arrays then convert to this array's mode below
+        if ($value instanceof SmartBase || $value instanceof SmartString) {
+            $value = self::getRawValue($value);
+        }
+
         // Store scalars and nulls as-is (encoded on access by getElement)
         if (is_scalar($value) || is_null($value)) {
             if ($key === null) {
@@ -464,6 +446,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns a new SmartArray sorted ascending by the specified field.
      * Only works on nested arrays (throws on flat).
      *
+     * Rows missing the field sort first: the missing value counts as null for
+     * ordering only (like MySQL ORDER BY), and rows are returned unchanged.
+     *
      * Numeric row keys are re-indexed; string keys are preserved
      * (array_multisort() default behavior).
      */
@@ -472,9 +457,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $this->assertNestedArray();
         $this->warnIfMissing($field);
 
-        // sort by key
+        // sort by field value, treating missing fields as null (?? also covers non-array rows in mixed data)
         $sorted      = $this->toArray();
-        $fieldValues = array_column($sorted, $field);
+        $fieldValues = array_map(fn($row) => $row[$field] ?? null, $sorted);
         array_multisort($fieldValues, SORT_ASC, $type, $sorted);
 
         return new static($sorted, $this->getInternalProperties());
@@ -677,6 +662,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * This method transforms the current SmartArray (assumed to be a nested array of rows)
      * into a new SmartArray where each element is indexed by the value of the specified field.
      *
+     * Rows with a null or missing field value index under '' (PHP's array-key
+     * form of null). Duplicate values: last row wins.
+     *
      * @param string $field The field name to index the rows by.
      *
      * @return static A new SmartArray indexed by the specified field.
@@ -708,8 +696,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $this->assertNestedArray();
         $this->warnIfMissing($field);
 
-        // Index by field
-        $values = array_column($this->toArray(), null, $field);
+        // Index by field; rows with a null or missing value index under '' (duplicates: last wins)
+        $values = [];
+        foreach ($this->toArray() as $row) {
+            if (!is_array($row)) {
+                continue; // scalar rows have no fields to index by
+            }
+            $values[$row[$field] ?? ''] = $row;
+        }
+
         return new static($values, $this->getInternalProperties());
     }
 
@@ -718,6 +713,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * This method transforms the current SmartArray (assumed to be a nested array of rows)
      * into a new SmartArray where each element is grouped by the value of the specified field.
+     *
+     * Rows with a null or missing field value group under '' (PHP's array-key
+     * form of null), like SQL GROUP BY keeps a NULL group. No rows are dropped.
      *
      * @param string $field The field name to group the rows by.
      *

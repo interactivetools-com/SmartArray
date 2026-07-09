@@ -102,11 +102,16 @@ abstract class SmartArrayTestCase extends TestCase
      * Walk the whole object and verify structural invariants: element types,
      * position metadata on child rows, root references, mysqli propagation,
      * and mode propagation. Call on the result of any transformation.
+     *
+     * The top object's root() is itself for fresh constructions or the source
+     * array's root for derived results - either way, every descendant must
+     * share it. Fresh-construction tests assert root() === self separately.
      */
     protected function assertValidStructure(SmartArrayBase $obj, string $path = '$obj', ?SmartArrayBase $root = null): void
     {
-        $isRoot = $root === null;
-        $keys   = $obj->keys()->toArray();
+        $isTop = $root === null;
+        $root ??= $obj->root();
+        $keys  = $obj->keys()->toArray();
 
         // Elements must be SmartArrayBase, SmartString, scalar, or null
         foreach ($obj as $key => $element) {
@@ -128,17 +133,14 @@ abstract class SmartArrayTestCase extends TestCase
             $this->assertSame($key === $lastKey, $el->isLast(), "$path->$key isLast()");
         }
 
-        // Root reference: self for the root, the actual root for children
-        if ($isRoot) {
-            $this->assertSame($obj, $obj->root(), "$path root() should reference self");
-        } else {
-            $this->assertSame($root, $obj->root(), "$path root() should reference the root array");
+        // Every descendant shares the top object's root, metadata, and mode
+        if (!$isTop) {
+            $this->assertSame($root, $obj->root(), "$path root() should reference the top array's root");
             $this->assertSame($root->mysqli(), $obj->mysqli(), "$path mysqli() should match root");
             $this->assertSame($root->usingSmartStrings(), $obj->usingSmartStrings(), "$path usingSmartStrings() should match root");
         }
 
         // Recurse over child SmartArrays
-        $root ??= $obj;
         foreach ($obj as $key => $element) {
             if ($element instanceof SmartArrayBase) {
                 $this->assertValidStructure($element, "$path->$key", $root);

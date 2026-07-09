@@ -204,13 +204,41 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Value Access
 
     /**
-     * Retrieves an element by key, or returns a default value or SmartNull if not found.
+     * Returns the element at $key, same as $array->key. Use it for keys property
+     * syntax can't type (Smart Join keys like 'users.id') or to supply a default
+     * for missing keys.
      *
-     *     $value = $array->get('name');              // returns element or SmartNull
-     *     $value = $array->get('name', 'fallback');  // returns element or 'fallback'
+     *     $row->get('users.id');      // same as $row->{'users.id'}
+     *     $row->get('name', 'n/a');   // same as $row->name ?? 'n/a' (SmartStrings on)
+     *
+     * The default replaces missing keys only, never stored nulls. The same is
+     * mostly true of PHP's null coalescing operator (??): with SmartStrings on
+     * (the default), every stored value comes back as a SmartString object,
+     * even nulls, so ?? never fires on a value; only a missing key triggers
+     * it, same as get(). With SmartStrings off, values are raw PHP types, so a
+     * stored null is a real null and ?? falls through to its default, which
+     * get() never does.
+     *
+     * On objects, ?? runs two checks in order: first __isset(), which here
+     * means "does the key exist", and only when that's true does it read the
+     * value and apply the usual null test.
+     *
+     * Every outcome of the two forms, with 'n/a' as the default:
+     *
+     *     $row->get('name', 'n/a')    vs    $row->name ?? 'n/a'
+     *
+     *     SmartStrings ON - every value comes back as a SmartString object:
+     *         stored 'Bob'   both return SmartString('Bob')
+     *         stored null    both return SmartString(null), NOT 'n/a' - use ->ifNull('n/a')
+     *         key missing    both return 'n/a'
+     *
+     *     SmartStrings OFF - every value comes back as a raw PHP type:
+     *         stored 'Bob'   both return 'Bob'
+     *         stored null    get() returns null, ?? returns 'n/a'   <- the one difference
+     *         key missing    both return 'n/a'
      *
      * @param int|string $key     The key to retrieve
-     * @param mixed      $default Optional default value if key doesn't exist
+     * @param mixed      $default Returned when $key doesn't exist; scalars are wrapped the same as stored values
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
     public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null

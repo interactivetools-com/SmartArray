@@ -7,6 +7,7 @@
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
 
 ### Fixed
+- `get($key, $default)` defaults now act like stored values: Smart defaults (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's mode. Previously a SmartNull default threw `InvalidArgumentException`, and cross-mode Smart defaults (a SmartString default on SmartArray, a raw SmartArray default on SmartArrayHtml) threw `TypeError` from the return declarations.
 - `sortBy()` no longer throws a bare `ValueError: Array sizes are inconsistent` when a row is missing the sort field. Missing fields sort first (treated as null for ordering, like MySQL ORDER BY); rows are returned unchanged.
 - `indexBy()` no longer gives rows missing the index field a leftover numeric key that looks like a real field value. Null and missing values now both index under `''` (matching how null field values were already handled), duplicates last-wins.
 

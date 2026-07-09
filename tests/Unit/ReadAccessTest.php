@@ -121,16 +121,32 @@ class ReadAccessTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testGetSmartObjectDefaultPassesThrough(string $class): void
+    public function testGetSmartDefaultsActLikeStoredValues(string $class): void
     {
-        // Matching-mode Smart defaults pass through as the same instance.
-        // Cross-mode defaults (a SmartString default on SmartArray, a raw
-        // SmartArray default on SmartArrayHtml) currently throw a TypeError
-        // from the subclass return declarations - pinned pending Q14.
+        // Q14: Smart defaults unwrap and re-wrap for this array's mode, exactly
+        // as if the default had been the stored value. Cross-mode combinations
+        // previously threw a TypeError from the subclass return declarations.
         $sa = $class::new(['name' => 'Bob']);
 
-        $default = $class === SmartArrayHtml::class ? new SmartString('fallback') : SmartArray::new(['x']);
-        $this->assertSame($default, $sa->get('zzz', $default));
+        $this->assertModeValue('fallback', $sa->get('zzz', new SmartString('fallback')), $class);
+
+        $fromRawDefault  = $sa->get('zzz', SmartArray::new(['x' => 1]));
+        $fromHtmlDefault = $sa->get('zzz', SmartArrayHtml::new(['x' => 1]));
+        $this->assertInstanceOf($class, $fromRawDefault);
+        $this->assertInstanceOf($class, $fromHtmlDefault);
+        $this->assertSame(['x' => 1], $fromRawDefault->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testGetSmartNullDefaultReturnsNullValue(string $class): void
+    {
+        // Q7: the common chain `$row->get('color', $other->first())` no longer
+        // throws when $other is empty - the SmartNull default acts like a stored null
+        $sa = $class::new(['name' => 'Bob']);
+
+        $smartNullDefault = $class::new([])->first();
+
+        $this->assertModeValue(null, $sa->get('zzz', $smartNullDefault), $class);
     }
 
     #[DataProvider('modeProvider')]

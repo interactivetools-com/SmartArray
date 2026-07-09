@@ -209,18 +209,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         key missing    both return 'n/a'
      *
      * @param int|string $key     The key to retrieve
-     * @param mixed      $default Returned when $key doesn't exist; scalars are wrapped the same as stored values
+     * @param mixed      $default Returned when $key doesn't exist; treated like a stored value (Smart values
+     *                            unwrap first, then everything wraps for this array's mode - so a SmartNull
+     *                            default returns null and a SmartArray default returns this array's type)
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
     public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // return default if key not found
         if (func_num_args() >= 2 && !$this->offsetExists($key)) {
-            $isDefaultSmartObject = $default instanceof self || $default instanceof SmartString;
+            // Defaults act like stored values: Smart defaults (SmartString,
+            // SmartArray, SmartNull) unwrap to raw equivalents, then everything
+            // wraps for this array's mode the same as a stored value would
+            if ($default instanceof SmartBase || $default instanceof SmartString) {
+                $default = self::getRawValue($default);
+            }
             return match (true) {
                 is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
                 is_array($default)                     => new static($default, $this->getInternalProperties()),
-                $isDefaultSmartObject                  => $default,
                 default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
             };
         }

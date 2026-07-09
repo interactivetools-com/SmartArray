@@ -187,7 +187,7 @@ class LoadTest extends SmartArrayTestCase
         $smartArray->setLoadHandler(fn($row, $col) => false);
 
         $this->expectException(Error::class);
-        $this->expectExceptionMessage("Load handler not available for 'products'");
+        $this->expectExceptionMessage("Load handler doesn't support field 'products'");
 
         $smartArray->load('products');
     }

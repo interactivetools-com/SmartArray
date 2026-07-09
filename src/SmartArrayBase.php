@@ -433,7 +433,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Check if array contains a specific value (loose comparison).
+     * Check if array contains a specific value (loose == comparison).
+     *
+     * Loose comparison means types don't need to match: contains('1') matches
+     * 1 and true, and contains(null) matches '' and false. For strict matching
+     * use in_array($value, $arr->toArray(), true).
      */
     public function contains(mixed $value): bool
     {
@@ -459,6 +463,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Returns a new SmartArray sorted ascending by the specified field.
      * Only works on nested arrays (throws on flat).
+     *
+     * Numeric row keys are re-indexed; string keys are preserved
+     * (array_multisort() default behavior).
      */
     public function sortBy(string $field, int $type = SORT_REGULAR): static
     {
@@ -477,6 +484,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns a new SmartArray with duplicate values removed, keeping only the first
      * occurrence of each unique value, and preserving keys.
      * Only works on flat arrays (throws on nested).
+     *
+     * Values are compared as strings (array_unique() default): 1, '1', and true
+     * count as duplicates; '', false, and null count as duplicates of each other.
      */
     public function unique(): static
     {
@@ -1046,7 +1056,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // get handler output
         $result = $loadHandler($this, $field);
         if ($result === false) {
-            throw new Error("Load handler not available for '$field'\n" . self::occurredInFile());
+            throw new Error("Load handler doesn't support field '$field'\n" . self::occurredInFile());
         }
 
         // output error checking
@@ -1110,6 +1120,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Displays diagnostic output: array contents, mysqli metadata, and object properties.
+     *
+     * If a load handler is set, calls it for every key to annotate loadable
+     * relations - with a database-backed handler this can run one query per key.
      *
      * @param int $debugLevel 0 for compact, 1+ for verbose with type info and object IDs
      */
@@ -1379,7 +1392,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Redirects to a URL if the array is empty
      *
      * Uses a simple Location header redirect (HTTP 302 Temporary Redirect).
-     * If headers have already been sent, this method will throw an exception.
+     * If headers have already been sent, throws immediately - even when the
+     * array is not empty - so a misplaced call fails on every request, not
+     * just when a result happens to be empty.
      *
      * @param string $url The URL to redirect to if array is empty
      * @return static Returns $this for method chaining if not empty, redirects if empty
@@ -1560,6 +1575,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Returns serializable data for `json_encode()` via JsonSerializable.
      * Returns the raw internal array so nested SmartArrays serialize as plain arrays.
+     *
+     * Values are raw, not HTML-encoded, even for SmartArrayHtml: JSON is a data
+     * format, and HTML encoding applies only when values are output as HTML.
      *
      * Substitutes malformed UTF-8 with � (U+FFFD) so json_encode($smartArray) returns valid JSON
      * instead of false. Nested SmartArrays scrub themselves when json_encode() descends into them.

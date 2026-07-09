@@ -518,12 +518,12 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Array Information     |                         count() | Get the number of elements                                                                                                   |
 |                       |                       isEmpty() | Returns true if array has no elements                                                                                        |
 |                       |                    isNotEmpty() | Returns true if array has any elements                                                                                       |
-|                       |                 contains(value) | Returns true if array contains value                                                                                         |
+|                       |                 contains(value) | Returns true if array contains value (loose == comparison)                                                                   |
 | Position & Layout     |                       isFirst() | Returns true if first element in parent array                                                                                |
 |                       |                        isLast() | Returns true if last element in parent array                                                                                 |
 |                       |                      position() | Gets position in parent array (starting from 1)                                                                              |
 | Sorting & Filtering   |                          sort() | Sorts elements by value (flat arrays only)                                                                                   |
-|                       |                   sortBy(field) | Sorts rows by field value (nested arrays only)                                                                               |
+|                       |                   sortBy(field) | Sorts rows by field value (nested arrays only; numeric keys reindexed, string keys preserved)                                |
 |                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                  |
 |                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                              |
 |                       |                filter(callback) | Removes elements where callback returns false (callback receives raw values)                                                 |

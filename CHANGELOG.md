@@ -55,7 +55,7 @@
 ### Deprecated
 - **Array access syntax**: `$array['key']` is deprecated - use `$array->key` or `$array->get('key')` instead
 - `SmartArrayRaw` class - now an alias for `SmartArray`, use `SmartArray` directly
-- `isFirst()`, `isLast()`, `position()`, `isMultipleOf()`, `chunk()`, `smartMap()` - now trigger deprecation notice
+- `isMultipleOf()`, `chunk()`, `smartMap()` - now trigger deprecation notice (isFirst/isLast/position were promoted back to first-class methods in 2.6.2)
 - `toRaw()` and `toHtml()` - use `asRaw()` and `asHtml()` instead
 
 ### Fixed

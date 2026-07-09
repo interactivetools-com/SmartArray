@@ -15,6 +15,10 @@ use stdClass;
  *
  * Implements SmartBase so instanceof SmartBase works for all Smart* types.
  * Extends stdClass to avoid IDE warnings related to undefined properties.
+ *
+ * Note: as an object, SmartNull is truthy in conditionals and compares loosely
+ * equal to '' via __toString ($smartNull == '' is true). For explicit checks
+ * use ->value() === null or instanceof SmartNull.
  */
 class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, JsonSerializable, Countable
 {

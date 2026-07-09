@@ -62,7 +62,7 @@ Array Information
 ->count()               Get the number of elements
 ->isEmpty()             Returns true if array has no elements
 ->isNotEmpty()          Returns true if array has any elements
-->contains(value)       Check if array contains a specific value
+->contains(value)       Check if array contains a specific value (loose == comparison)
 
 Position & Layout
 ------------------
@@ -73,7 +73,7 @@ Position & Layout
 Sorting & Filtering
 --------------------
 ->sort()                      Sort elements by value, reindexing keys
-->sortBy(field)               Sort nested array by field value, reindexing keys
+->sortBy(field)               Sort nested array by field value (numeric keys reindexed, string keys preserved)
 ->sortBy(field, type)         Sort with type: SORT_STRING, SORT_NUMERIC, SORT_REGULAR (default)
 ->unique()                    Remove duplicate values, keeping first occurrence
 ->filter(callback)            Keep elements where callback returns true, using raw values

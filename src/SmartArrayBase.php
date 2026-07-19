@@ -1277,19 +1277,35 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Magic method for property access: $array->key
      *
      * This is the preferred way to access array elements.
-     * For keys with special characters or numeric keys, use ->get('key') instead.
+     * For keys with special characters or numeric keys, use ->get('key') or ->{'key'} instead.
      */
     public function __get(string $name): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // Access array element (preferred method - no deprecation warning)
-        return $this->getElement($name);
+        // Speed: this is the library's hottest path ($row->column in templates), so the
+        // usual getElement() -> offsetExists() call chain is inlined here as one lookup.
+        // - same behavior as getElement(), which all other accessors still use
+        // - 6-54% faster across PHP 8.1-8.5 on all 5 platforms
+        // - full results: .github/scripts/speed-results.md (test: arr-get)
+
+        // Look up the value; ?? handles missing keys, array_key_exists catches stored nulls
+        $value = $this->data[$name] ?? null;
+        if ($value !== null || array_key_exists($name, $this->data)) {
+            // Wrap in SmartString unless it's a nested SmartArray (the only object type setElement() stores)
+            return $this->useSmartStrings && !is_object($value)
+                ? new SmartString($value)
+                : $value;
+        }
+
+        // Key doesn't exist: warn (suppressed for empty arrays) and return SmartNull
+        $this->warnIfMissing($name, 'offset');
+        return $this->newSmartNull();
     }
 
     /**
      * Magic method for property assignment: $array->key = $value
      *
      * This is the preferred way to set array elements.
-     * For keys with special characters or numeric keys, use ->set('key', $value) instead.
+     * For keys with special characters or numeric keys, use ->set('key', $value) or ->{'key'} = $value instead.
      */
     public function __set(string $name, mixed $value): void
     {

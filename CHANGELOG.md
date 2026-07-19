@@ -1,5 +1,9 @@
 # SmartArray Changelog
 
+> **Upgrading?** Read each version section between your version and the
+> target - tagged releases roll up every change since the previous tag.
+> Versions bundled with CMS Builder are marked on their sections.
+
 ## [Unreleased]
 
 ### Changed
@@ -21,7 +25,6 @@
 
 ## [2.6.7] - 2026-04-27
 > **Bundled with CMS Builder v3.83**
-> Roll-up release - every change from **v2.4.3 → v2.6.7** is now part of this version.
 
 ### Added
 - `SmartArrayBase::$onOffsetAccess` - Controls how deprecated `$array['key']` offset access is surfaced. Three modes:
@@ -81,7 +84,6 @@
 
 ## [2.4.2] - 2025-12-03
 > **Bundled with CMS Builder v3.81**
-> Roll-up release - every change from **v2.4.1 → v2.4.2** is now part of this version.
 
 ### Added
 - `column()` - Mirrors PHP's `array_column()`, calls `pluck()` or `indexBy()` internally
@@ -94,7 +96,6 @@
 
 ## [2.4.0] - 2025-10-07
 > **Bundled with CMS Builder v3.80**
-> Roll-up release - every change from **v2.3.0 → v2.4.0** is now part of this version.
 
 ### Added
 - `where($field, $value)` - Two-argument shorthand for filtering by a single field
@@ -122,7 +123,6 @@
 
 ## [2.2.2] - 2025-04-29
 > **Bundled with CMS Builder v3.76**
-> Roll-up release - every change from **v2.0.2 → v2.2.1** is now part of this version.
 
 ### Added
 - **Configuration & diagnostics**
@@ -156,7 +156,6 @@
 
 ## [2.0.1] - 2024-12-09
 > **Bundled with CMS Builder v3.75**
-> Roll-up release - every change from **v2.0.0 → v2.0.1** is now part of this version.
 
 ### Changed
 - BREAKING: Values now stay as raw values by default (previously auto-converted to SmartStrings)
@@ -186,7 +185,6 @@
 
 ## [1.2.0] - 2024-10-31
 > **Bundled with CMS Builder v3.74**
-> Roll-up release - every change from **v1.0.0 → v1.2.0** is now part of this version.
 
 - Initial release of SmartArray
 - `sort()` and `sortBy($column)` for array sorting

@@ -11,4 +11,3 @@ vendor/
 test.php
 *.sh
 .claude/
-CLAUDE.md

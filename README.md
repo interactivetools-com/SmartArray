@@ -462,14 +462,11 @@ $users = SmartArrayHtml::new([
 print_r($users);
 ```
 
-The output shows the nested structure and metadata:
+The output shows the nested structure:
 
 ```
 Itools\SmartArray\SmartArrayHtml Object
 (
-    [README:...] => Call $obj->help() for documentation, or ->debug() to view metadata
-    [*useSmartStrings*:private] => true, // Values are returned as SmartString objects on access
-
     [0] => Itools\SmartArray\SmartArrayHtml Object
         (
             [id] => 10

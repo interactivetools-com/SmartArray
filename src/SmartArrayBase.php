@@ -1229,25 +1229,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Customizes print_r() and var_dump() output for this object.
+     * Shows just the element data in print_r() and var_dump() output, hiding internal
+     * properties. The class name PHP prints on every dumped object identifies the mode
+     * (SmartArray vs SmartArrayHtml); use ->debug() for exact types and metadata.
      * Comment out this method to see all internal properties while debugging.
      */
     public function __debugInfo(): array
     {
-        // show help information for root array (but not for every child array)
-        $output = [];
-        if ($this === $this->root()) {
-            // Call ->help() for usage examples and documentation, or ->debug() to view metadata
-            $output["README:" . self::stripNamespace(static::class) . ":private"] = 'Call $obj->help() for documentation, or ->debug() to view metadata';
-            $output["*useSmartStrings*:private"] = match ($this->useSmartStrings) {
-                true  => "true, // Values are returned as SmartString objects on access\n",
-                false => "false, // Values are returned **as-is** on access (no extra encoding)\n",
-            };
-        }
-
-        // show array data
-        $output += $this->data;
-        return $output;
+        return $this->data;
     }
 
     /**

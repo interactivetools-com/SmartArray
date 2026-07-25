@@ -110,6 +110,15 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
         echo $output;
     }
 
+    /**
+     * Shows just the null value in print_r() and var_dump() output, hiding internal
+     * properties. Matches SmartString's [value] dump.
+     */
+    public function __debugInfo(): array
+    {
+        return ['value' => null];
+    }
+
     //endregion
     //region Iterator Methods
 

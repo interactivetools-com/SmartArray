@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### Changed
+- Deprecated method names (`toRaw()`, `toHtml()`, `withSmartStrings()`, `enableSmartStrings()`, `noSmartStrings()`, `disableSmartStrings()`, `isMultipleOf()`, plus `smartMap()` and `chunk()`) are now real declared methods marked `@deprecated`, organized by deprecation stage in one `DeprecatedAliases` trait, instead of `__call()` shims. IDEs now show strikethroughs with the replacement, `method_exists()` reports them, and calls skip `__call()` dispatch. Same behavior and deprecation notices as before.
 - `set()`, `->key = $value`, and array assignment now unwrap Smart values (SmartString, SmartArray, SmartNull) instead of throwing, so values can be copied between arrays in any mode without calling `->value()` first. SmartNull stores as null; nested SmartArrays convert to the target array's mode. Matches how `where()`, `contains()`, and `merge()` already treat Smart inputs.
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
 

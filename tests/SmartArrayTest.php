@@ -470,11 +470,18 @@ class SmartArrayTest extends TestCase
             'usingSmartStrings', // Internal
             'setLoadHandler',   // Advanced/internal (set by ZenDB)
             'root',             // Advanced/internal
-            'smartMap',         // Deprecated (in DeprecationsTrait)
-            'chunk',            // Deprecated (in DeprecationsTrait)
-            'offsetGet',        // Deprecated array access (in DeprecationsTrait)
-            'offsetSet',        // Deprecated array access (in DeprecationsTrait)
-            'offsetUnset',      // Deprecated array access (in DeprecationsTrait)
+            'smartMap',         // Deprecated (in DeprecatedAliases)
+            'chunk',            // Deprecated (in DeprecatedAliases)
+            'toRaw',            // Deprecated alias (in DeprecatedAliases)
+            'toHtml',           // Deprecated alias (in DeprecatedAliases)
+            'withSmartStrings', // Deprecated alias (in DeprecatedAliases)
+            'enableSmartStrings',  // Deprecated alias (in DeprecatedAliases)
+            'noSmartStrings',      // Deprecated alias (in DeprecatedAliases)
+            'disableSmartStrings', // Deprecated alias (in DeprecatedAliases)
+            'isMultipleOf',     // Deprecated (in DeprecatedAliases)
+            'offsetGet',        // Deprecated array access (in DeprecatedAliases)
+            'offsetSet',        // Deprecated array access (in DeprecatedAliases)
+            'offsetUnset',      // Deprecated array access (in DeprecatedAliases)
             ...$additionalSkips,
         ];
 

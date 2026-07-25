@@ -1,0 +1,376 @@
+<?php
+declare(strict_types=1);
+
+namespace Itools\SmartArray;
+
+use Closure;
+use Error;
+use InvalidArgumentException;
+use RuntimeException;
+use Itools\SmartString\SmartString;
+use JetBrains\PhpStorm\Deprecated;
+
+/**
+ * The deprecation lifecycle: every legacy method name and syntax, organized by stage.
+ *
+ * Each deprecation sits at one stage of a five-stage ladder and moves down it in
+ * later releases, per method, weighed by real-world usage. The stage names say
+ * what a caller experiences:
+ *
+ *     Silent  - works; PHPStorm strikethrough and one-click rename via #[Deprecated],
+ *               static analyzers via @deprecated, no runtime signal
+ *     Logged  - works; logs E_USER_DEPRECATED with the caller's file:line
+ *               (only error handlers see it, PHP's default display is suppressed)
+ *     Visible - works; prints a "Deprecated:" notice to output, plus the log entry
+ *     Fatal   - stops; __call() throws an Error naming the replacement and the caller
+ *     Removed - stops; ordinary unknown-method error, "did you mean" hint at best
+ *
+ * Silent, Logged, and Visible methods are real declared methods in their stage's
+ * region below: IDE-visible, type-checked, called directly with no __call()
+ * overhead. Fatal and Removed methods no longer exist as methods, so calls land
+ * in __call(), which throws for both. Removed needs no code of its own: a
+ * removed method is an undefined name like any other, at best keeping a
+ * "did you mean" entry. Moving a method down the ladder is a cut-paste to the
+ * next region plus updating its runtime line (Silent: none, Logged:
+ * logDeprecation(), Fatal: a match arm in __call).
+ *
+ * The deprecated $array['key'] bracket syntax follows the same ladder via
+ * SmartArrayBase::$onOffsetAccess: 'log', 'notify', and 'throw' correspond to
+ * Logged, Visible, and Fatal. The default is 'notify', which is why the
+ * offsetGet/offsetSet/offsetUnset methods are in the Visible region.
+ */
+trait DeprecatedAliases
+{
+
+    //region Global Settings
+
+    /**
+     * Controls how deprecated `$array['key']` offset access is surfaced.
+     *
+     * Offset access (`[]` syntax) is deprecated in favor of property access
+     * (`$array->key`) or the explicit `->get()` / `->set()` methods. This setting
+     * controls how the library signals that deprecation at runtime.
+     *
+     *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
+     *                by PHP's error handling. Use for legacy codebases mid-migration.
+     *     'notify' - Echo a visible "Deprecated:" notice + trigger_error(). Default.
+     *                Developer sees the signal immediately, independent of error-handler
+     *                configuration. Mirrors the pattern used by warnIfMissing().
+     *     'throw'  - Throw a RuntimeException. Halts execution on any offset access.
+     *                Use for new installs to enforce migration.
+     *
+     *     SmartArrayBase::$onOffsetAccess = 'log';    // quiet for legacy installs
+     *     SmartArrayBase::$onOffsetAccess = 'throw';  // strict mode
+     */
+    public static string $onOffsetAccess = 'notify';
+
+    //endregion
+    //region Silent Aliases
+
+    // No methods at this stage yet.
+
+    //endregion
+    //region Logged Aliases
+
+    /**
+     * @deprecated Use asRaw() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to asRaw()', replacement: '%class%->asRaw()')]
+    public function toRaw(): SmartArray
+    {
+        self::logDeprecation("Replace ->toRaw() with ->asRaw()");
+        return $this->asRaw();
+    }
+
+    /**
+     * @deprecated Use asHtml() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to asHtml()', replacement: '%class%->asHtml()')]
+    public function toHtml(): SmartArrayHtml
+    {
+        self::logDeprecation("Replace ->toHtml() with ->asHtml()");
+        return $this->asHtml();
+    }
+
+    /**
+     * @deprecated Use asHtml() or create with SmartArrayHtml::new()
+     */
+    #[Deprecated(reason: 'renamed to asHtml()', replacement: '%class%->asHtml()')]
+    public function withSmartStrings(): SmartArrayHtml
+    {
+        self::logDeprecation("Replace ->withSmartStrings() with ->asHtml() or use SmartArrayHtml::new()");
+        return $this->asHtml();
+    }
+
+    /**
+     * @deprecated Use asHtml() or create with SmartArrayHtml::new()
+     */
+    #[Deprecated(reason: 'renamed to asHtml()', replacement: '%class%->asHtml()')]
+    public function enableSmartStrings(): SmartArrayHtml
+    {
+        self::logDeprecation("Replace ->enableSmartStrings() with ->asHtml() or use SmartArrayHtml::new()");
+        return $this->asHtml();
+    }
+
+    /**
+     * @deprecated Use asRaw() or create with SmartArray::new()
+     */
+    #[Deprecated(reason: 'renamed to asRaw()', replacement: '%class%->asRaw()')]
+    public function noSmartStrings(): SmartArray
+    {
+        self::logDeprecation("Replace ->noSmartStrings() with ->asRaw() or use SmartArray::new()");
+        return $this->asRaw();
+    }
+
+    /**
+     * @deprecated Use asRaw() or create with SmartArray::new()
+     */
+    #[Deprecated(reason: 'renamed to asRaw()', replacement: '%class%->asRaw()')]
+    public function disableSmartStrings(): SmartArray
+    {
+        self::logDeprecation("Replace ->disableSmartStrings() with ->asRaw() or use SmartArray::new()");
+        return $this->asRaw();
+    }
+
+    /**
+     * True when position() is a multiple of $value, e.g. every 3rd row.
+     *
+     * @deprecated Retired - use ->position() % $value === 0
+     */
+    #[Deprecated(reason: 'retired - use ->position() % $value === 0')]
+    public function isMultipleOf(int $value): bool
+    {
+        self::logDeprecation("->isMultipleOf() is deprecated and will be removed in a future version");
+        if ($value <= 0) {
+            throw new InvalidArgumentException("Value must be greater than 0.");
+        }
+        return $this->position() % $value === 0;
+    }
+
+    /**
+     * Applies a callback to each element as Smart objects (SmartString or SmartArray).
+     *
+     * @deprecated Use ->map() instead, which receives raw PHP values
+     * @param Closure $callback A closure with signature: fn($smartValue, $key) => mixed
+     * @return static A new SmartArray containing the transformed elements.
+     */
+    #[Deprecated(reason: 'use ->map() instead, which receives raw PHP values')]
+    public function smartMap(Closure $callback): static
+    {
+        self::logDeprecation("->smartMap() is deprecated, use ->map() instead");
+        $newArray = [];
+        foreach (array_keys($this->data) as $key) {
+            $smartValue     = $this->getElement($key);
+            $newArray[$key] = $callback($smartValue, $key);
+        }
+        return new static($newArray, $this->getInternalProperties());
+    }
+
+    /**
+     * Splits the array into chunks of the given size.
+     *
+     * @deprecated Retired, will be removed in a future version
+     * @param int $size The size of each chunk
+     * @return static A new SmartArray of chunked arrays
+     */
+    #[Deprecated(reason: 'retired, will be removed in a future version')]
+    public function chunk(int $size): static
+    {
+        self::logDeprecation("->chunk() is deprecated and will be removed in a future version");
+        if ($size <= 0) {
+            throw new InvalidArgumentException("Chunk size must be greater than 0.");
+        }
+        return new static(array_chunk($this->toArray(), $size), $this->getInternalProperties());
+    }
+
+    //endregion
+    //region Visible Notices
+
+    // $array['key'] syntax: stage is configurable via SmartArrayBase::$onOffsetAccess ('notify' default)
+
+    /**
+     * Sets a value in the SmartArray using array syntax.
+     *
+     * @deprecated Use ->set('key', $value) or ->key = $value instead of $array['key'] = $value
+     *
+     * Note: If you add a key after the array is created the position properties will not be updated.
+     * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
+     *
+     * @param mixed $offset The key to set. If null, the value is appended to the array.
+     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
+     *
+     * @throws InvalidArgumentException If an unsupported value type is provided.
+     */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        $this->triggerArrayAccessDeprecation($offset, 'set');
+        $this->setElement($offset, $value);
+    }
+
+    /**
+     * Retrieves a value from the SmartArray using array syntax.
+     *
+     * @deprecated Use ->property or ->get('key') instead of $array['key']
+     */
+    public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
+    {
+        $this->triggerArrayAccessDeprecation($offset, 'get');
+        return $this->getElement($offset);
+    }
+
+    /**
+     * Remove a key from the array.
+     *
+     * @deprecated Use transformation methods instead of modifying arrays in place
+     */
+    public function offsetUnset(mixed $offset): void
+    {
+        $this->triggerArrayAccessDeprecation($offset, 'unset');
+        unset($this->data[$offset]);
+    }
+
+    /**
+     * Surface a deprecation notice for array access syntax, dispatched per $onOffsetAccess mode.
+     *
+     * @see SmartArrayBase::$onOffsetAccess
+     */
+    private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
+    {
+        $keyStr          = is_string($key) ? "'$key'" : (string) $key;
+        $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
+
+        // Suggest the preferred access method. A null key only reaches 'set' via
+        // the append syntax `$arr[] = $value`; for 'unset'/'get' it indicates a
+        // programmer error that PHP itself treats as an empty-string key.
+        $suggestion = match ($operation) {
+            'set' => match (true) {
+                is_null($key)    => "->set(\$key, \$value) using an explicit key",
+                is_int($key)     => "->set($key, \$value)",
+                $isValidPropName => "->$key = \$value",
+                default          => "->set('$key', \$value) or ->{'$key'} = \$value",
+            },
+            'unset' => match (true) {
+                is_int($key)     => '->{' . $key . '}',
+                $isValidPropName => "->$key",
+                default          => "->{'$key'}",
+            },
+            default => match (true) {
+                is_int($key)     => "->get($key)",
+                $isValidPropName => "->$key",
+                default          => "->get('$key')",
+            },
+        };
+
+        $caller  = self::getExternalCaller();
+        $message = "Replace [$keyStr] with $suggestion in {$caller['file']}:{$caller['line']}.";
+
+        // Dispatch per $onOffsetAccess mode. 'throw' and invalid values exit via exception;
+        // 'notify' prints then falls through to trigger_error; 'log' is trigger_error only.
+        match (SmartArrayBase::$onOffsetAccess) {
+            'log'    => null,
+            'notify' => print "\nDeprecated: $message\n",
+            'throw'  => throw new RuntimeException($message),
+            default  => throw new InvalidArgumentException(
+                "Invalid SmartArrayBase::\$onOffsetAccess value: '" . SmartArrayBase::$onOffsetAccess . "'. Expected 'log', 'notify', or 'throw'.",
+            ),
+        };
+
+        @trigger_error($message, E_USER_DEPRECATED);
+    }
+
+    //endregion
+    //region Fatal & Undefined
+
+    /**
+     * Fatal-stage deprecations: the method no longer exists, so the call lands
+     * here and throws with the exact replacement named. Names that were never
+     * methods get an unknown-method error, with a "did you mean" hint when the
+     * name is a removed method or a common alias from other libraries.
+     *
+     * @noinspection SpellCheckingInspection // lowercase method names in match arms
+     */
+    public function __call(string $method, array $args): mixed
+    {
+        $fatalError = match (strtolower($method)) {
+            //   'oldname' => "Replace ->$method() with ->newName()",
+            default => null,
+        };
+        if ($fatalError) {
+            throw new Error("$fatalError\n" . self::occurredInFile());
+        }
+
+        // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
+        $suggestion = self::didYouMean($method) ?? "call ->help() for available methods.";
+        $className  = substr(strrchr(static::class, '\\'), 1) ?: static::class;
+        throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
+    }
+
+    public static function __callStatic(string $method, array $args): mixed
+    {
+        // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
+        $className = substr(strrchr(static::class, '\\'), 1) ?: static::class;
+        throw new Error("Call to undefined method $className::$method(), call ->help() for available methods.\n" . self::occurredInFile());
+    }
+
+    /**
+     * Returns a "did you mean ->method()?" hint for removed methods and common
+     * names from other libraries or LLM suggestions, or null if nothing matches.
+     *
+     * @noinspection SpellCheckingInspection // lowercase method names in alias lists
+     */
+    private static function didYouMean(string $method): ?string
+    {
+        $methodLc      = strtolower($method);
+        $methodAliases = [
+            // value access
+            'get'         => ['fetch', 'value', 'item'],
+            'first'       => ['head', 'find', 'firstrow', 'getfirst'],
+            'last'        => ['tail', 'end'],
+            'nth'         => ['index', 'at'],
+
+            // emptiness & search
+            'count'       => ['length', 'size'],
+            'isEmpty'     => ['empty'],
+            'isNotEmpty'  => ['any', 'not_empty', 'notempty', 'hasvalue', 'exists'],
+            'contains'    => ['has', 'includes', 'in', 'some'],
+
+            // sorting & filtering
+            'sort'        => ['order', 'sorted'],
+            'sortBy'      => ['orderby', 'sortbycolumn'],
+            'unique'      => ['distinct', 'uniq', 'dedupe'],
+            'filter'      => ['select', 'keep'],
+            'where'       => ['filter_by', 'findwhere', 'match'],
+
+            // array transforms
+            'toArray'     => ['array', 'all', 'unwrap', 'raw'],
+            'keys'        => ['keyset'],
+            'values'      => ['vals', 'list', 'getvalues'],
+            'indexBy'     => ['keyby'],
+            'groupBy'     => ['group', 'categorize'],
+            'pluck'       => ['extract', 'pick', 'getcolumn'],
+            'pluckNth'    => ['columnnth'],
+            'implode'     => ['concat', 'join'],
+            'map'         => ['transform', 'apply', 'collect'],
+            'each'        => ['foreach', 'iterate', 'walk'],
+            'merge'       => ['append', 'union', 'combine', 'extend'],
+
+            // conversion
+            'asHtml'      => ['encode', 'safe', 'escape'],
+            'asRaw'       => ['decode'],
+
+            // utilities
+            'help'        => ['docs'],
+            'debug'       => ['dump', 'inspect', 'dd'],
+        ];
+
+        foreach ($methodAliases as $correctMethod => $aliases) {
+            if (in_array($methodLc, $aliases, true)) {
+                return "did you mean ->$correctMethod()?";
+            }
+        }
+        return null;
+    }
+
+    //endregion
+
+}

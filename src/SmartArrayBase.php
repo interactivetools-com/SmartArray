@@ -1238,7 +1238,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $output = [];
         if ($this === $this->root()) {
             // Call ->help() for usage examples and documentation, or ->debug() to view metadata
-            $output["README:" . self::stripNamespace(static::class) . ":private"] = "Call \$obj->help() for documentation, or ->debug() to view metadata";
+            $output["README:" . self::stripNamespace(static::class) . ":private"] = 'Call $obj->help() for documentation, or ->debug() to view metadata';
             $output["*useSmartStrings*:private"] = match ($this->useSmartStrings) {
                 true  => "true, // Values are returned as SmartString objects on access\n",
                 false => "false, // Values are returned **as-is** on access (no extra encoding)\n",
@@ -1504,7 +1504,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // PHP Error: Fatal error: Uncaught Error: Object of class Itools\SmartArray\SmartArray could not be converted to string in C:\path\file.php:27
         $warning = "Can't convert SmartArray to string $inFileOnLine.\n\n";
         $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n\n";
-        $warning .= "For more info: \$var->help()";
+        $warning .= 'For more info: $var->help()';
 
         // output warning
         echo "\nWarning: $warning\n\n";           // Output with echo so PHP doesn't add the filename and line number of this function on the end

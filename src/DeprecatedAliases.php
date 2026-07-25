@@ -244,7 +244,7 @@ trait DeprecatedAliases
         // programmer error that PHP itself treats as an empty-string key.
         $suggestion = match ($operation) {
             'set' => match (true) {
-                is_null($key)    => "->set(\$key, \$value) using an explicit key",
+                is_null($key)    => '->set($key, $value) using an explicit key',
                 is_int($key)     => "->set($key, \$value)",
                 $isValidPropName => "->$key = \$value",
                 default          => "->set('$key', \$value) or ->{'$key'} = \$value",

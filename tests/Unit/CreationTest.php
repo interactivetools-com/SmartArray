@@ -113,8 +113,8 @@ class CreationTest extends SmartArrayTestCase
     public static function contradictoryBoolProvider(): array
     {
         return [
-            'SmartArray with true'      => [SmartArray::class, true, 'Cannot create SmartArray with useSmartStrings=true. Use new SmartArrayHtml($data) instead.'],
-            'SmartArrayHtml with false' => [SmartArrayHtml::class, false, 'Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray($data) instead.'],
+            'SmartArray with true'      => [SmartArray::class, true, 'Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.'],
+            'SmartArrayHtml with false' => [SmartArrayHtml::class, false, 'Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.'],
         ];
     }
 

@@ -40,18 +40,18 @@ class SmartArrayHtml extends SmartArrayBase
         // Handle deprecated boolean parameter: false contradicts this class (throw),
         // true is redundant (deprecation only)
         if ($properties === false) {
-            self::logDeprecation("new SmartArrayHtml(\$data, false) is deprecated. Use new SmartArray(\$data) instead.");
-            throw new InvalidArgumentException("Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray(\$data) instead.");
+            self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
+            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
         }
         if ($properties === true) {
-            self::logDeprecation("Passing true to SmartArrayHtml is deprecated. Just use SmartArrayHtml(\$data)");
+            self::logDeprecation('Passing true to SmartArrayHtml is deprecated. Just use SmartArrayHtml::new($data)');
             $properties = [];
         }
 
         // Handle deprecated useSmartStrings in array
         if (is_array($properties) && ($properties['useSmartStrings'] ?? true) === false) {
-            self::logDeprecation("new SmartArrayHtml(\$data, ['useSmartStrings' => false]) is deprecated. Use new SmartArray(\$data) instead.");
-            throw new InvalidArgumentException("Cannot create SmartArrayHtml with useSmartStrings=false. Use new SmartArray(\$data) instead.");
+            self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
+            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
         }
 
         // Force useSmartStrings to true so values are SmartStrings
@@ -63,6 +63,12 @@ class SmartArrayHtml extends SmartArrayBase
 
     /**
      * Create a new SmartArrayHtml that returns SmartString objects for HTML safety.
+     *
+     * Same as `new SmartArrayHtml()`, but chainable on every supported PHP version:
+     * before PHP 8.4, `new SmartArrayHtml($data)->pluck('id')` is a syntax error without
+     * wrapping parentheses; `SmartArrayHtml::new($data)->pluck('id')` works everywhere.
+     *
+     *     $users = SmartArrayHtml::new($records)->indexBy('user_id');
      *
      * @param array $array The input array to convert
      * @param array|bool $properties Optional properties to pass to the constructor (legacy boolean handled by the constructor)

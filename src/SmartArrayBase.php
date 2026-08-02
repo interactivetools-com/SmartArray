@@ -204,7 +204,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             return match (true) {
                 is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
                 is_array($default)                     => new static($default, $this->getInternalProperties()),
-                default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
+                default                                => throw new CallerException("Unsupported default value type: " . get_debug_type($default)),
             };
         }
 
@@ -318,8 +318,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Throw an exception for unsupported types or anything else
-        $error = sprintf("%s: SmartArray doesn't support %s values. Key %s", __METHOD__, get_debug_type($value), $key);
-        throw new InvalidArgumentException($error);
+        $error = sprintf("SmartArray doesn't support %s values. Key %s", get_debug_type($value), $key);
+        throw new CallerException($error);
     }
 
     /**
@@ -366,7 +366,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $value instanceof SmartNull        => null,
             is_scalar($value), is_null($value) => $value,
             is_array($value)                   => array_map([self::class, 'getRawValue'], $value), // for manually passed in arrays
-            default                            => throw new InvalidArgumentException("Unsupported value type: " . get_debug_type($value)),
+            default                            => throw new CallerException("Unsupported value type: " . get_debug_type($value)),
         };
     }
 
@@ -651,7 +651,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * @param string $field The field name to index the rows by.
      *
      * @return static A new SmartArray indexed by the specified field.
-     * @throws InvalidArgumentException If the SmartArray is not nested.
+     * @throws CallerException If the SmartArray is not nested.
      *
      * $users = new SmartArray([
      *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
@@ -703,7 +703,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * @param string $field The field name to group the rows by.
      *
      * @return static A new SmartArray grouped by the specified field.
-     * @throws InvalidArgumentException If the SmartArray is not nested.
+     * @throws CallerException If the SmartArray is not nested.
      *
      * $users = new SmartArray([
      *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
@@ -811,7 +811,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * @param string $separator The string to use as a separator between elements.
      *
      * @return SmartString|string Returns string for SmartArray, SmartString for SmartArrayHtml.
-     * @throws InvalidArgumentException If the SmartArray is nested.
+     * @throws CallerException If the SmartArray is nested.
      *
      *     $arr = SmartArray::new(['apple', 'banana', 'cherry']);
      *     $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
@@ -917,8 +917,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $field The relationship field name to load.
      * @return static|SmartNull Loaded data as SmartArray, or SmartNull if array is empty.
-     * @throws RuntimeException If no load handler is defined or field has invalid characters.
-     * @throws InvalidArgumentException If field name is empty.
+     * @throws CallerException If no load handler is set, the field name is empty or invalid, or called on a record set.
      */
     public function load(string $field): static|SmartNull
     {
@@ -932,11 +931,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // error checking
         match (true) {
-            !$loadHandler                        => throw new RuntimeException("No loadHandler property is defined"),
-            !is_callable($loadHandler)           => throw new RuntimeException("Load handler is not callable"),
-            empty($field)                        => throw new InvalidArgumentException("Field name is required for load() method."),
-            (bool)preg_match('/[^\w-]/', $field) => throw new RuntimeException("Field name contains invalid characters: $field"),
-            $this->isNested()                    => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
+            !$loadHandler                        => throw new CallerException("load(): no load handler is set. Handlers are normally provided by the database layer (ZenDB); arrays created directly don't have one."),
+            !is_callable($loadHandler)           => throw new CallerException("Load handler is not callable"),
+            empty($field)                        => throw new CallerException("Field name is required for load() method."),
+            (bool)preg_match('/[^\w-]/', $field) => throw new CallerException("Field name contains invalid characters: $field"),
+            $this->isNested()                    => throw new CallerException("Cannot call load() on record set, only on a single row."),
             default                              => null,
         };
 
@@ -1291,13 +1290,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $url The URL to redirect to if array is empty
      * @return static Returns $this for method chaining if not empty, redirects if empty
-     * @throws RuntimeException If headers have already been sent
+     * @throws CallerException If headers have already been sent
      */
     public function orRedirect(string $url): static
     {
         // Check early so developers find out immediately, not only when count === 0
         if (headers_sent($file, $line)) {
-            throw new RuntimeException("orRedirect(): headers already sent in $file on line $line");
+            throw new CallerException("orRedirect(): headers already sent in $file on line $line");
         }
 
         if (empty($this->data)) {
@@ -1311,28 +1310,28 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Assert that array has no nested arrays.
      *
-     * @throws InvalidArgumentException If the array is nested.
+     * @throws CallerException If the array is nested.
      */
     private function assertFlatArray(): void
     {
         if (!empty($this->data) && $this->isNested()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a flat array, but got a nested array";
-            throw new InvalidArgumentException($error);
+            throw new CallerException($error);
         }
     }
 
     /**
      * Assert that array has at least one nested array in values.
      *
-     * @throws InvalidArgumentException If the array is flat.
+     * @throws CallerException If the array is flat.
      */
     private function assertNestedArray(): void
     {
         if (!empty($this->data) && $this->isFlat()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a nested array, but got a flat array";
-            throw new InvalidArgumentException($error);
+            throw new CallerException($error);
         }
     }
 

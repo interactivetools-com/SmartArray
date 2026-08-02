@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use InvalidArgumentException;
-
 /**
  * SmartArray - Collection returning raw PHP values (string, int, float, bool, null).
  *
@@ -44,7 +42,7 @@ class SmartArray extends SmartArrayBase
         // false is redundant (deprecation only)
         if ($properties === true) {
             self::logDeprecation('Creating a SmartArray with useSmartStrings=true is deprecated. Use SmartArrayHtml::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
+            throw new CallerException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
         }
         if ($properties === false) {
             self::logDeprecation('Passing false to SmartArray is deprecated. Just use SmartArray::new($data)');
@@ -54,7 +52,7 @@ class SmartArray extends SmartArrayBase
         // Handle deprecated useSmartStrings in array
         if (is_array($properties) && ($properties['useSmartStrings'] ?? false) === true) {
             self::logDeprecation('Creating a SmartArray with useSmartStrings=true is deprecated. Use SmartArrayHtml::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
+            throw new CallerException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
         }
 
         // Force useSmartStrings to false for raw values

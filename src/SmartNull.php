@@ -6,7 +6,6 @@ namespace Itools\SmartArray;
 use Iterator, ArrayAccess, Countable;
 use Itools\SmartString\SmartString;
 use JsonSerializable;
-use RuntimeException;
 use stdClass;
 
 /**
@@ -170,7 +169,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     public function offsetSet($offset, $value): void
     {
-        throw new RuntimeException('Cannot set values on SmartNull');
+        throw new CallerException("Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first");
     }
 
     public function offsetExists($offset): bool

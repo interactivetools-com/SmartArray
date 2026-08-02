@@ -154,7 +154,7 @@ trait DeprecatedAliases
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws InvalidArgumentException If called on a nested array
+     * @throws CallerException If called on a nested array
      */
     #[Deprecated(reason: 'retired - use ->map() with an inline format string')]
     public function sprintf(string $format): SmartArray

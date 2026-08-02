@@ -8,6 +8,7 @@ use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use ReflectionException;
 use ReflectionMethod;
+use Itools\SmartArray\CallerException;
 use RuntimeException;
 
 /**
@@ -205,7 +206,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
 
         $smartArray = new SmartArray(['item1', 'item2']);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(CallerException::class);
         $this->expectExceptionMessageMatches('/orRedirect\(\): headers already sent/');
 
         $smartArray->orRedirect('/login');
@@ -228,7 +229,7 @@ class ErrorHandlersTest extends SmartArrayTestCase
 
         $smartArray = new SmartArray([]);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(CallerException::class);
         $this->expectExceptionMessageMatches('/orRedirect\(\): headers already sent/');
 
         $smartArray->orRedirect('/login');

@@ -9,7 +9,7 @@ use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 use InvalidArgumentException;
-use RuntimeException;
+use Itools\SmartArray\CallerException;
 
 /**
  * Tests for SmartArray::load() and SmartArray::setLoadHandler() methods.
@@ -150,8 +150,8 @@ class LoadTest extends SmartArrayTestCase
     {
         $smartArray = new SmartArray(['id' => 1]);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('No loadHandler property is defined');
+        $this->expectException(CallerException::class);
+        $this->expectExceptionMessage('load(): no load handler is set');
 
         $smartArray->load('products');
     }
@@ -175,7 +175,7 @@ class LoadTest extends SmartArrayTestCase
         ]);
         $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(CallerException::class);
         $this->expectExceptionMessage('Cannot call load() on record set');
 
         $smartArray->load('products');
@@ -239,7 +239,7 @@ class LoadTest extends SmartArrayTestCase
         $smartArray = new SmartArray(['id' => 1]);
         $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(CallerException::class);
         $this->expectExceptionMessage('Field name contains invalid characters');
 
         $smartArray->load($fieldName);

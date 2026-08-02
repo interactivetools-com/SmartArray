@@ -17,7 +17,7 @@ array operations simpler, safer, and more expressive.
         * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
         * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
         * [Extracting Unique Tags with pluck(), unique(), and implode()](#extracting-unique-tags-with-pluck-unique-and-implode)
-        * [Building Dynamic HTML Tables with sprintf()](#building-dynamic-html-tables-with-sprintf)
+        * [Building Dynamic HTML Tables](#building-dynamic-html-tables)
         * [Creating Grid Layouts with isFirst() and isLast()](#creating-grid-layouts-with-isfirst-and-islast)
         * [Debugging and Help](#debugging-and-help)
     * [Method Reference](#method-reference)
@@ -334,17 +334,11 @@ $tagList = SmartArray::new($articles)
 echo "Topics: $tagList"; // Output: "Topics: Databases, PHP, Testing"
 ```
 
-### Building Dynamic HTML Tables with sprintf()
+### Building Dynamic HTML Tables
 
-The `sprintf()` method applies formatting to each element, making it easy to wrap values in HTML tags.
-Combined with `implode()`, you can build table rows in a single expression.
-
-**Key Features:**
-
-- Supports `{value}` and `{key}` as readable aliases for `%1$s` and `%2$s`
-- Also works with standard sprintf formats: `%s`, `%1$s`, `%2$s`, etc.
-- Values are automatically HTML-encoded for SmartArrayHtml (XSS-safe)
-- Format string is applied to each element, then `implode()` joins them
+With SmartArrayHtml, every value HTML-encodes itself when echoed, so you can build tables
+with plain foreach loops - no manual `htmlspecialchars()` calls. The header row comes from
+the first row's keys, which encode the same way.
 
 ```php
 $rows = SmartArray::new([
@@ -357,13 +351,13 @@ $rows = SmartArray::new([
 <table class='data-table'>
     <?php if ($rows->isNotEmpty()): ?>
         <thead>
-            <tr><?= $rows->first()->keys()->sprintf("<th>{value}</th>")->implode("\n") ?></tr>
+            <tr><?php foreach ($rows->first()->keys() as $field): ?><th><?= $field ?></th><?php endforeach ?></tr>
         </thead>
     <?php endif ?>
 
     <tbody>
         <?php foreach ($rows as $row): ?>
-            <tr><?= $row->sprintf("<td>{value}</td>")->implode("\n") ?></tr>
+            <tr><?php foreach ($row as $value): ?><td><?= $value ?></td><?php endforeach ?></tr>
         <?php endforeach ?>
 
         <?php if ($rows->isEmpty()): ?>
@@ -379,53 +373,17 @@ Output:
 
 <table class='data-table'>
     <thead>
-    <tr>
-        <th>name</th>
-        <th>city</th>
-        <th>status</th>
-    </tr>
+        <tr><th>name</th><th>city</th><th>status</th></tr>
     </thead>
     <tbody>
-    <tr>
-        <td>John O&apos;Connor</td>
-        <td>New York</td>
-        <td>Active</td>
-    </tr>
-    <tr>
-        <td>Jane &lt;script&gt;</td>
-        <td>Los Angeles</td>
-        <td>Pending</td>
-    </tr>
-    <tr>
-        <td>Tom &amp; Jerry</td>
-        <td>Vancouver</td>
-        <td>Active</td>
-    </tr>
+        <tr><td>John O&apos;Connor</td><td>New York</td><td>Active</td></tr>
+        <tr><td>Jane &lt;script&gt;</td><td>Los Angeles</td><td>Pending</td></tr>
+        <tr><td>Tom &amp; Jerry</td><td>Vancouver</td><td>Active</td></tr>
     </tbody>
 </table>
 ```
 
 Note how `O'Connor`, `<script>`, and `&` are safely HTML-encoded in the output.
-
-**Using `{key}` for Select Options:**
-
-```php
-$countries = SmartArray::new(['us' => 'United States', 'ca' => 'Canada', 'mx' => 'Mexico'])->asHtml();
-?>
-<select name="country">
-    <?= $countries->sprintf("<option value='{key}'>{value}</option>")->implode("\n") ?>
-</select>
-```
-
-Output:
-
-```html
-<select name="country">
-    <option value='us'>United States</option>
-    <option value='ca'>Canada</option>
-    <option value='mx'>Mexico</option>
-</select>
-```
 
 ### Creating Grid Layouts with isFirst() and isLast()
 
@@ -535,7 +493,6 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |     pluck(valueField, keyField) | Gets array of field values from rows, optionally indexed by another field                                                    |
 |                       |                 pluckNth(index) | Gets array of values at position from rows                                                                                   |
 |                       |              implode(separator) | Joins elements with separator into string                                                                                    |
-|                       |                 sprintf(format) | Applies sprintf formatting to each element. Supports `{value}` and `{key}` placeholders.                                     |
 |                       |                   map(callback) | Transforms each element using callback (callback receives raw values)                                                        |
 |                       |                  each(callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
 |                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                    |

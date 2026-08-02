@@ -92,8 +92,6 @@ Array Transformation
 ->pluckNth(index)           Get array containing nth element from each row
 ->column(columnKey, indexKey) Mirrors PHP's array_column(). Calls pluck() or indexBy() internally
 ->implode(separator)        Join elements with separator into string (default: '')
-->sprintf(format)           Apply sprintf format to each element. Always returns SmartArray (raw). SmartArrayHtml HTML-encodes values before formatting.
-                            Also supports {value} and {key} aliases.
 ->map(callback)             Transform each element using callback (callback receives raw values)
 ->each(callback)            Call callback on each element as Smart objects. Used for side effects, doesn't modify array.
 ->merge(...$arrays)         Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.

@@ -846,58 +846,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Applies sprintf formatting to each element. Always returns SmartArray (raw).
-     *
-     * **How it works:**
-     * - **Encoding:** SmartArrayHtml encodes values/keys before insertion. SmartArray does not.
-     * - **Return type:** Always returns SmartArray (raw), even when called on SmartArrayHtml.
-     *   Pre-formatted HTML should not be re-encoded by subsequent operations like implode().
-     * - **Don't call asHtml() on the result** - it will double-encode your output.
-     * - **Placeholders:** `{value}` or `%1$s`, `{key}` or `%2$s`. All sprintf specifiers work (%d, %f, %05d, etc.).
-     *
-     *     // Wrap values in HTML (typical usage)
-     *     $fruits->sprintf('<li>{value}</li>')->implode("\n");
-     *
-     *     // Select options using keys
-     *     $countries->sprintf("<option value='{key}'>{value}</option>")->implode("\n");
-     *
-     *     // SmartArray vs SmartArrayHtml encoding
-     *     $data = ["O'Brien", '<script>'];
-     *     SmartArray::new($data)->sprintf('<td>{value}</td>')->implode();
-     *     // <td>O'Brien</td><td><script></td>           (no encoding)
-     *     SmartArrayHtml::new($data)->sprintf('<td>{value}</td>')->implode();
-     *     // <td>O&apos;Brien</td><td>&lt;script&gt;</td> (HTML-encoded)
-     *
-     *     // sprintf specifiers work too
-     *     SmartArray::new([7, 42, 185])->sprintf('%05d')->implode(', '); // 00007, 00042, 00185
-     *
-     * Notes: Aliases are case-sensitive (only lowercase `{value}` and `{key}`).
-     * Only two parameters available (value and key). Flat arrays only.
-     *
-     * @param string $format sprintf format string (supports {value}/{key} aliases)
-     * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws InvalidArgumentException If called on a nested array
-     */
-    public function sprintf(string $format): SmartArray
-    {
-        $this->assertFlatArray();
-
-        // Convert {value} and {key} aliases to sprintf positional format
-        $format = str_replace(['{value}', '{key}'], ['%1$s', '%2$s'], $format);
-
-        $newArray = [];
-        foreach ($this as $key => $value) {
-            $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
-            $newArray[$key] = sprintf($format, $value, $encodedKey);
-        }
-
-        // Return SmartArray (raw) - sprintf output is pre-formatted and shouldn't be re-encoded
-        $properties = ['useSmartStrings' => false] + $this->getInternalProperties();
-        return new SmartArray($newArray, $properties);
-    }
-
-    /**
      * Applies a callback to each element *as raw PHP values* (i.e., unwrapped scalars/arrays)
      * and returns a new SmartArray with the results.
      *

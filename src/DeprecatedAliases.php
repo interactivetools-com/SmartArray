@@ -67,7 +67,48 @@ trait DeprecatedAliases
     //endregion
     //region Silent Aliases
 
-    // No methods at this stage yet.
+    /**
+     * Applies sprintf formatting to each element, with {value} and {key} aliases
+     * for %1$s and %2$s. SmartArrayHtml HTML-encodes values and keys before
+     * formatting; SmartArray does not. Always returns SmartArray (raw) so the
+     * pre-formatted strings aren't re-encoded by later operations.
+     *
+     * @deprecated Use ->map() with an inline format string:
+     *
+     *     // SmartArray (raw, no encoding), old and new:
+     *     $list->sprintf('<li>{value}</li>')->implode("\n");
+     *     $list->map(fn($v) => "<li>$v</li>")->implode("\n");
+     *
+     *     // SmartArrayHtml (HTML-encoded), old and new:
+     *     $row->sprintf('<td>{value}</td>')->implode("\n");
+     *     $row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n"); // or h() in CMS Builder
+     *
+     * The asRaw() in the HTML-mode replacement matters: without it, implode()
+     * returns a SmartString that would re-encode the HTML tags at output.
+     *
+     * @param string $format sprintf format string (supports {value}/{key} aliases)
+     * @return SmartArray Pre-formatted strings that won't be re-encoded on output
+     * @throws InvalidArgumentException If called on a nested array
+     */
+    #[Deprecated(reason: 'retired - use ->map() with an inline format string')]
+    public function sprintf(string $format): SmartArray
+    {
+        $this->assertFlatArray();
+
+        // Convert {value} and {key} aliases to sprintf positional format
+        $format = str_replace(['{value}', '{key}'], ['%1$s', '%2$s'], $format);
+
+        $newArray = [];
+        foreach ($this as $key => $value) {
+            $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
+            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
+            $newArray[$key] = sprintf($format, $value, $encodedKey);
+        }
+
+        // Return SmartArray (raw) - sprintf output is pre-formatted and shouldn't be re-encoded
+        $properties = ['useSmartStrings' => false] + $this->getInternalProperties();
+        return new SmartArray($newArray, $properties);
+    }
 
     //endregion
     //region Logged Aliases

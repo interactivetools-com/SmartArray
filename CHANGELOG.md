@@ -12,6 +12,9 @@
 - `set()`, `->key = $value`, and array assignment now unwrap Smart values (SmartString, SmartArray, SmartNull) instead of throwing, so values can be copied between arrays in any mode without calling `->value()` first. SmartNull stores as null; nested SmartArrays convert to the target array's mode. Matches how `where()`, `contains()`, and `merge()` already treat Smart inputs.
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
 
+### Deprecated
+- `sprintf($format)` - use `map()` with an inline format string instead: `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, encode explicitly and convert to raw mode first so the finished HTML isn't re-encoded on output: `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`. The method still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help(). It was a second formatting syntax that only saw use inside CMS Builder.
+
 ### Fixed
 - `get($key, $default)` defaults now act like stored values: Smart defaults (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's mode. Previously a SmartNull default threw `InvalidArgumentException`, and cross-mode Smart defaults (a SmartString default on SmartArray, a raw SmartArray default on SmartArrayHtml) threw `TypeError` from the return declarations.
 - `sortBy()` no longer throws a bare `ValueError: Array sizes are inconsistent` when a row is missing the sort field. Missing fields sort first (treated as null for ordering, like MySQL ORDER BY); rows are returned unchanged.

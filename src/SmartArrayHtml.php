@@ -230,12 +230,6 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function sprintf(string $format): SmartArray
-    {
-        return parent::sprintf($format);
-    }
-
-    /** {@inheritDoc} */
     public function map(callable $callback): static
     {
         return parent::map($callback);

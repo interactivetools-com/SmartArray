@@ -472,6 +472,7 @@ class SmartArrayTest extends TestCase
             'root',             // Advanced/internal
             'smartMap',         // Deprecated (in DeprecatedAliases)
             'chunk',            // Deprecated (in DeprecatedAliases)
+            'sprintf',          // Deprecated (in DeprecatedAliases)
             'toRaw',            // Deprecated alias (in DeprecatedAliases)
             'toHtml',           // Deprecated alias (in DeprecatedAliases)
             'withSmartStrings', // Deprecated alias (in DeprecatedAliases)

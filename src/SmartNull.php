@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use InvalidArgumentException;
 use Iterator, ArrayAccess, Countable;
 use Itools\SmartString\SmartString;
 use JsonSerializable;
@@ -219,7 +218,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * Emulate response methods for SmartArray and SmartString.
      *
      * Since when we access a non-existent element we don't know if we were expecting a SmartArray or SmartString,
-     * we return this object that can handle both
+     * we return this object that can handle both.
+     *
+     * Unknown methods are forwarded too, so they throw the same undefined-method
+     * Error as the rest of the library ("did you mean" hint + caller's file:line).
      *
      * @param $name
      * @param mixed ...$arguments
@@ -227,13 +229,12 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      */
     public function __call($name, array $arguments): mixed
     {
-        return match (true) {
-            method_exists(SmartArrayBase::class, $name) => $this->useSmartStrings
-                ? SmartArrayHtml::new()->$name(...$arguments)
-                : SmartArray::new()->$name(...$arguments),
-            method_exists(SmartString::class, $name)    => SmartString::new(null)->$name(...$arguments),
-            default                                     => throw new InvalidArgumentException("Method '$name' not found"),
-        };
+        if (!method_exists(SmartArrayBase::class, $name) && method_exists(SmartString::class, $name)) {
+            return SmartString::new(null)->$name(...$arguments);
+        }
+        return $this->useSmartStrings
+            ? SmartArrayHtml::new()->$name(...$arguments)
+            : SmartArray::new()->$name(...$arguments);
     }
 
     public function __toString(): string

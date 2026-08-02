@@ -16,6 +16,8 @@
 - `set()`, `->key = $value`, and array assignment now unwrap Smart values (SmartString, SmartArray, SmartNull) instead of throwing, so values can be copied between arrays in any mode without calling `->value()` first. SmartNull stores as null; nested SmartArrays convert to the target array's mode. Matches how `where()`, `contains()`, and `merge()` already treat Smart inputs.
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
 - `column(null)` and `column(null, null)` now match PHP's `array_column()`: whole rows renumbered from 0, instead of throwing "unexpected arguments"
+- `orDie()` now exits with status 1 instead of 0, so shell scripts and cron jobs see the failure. Output is unchanged. Matches SmartString.
+- Unknown methods on `SmartNull` now throw the same `Error` as the rest of the library - method name, "did you mean" hint, caller's file and line - instead of `InvalidArgumentException("Method 'x' not found")`. Chains from a missing key now fail with the same message quality as everything else.
 
 ### Deprecated
 - `nth($index)` - renamed to `at()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.

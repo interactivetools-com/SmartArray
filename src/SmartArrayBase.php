@@ -1237,20 +1237,21 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Dies with a message if the array is empty
+     * Prints a message and exits with status 1 if the array is empty, so shell
+     * scripts and cron jobs see the failure.
      *
-     * SECURITY: The message is intentionally HTML-encoded: die() sends it straight to the browser, and
+     * SECURITY: The message is intentionally HTML-encoded: it goes straight to the browser, and
      * messages often interpolate user input (e.g. ->orDie("No results for '$keyword'")). The only cost
      * is encoded entities in CLI output, which is cosmetic.
      *
      * @param string $text Plain-text message; HTML-encoded automatically before output.
-     * @return static Returns $this for method chaining if not empty, dies if empty
+     * @return static Returns $this for method chaining if not empty, exits if empty
      */
     public function orDie(string $text): static
     {
         if (empty($this->data)) {
-            $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
-            die($text);
+            echo htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
+            exit(1);
         }
         return $this;
     }

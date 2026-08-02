@@ -164,7 +164,7 @@ class GlobalSettingsTest extends TestCase
                 $this->fail("Expected RuntimeException");
             } catch (\RuntimeException $e) {
                 $this->assertStringContainsString("Replace ['age'] with ->age = \$value", $e->getMessage());
-                $this->assertFalse($array->offsetExists('age'), "throw mode should halt before the assignment runs");
+                $this->assertFalse(isset($array->age), "throw mode should halt before the assignment runs");
             }
         });
     }
@@ -179,7 +179,7 @@ class GlobalSettingsTest extends TestCase
                 $this->fail("Expected RuntimeException");
             } catch (\RuntimeException $e) {
                 $this->assertStringContainsString("Replace ['name']", $e->getMessage());
-                $this->assertTrue($array->offsetExists('name'), "throw mode should halt before the unset runs");
+                $this->assertTrue(isset($array->name), "throw mode should halt before the unset runs");
             }
         });
     }

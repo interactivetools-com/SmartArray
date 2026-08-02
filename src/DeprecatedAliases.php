@@ -37,7 +37,7 @@ use JetBrains\PhpStorm\Deprecated;
  * The deprecated $array['key'] bracket syntax follows the same ladder via
  * SmartArrayBase::$onOffsetAccess: 'log', 'notify', and 'throw' correspond to
  * Logged, Visible, and Fatal. The default is 'notify', which is why the
- * offsetGet/offsetSet/offsetUnset methods are in the Visible region.
+ * offsetGet/offsetSet/offsetUnset/offsetExists methods are in the Visible region.
  */
 trait DeprecatedAliases
 {
@@ -49,7 +49,9 @@ trait DeprecatedAliases
      *
      * Offset access (`[]` syntax) is deprecated in favor of property access
      * (`$array->key`) or the explicit `->get()` / `->set()` methods. This setting
-     * controls how the library signals that deprecation at runtime.
+     * controls how the library signals that deprecation at runtime. It covers
+     * reads, writes, unset(), and isset()/empty() checks alike; only the
+     * property forms (`$array->key`, `isset($array->key)`) are signal-free.
      *
      *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
      *                by PHP's error handling. Use for legacy codebases mid-migration.
@@ -326,6 +328,17 @@ trait DeprecatedAliases
     }
 
     /**
+     * Check if a key exists, for isset($array['key']) and empty($array['key']).
+     *
+     * @deprecated Use isset($array->key) instead of isset($array['key'])
+     */
+    public function offsetExists(mixed $offset): bool
+    {
+        $this->triggerArrayAccessDeprecation($offset, 'exists');
+        return array_key_exists($offset, $this->data);
+    }
+
+    /**
      * Remove a key from the array.
      *
      * @deprecated Use transformation methods instead of modifying arrays in place
@@ -356,7 +369,7 @@ trait DeprecatedAliases
                 $isValidPropName => "->$key = \$value",
                 default          => "->set('$key', \$value) or ->{'$key'} = \$value",
             },
-            'unset' => match (true) {
+            'unset', 'exists' => match (true) {
                 is_int($key)     => '->{' . $key . '}',
                 $isValidPropName => "->$key",
                 default          => "->{'$key'}",

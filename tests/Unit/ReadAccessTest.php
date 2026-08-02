@@ -325,12 +325,16 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertTrue(isset($sa->middle));
         $this->assertFalse(isset($sa->zzz));
 
+        // Array-syntax existence checks follow $onOffsetAccess like reads and
+        // writes do (default 'notify'); only the property forms are signal-free
         [, $output] = $this->captureOutput(function () use ($sa) {
             $this->assertTrue($sa->offsetExists('middle'));
             $this->assertFalse($sa->offsetExists('zzz'));
             $this->assertTrue(isset($sa['middle']));
         });
-        $this->assertSame('', $output, 'existence checks never warn or notify, even via array syntax');
+        $this->assertSame(3, substr_count($output, 'Deprecated:'), 'one notice per array-syntax check');
+        $this->assertStringContainsString("Replace ['middle'] with ->middle", $output);
+        $this->assertStringContainsString("Replace ['zzz'] with ->zzz", $output);
     }
 
     //endregion

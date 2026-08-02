@@ -194,7 +194,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // return default if key not found
-        if (func_num_args() >= 2 && !$this->offsetExists($key)) {
+        if (func_num_args() >= 2 && !array_key_exists($key, $this->data)) {
             // Defaults act like stored values: Smart defaults (SmartString,
             // SmartArray, SmartNull) unwrap to raw equivalents, then everything
             // wraps for this array's mode the same as a stored value would
@@ -214,7 +214,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Return via getElement (no deprecation warning - this is a preferred access method)
-        if ($this->offsetExists($key)) {
+        if (array_key_exists($key, $this->data)) {
             return $this->getElement($key);
         }
 
@@ -329,7 +329,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private function getElement(int|string $key): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // Return value if key exists, or SmartNull if not found
-        if ($this->offsetExists($key)) {
+        if (array_key_exists($key, $this->data)) {
             $value = $this->data[$key];
             return $this->useSmartStrings && !$value instanceof self
                 ? new SmartString($value)
@@ -340,14 +340,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $this->warnIfMissing($key, 'offset');
 
         return $this->newSmartNull();
-    }
-
-    /**
-     * Check if a key exists in the array.
-     */
-    public function offsetExists(mixed $offset): bool
-    {
-        return array_key_exists($offset, $this->data);
     }
 
     /**
@@ -1222,7 +1214,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         echo <<<__HTML__
             <!DOCTYPE html>
-            <html lang>
+            <html>
             <head>
                 <title>Not Found</title>
             </head>
@@ -1355,7 +1347,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
             $target = $first;
         }
-        if (empty($target->data) || $target->offsetExists($key)) {
+        if (empty($target->data) || array_key_exists($key, $target->data)) {
             return;
         }
         $caller           = self::getExternalCaller();

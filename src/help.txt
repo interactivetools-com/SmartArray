@@ -94,7 +94,6 @@ Array Transformation
 ->columnAt(index)           Get the column at a position from each row, ignoring key names (0 is first, -1 is last)
 ->implode(separator)        Join elements with separator into string (default: '')
 ->map(callback)             Transform each element using callback (callback receives raw values)
-->each(callback)            Call callback on each element as Smart objects. Used for side effects, doesn't modify array.
 ->merge(...$arrays)         Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
 
 Database Operations

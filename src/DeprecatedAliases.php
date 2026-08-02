@@ -11,7 +11,7 @@ use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
 /**
- * The deprecation lifecycle: every legacy method name and syntax, organized by stage.
+ * Old and retired method names, phased out in stages.
  *
  * Each deprecation sits at one stage of a five-stage ladder and moves down it in
  * later releases, per method, weighed by real-world usage. The stage names say
@@ -100,6 +100,37 @@ trait DeprecatedAliases
     {
         $this->assertNestedArray(); // assert here so the error names pluckNth(), not columnAt()
         return $this->columnAt($index);
+    }
+
+    /**
+     * Calls the given callback on each element, primarily for side effects.
+     * Returns $this for chaining.
+     *
+     * For SmartArrayHtml: callback receives SmartString values (or nested SmartArrayHtml).
+     * For SmartArray: callback receives raw PHP values (or nested SmartArray).
+     *
+     * @deprecated Use a foreach loop - same behavior, plain PHP:
+     *
+     *     // old
+     *     $users->each(fn($user) => sendReminder($user));
+     *
+     *     // new
+     *     foreach ($users as $user) {
+     *         sendReminder($user);
+     *     }
+     *
+     * @param Closure $callback A callback: fn($value, int|string $key): void
+     * @return $this
+     */
+    #[Deprecated(reason: 'retired - use a foreach loop instead')]
+    public function each(Closure $callback): static
+    {
+        foreach (array_keys($this->data) as $key) {
+            $smartValue = $this->getElement($key);
+            $callback($smartValue, $key);
+        }
+
+        return $this;
     }
 
     /**

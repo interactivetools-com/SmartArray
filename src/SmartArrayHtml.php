@@ -2,7 +2,6 @@
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
-use Closure;
 use Iterator;
 use Itools\SmartString\SmartString;
 use InvalidArgumentException;
@@ -227,12 +226,6 @@ class SmartArrayHtml extends SmartArrayBase
     public function map(callable $callback): static
     {
         return parent::map($callback);
-    }
-
-    /** {@inheritDoc} */
-    public function each(Closure $callback): static
-    {
-        return parent::each($callback);
     }
 
     /** {@inheritDoc} */

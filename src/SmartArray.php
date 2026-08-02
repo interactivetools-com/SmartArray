@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use InvalidArgumentException;
-use Closure;
 
 /**
  * SmartArray - Collection returning raw PHP values (string, int, float, bool, null).
@@ -231,12 +230,6 @@ class SmartArray extends SmartArrayBase
     public function map(callable $callback): static
     {
         return parent::map($callback);
-    }
-
-    /** {@inheritDoc} */
-    public function each(Closure $callback): static
-    {
-        return parent::each($callback);
     }
 
     /** {@inheritDoc} */

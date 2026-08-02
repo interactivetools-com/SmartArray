@@ -472,6 +472,7 @@ class SmartArrayTest extends TestCase
             'smartMap',         // Deprecated (in DeprecatedAliases)
             'chunk',            // Deprecated (in DeprecatedAliases)
             'sprintf',          // Deprecated (in DeprecatedAliases)
+            'each',             // Deprecated (in DeprecatedAliases)
             'pluck',            // Deprecated alias for column() (in DeprecatedAliases)
             'nth',              // Deprecated alias for at() (in DeprecatedAliases)
             'pluckNth',         // Deprecated alias for columnAt() (in DeprecatedAliases)

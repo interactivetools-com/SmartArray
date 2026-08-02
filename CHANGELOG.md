@@ -21,6 +21,7 @@
 - `nth($index)` - renamed to `at()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
 - `pluckNth($index)` - renamed to `columnAt()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
 - `pluck($valueField, $keyField)` - use `column()` instead, same arguments and behavior: `->column('name')`, `->column('name', 'id')`. One name per behavior, and `column()` matches PHP's `array_column()`. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help().
+- `each($callback)` - use a `foreach` loop instead, same behavior in plain PHP. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from help(). It had no measured uses and a foreach is clearer and faster.
 - `sprintf($format)` - use `map()` with an inline format string instead: `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, encode explicitly and convert to raw mode first so the finished HTML isn't re-encoded on output: `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`. The method still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help(). It was a second formatting syntax that only saw use inside CMS Builder.
 
 ### Fixed

@@ -870,32 +870,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Calls the given callback on each element, primarily for side effects.
-     * Returns $this for chaining.
-     *
-     * For SmartArrayHtml: callback receives SmartString values (or nested SmartArrayHtml).
-     * For SmartArray: callback receives raw PHP values (or nested SmartArray).
-     *
-     *     $users->each(function($user, $key) {
-     *         echo "$user->num - $user->name\n";
-     *     });
-     *
-     * If you need to transform or collect results, consider ->map() instead.
-     *
-     * @param Closure $callback A callback: fn($value, int|string $key): void
-     * @return $this
-     */
-    public function each(Closure $callback): static
-    {
-        foreach (array_keys($this->data) as $key) {
-            $smartValue = $this->getElement($key);
-            $callback($smartValue, $key);
-        }
-
-        return $this;
-    }
-
-    /**
      * Merges the SmartArray with one or more arrays or SmartArrays.
      * Numeric keys are renumbered, string keys are overwritten by later values.
      *

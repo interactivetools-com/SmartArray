@@ -68,6 +68,41 @@ trait DeprecatedAliases
     //region Silent Aliases
 
     /**
+     * Extracts a single field from each row, optionally keyed by another field.
+     *
+     * @deprecated Use ->column() - same arguments and behavior, matches PHP's array_column()
+     */
+    #[Deprecated(reason: 'renamed to column()', replacement: '%class%->column()')]
+    public function pluck(string|int $valueField, ?string $keyField = null): static
+    {
+        $this->assertNestedArray(); // assert here so the error names pluck(), not column()
+        return $this->column($valueField, $keyField);
+    }
+
+    /**
+     * Get an element by its position in the array, ignoring keys.
+     *
+     * @deprecated Use ->at() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to at()', replacement: '%class%->at()')]
+    public function nth(int $index): static|SmartNull|SmartString|string|int|float|bool|null
+    {
+        return $this->at($index);
+    }
+
+    /**
+     * Extracts the column at a specific position from each row, ignoring key names.
+     *
+     * @deprecated Use ->columnAt() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to columnAt()', replacement: '%class%->columnAt()')]
+    public function pluckNth(int $index): static
+    {
+        $this->assertNestedArray(); // assert here so the error names pluckNth(), not columnAt()
+        return $this->columnAt($index);
+    }
+
+    /**
      * Applies sprintf formatting to each element, with {value} and {key} aliases
      * for %1$s and %2$s. SmartArrayHtml HTML-encodes values and keys before
      * formatting; SmartArray does not. Always returns SmartArray (raw) so the
@@ -367,7 +402,7 @@ trait DeprecatedAliases
             'get'         => ['fetch', 'value', 'item'],
             'first'       => ['head', 'find', 'firstrow', 'getfirst'],
             'last'        => ['tail', 'end'],
-            'nth'         => ['index', 'at'],
+            'at'          => ['index'],
 
             // emptiness & search
             'count'       => ['length', 'size'],
@@ -388,8 +423,8 @@ trait DeprecatedAliases
             'values'      => ['vals', 'list', 'getvalues'],
             'indexBy'     => ['keyby'],
             'groupBy'     => ['group', 'categorize'],
-            'pluck'       => ['extract', 'pick', 'getcolumn'],
-            'pluckNth'    => ['columnnth'],
+            'column'      => ['extract', 'pick', 'getcolumn'],
+            'columnAt'    => ['columnnth', 'nthcolumn'],
             'implode'     => ['concat', 'join'],
             'map'         => ['transform', 'apply', 'collect'],
             'each'        => ['foreach', 'iterate', 'walk'],

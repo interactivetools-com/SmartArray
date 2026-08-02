@@ -13,10 +13,10 @@ array operations simpler, safer, and more expressive.
     * [Quick Start](#quick-start)
     * [Usage Examples](#usage-examples)
         * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
-        * [Accessing Elements by Position with nth()](#accessing-elements-by-position-with-nth)
+        * [Accessing Elements by Position with at()](#accessing-elements-by-position-with-at)
         * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
         * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
-        * [Extracting Unique Tags with pluck(), unique(), and implode()](#extracting-unique-tags-with-pluck-unique-and-implode)
+        * [Extracting Unique Tags with column(), unique(), and implode()](#extracting-unique-tags-with-column-unique-and-implode)
         * [Building Dynamic HTML Tables](#building-dynamic-html-tables)
         * [Creating Grid Layouts with isFirst() and isLast()](#creating-grid-layouts-with-isfirst-and-islast)
         * [Debugging and Help](#debugging-and-help)
@@ -66,7 +66,7 @@ foreach ($users as $user) {
 echo $users->first()->name; // Output: John O&apos;Connor
 
 // Use chainable methods to transform data
-$userIdAsCSV = $users->pluck('id')->implode(', '); // Output: "10, 20, 15"
+$userIdAsCSV = $users->column('id')->implode(', '); // Output: "10, 20, 15"
 
 // Easily convert back to arrays and original values
 $usersArray = $users->toArray(); // Convert back to a regular PHP array and values
@@ -116,9 +116,9 @@ foreach ($news as $article) {
 echo "</div>\n";
 ```
 
-### Accessing Elements by Position with nth()
+### Accessing Elements by Position with at()
 
-The `nth()` method provides a convenient way to access elements by their position, supporting both positive and negative
+The `at()` method provides a convenient way to access elements by their position, supporting both positive and negative
 indices. This is particularly useful for accessing specific items in ordered lists like search results, leaderboards, or
 recent activity feeds.
 
@@ -134,33 +134,33 @@ $topSellers = [
 $books = SmartArray::new($topSellers)->asHtml();
 
 // Get specific positions (0-based indexing)
-echo $books->nth(0)->title;  // "The Great Gatsby" (first book)
-echo $books->nth(2)->title;  // "To Kill a Mockingbird" (third book)
+echo $books->at(0)->title;  // "The Great Gatsby" (first book)
+echo $books->at(2)->title;  // "To Kill a Mockingbird" (third book)
 
 // Use negative indices to count from the end
-echo $books->nth(-1)->title; // "The Hobbit" (last book)
-echo $books->nth(-2)->title; // "The Catcher in the Rye" (second-to-last)
+echo $books->at(-1)->title; // "The Hobbit" (last book)
+echo $books->at(-2)->title; // "The Catcher in the Rye" (second-to-last)
 
 // Common use cases:
 
 // Get podium finishers in a competition
-$goldMedalist   = $results->nth(0);
-$silverMedalist = $results->nth(1);
-$bronzeMedalist = $results->nth(2);
+$goldMedalist   = $results->at(0);
+$silverMedalist = $results->at(1);
+$bronzeMedalist = $results->at(2);
 
 // Display recent activity with the newest first
-$mostRecent       = $activities->nth(0);
-$secondMostRecent = $activities->nth(1);
+$mostRecent       = $activities->at(0);
+$secondMostRecent = $activities->at(1);
 
 // Show last few items in a feed
-$latestLogEntry    = $log->nth(-1);
-$secondLatestEntry = $log->nth(-2);
+$latestLogEntry    = $log->at(-1);
+$secondLatestEntry = $log->at(-2);
 ```
 
 **Key Features:**
 
-- Zero-based indexing: `nth(0)` returns the first element
-- Negative indices: `nth(-1)` returns the last element
+- Zero-based indexing: `at(0)` returns the first element
+- Negative indices: `at(-1)` returns the last element
 - Works with both indexed and associative arrays
 
 ### Looking Up Authors by ID with indexBy()
@@ -251,7 +251,7 @@ foreach ($booksByGenre as $genre => $relatedBooks) {
 $booksByAuthor = SmartArray::new($books)->groupBy('author')->asHtml();
 
 foreach ($booksByAuthor as $author => $authorBooks) {
-    $years = $authorBooks->pluck('year')->values()->sort();
+    $years = $authorBooks->column('year')->values()->sort();
     echo "\n$author published {$authorBooks->count()} books ({$years->first()}-{$years->last()}):\n";
 
     foreach ($authorBooks->sortBy('year') as $book) {
@@ -306,7 +306,7 @@ George Orwell published 1 books (1949-1949):
 - Rows with a null or missing group value are grouped under `''`, like SQL GROUP BY keeps a NULL group - no rows are dropped
 - Use `indexBy()` instead if you only need one record per key
 
-### Extracting Unique Tags with pluck(), unique(), and implode()
+### Extracting Unique Tags with column(), unique(), and implode()
 
 When working with collections, you often need to extract a single field, remove duplicates, and produce a display
 string.
@@ -322,11 +322,11 @@ $articles = [
 ];
 
 // Extract unique, sorted tags as a comma-separated display string
-$tagList = SmartArray::new($articles)->pluck('tag')->unique()->sort()->implode(', ');
+$tagList = SmartArray::new($articles)->column('tag')->unique()->sort()->implode(', ');
 
 // Or for better readability, the same operation can be split across multiple lines:
 $tagList = SmartArray::new($articles)
-                ->pluck('tag')               // Extract tag field: ["PHP", "Testing", "PHP", "Databases", "PHP"]
+                ->column('tag')              // Extract tag field: ["PHP", "Testing", "PHP", "Databases", "PHP"]
                 ->unique()                   // Remove duplicates: ["PHP", "Testing", "Databases"]
                 ->sort()                     // Sort alphabetically: ["Databases", "PHP", "Testing"]
                 ->implode(', ');             // Join as string: "Databases, PHP, Testing"
@@ -468,7 +468,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                 set(key, value) | Set a value by key (for numeric keys or keys with special characters)                                                        |
 |                       |                         first() | Get the first element                                                                                                        |
 |                       |                          last() | Get the last element                                                                                                         |
-|                       |                      nth(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |
+|                       |                       at(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |
 |                       | SmartArray::getRawValue($value) | Converts SmartArray and SmartString objects to their original values while leaving other types unchanged                     |
 | Array Information     |                         count() | Get the number of elements                                                                                                   |
 |                       |                       isEmpty() | Returns true if array has no elements                                                                                        |
@@ -490,13 +490,14 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                        values() | Gets array of values, discarding the keys                                                                                    |
 |                       |                  indexBy(field) | Indexes rows by field value, latest is kept if duplicates                                                                    |
 |                       |                  groupBy(field) | Groups rows by field value, preserving duplicates                                                                            |
-|                       |     pluck(valueField, keyField) | Gets array of field values from rows, optionally indexed by another field                                                    |
-|                       |                 pluckNth(index) | Gets array of values at position from rows                                                                                   |
+|                       |                  column(column) | Gets values of one column from rows, like PHP's `array_column($rows, 'name')`                                                |
+|                       |        column(column, indexKey) | Gets column values keyed by another column, like `array_column($rows, 'name', 'id')`                                         |
+|                       |          column(null, indexKey) | Gets whole rows keyed by a column, like `array_column($rows, null, 'id')`                                                    |
+|                       |                 columnAt(index) | Gets the column at a position from rows, ignoring key names (0=first, -1=last)                                                                                   |
 |                       |              implode(separator) | Joins elements with separator into string                                                                                    |
 |                       |                   map(callback) | Transforms each element using callback (callback receives raw values)                                                        |
 |                       |                  each(callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
 |                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                    |
-|                       |     column(columnKey, indexKey) | Mirrors PHP's `array_column()`. Calls `pluck()` or `indexBy()` internally.                                                   |
 | Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                  |
 |                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                          |
 |                       |                     mysqli(key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                            |

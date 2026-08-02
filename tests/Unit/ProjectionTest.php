@@ -6,7 +6,6 @@ namespace Itools\SmartArray\Tests\Unit;
 use InvalidArgumentException;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use RuntimeException;
 
 /**
  * Column and key projections: pluck(), pluckNth(), column(), indexBy(),
@@ -134,12 +133,12 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testColumnWithBothArgumentsNullThrows(string $class): void
+    public function testColumnWithBothArgumentsNullReturnsRenumberedRows(string $class): void
     {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('column() unexpected arguments');
+        // Matches array_column($rows, null): whole rows, renumbered from 0
+        $result = $class::new(['a' => ['id' => 1], 'b' => ['id' => 2]])->column(null, null);
 
-        $class::new([['id' => 1]])->column(null, null);
+        $this->assertSame([['id' => 1], ['id' => 2]], $result->toArray());
     }
 
     //endregion

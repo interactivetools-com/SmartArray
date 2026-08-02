@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Methods;
 
-use RuntimeException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\Tests\SmartArrayTestCase;
 
@@ -33,17 +32,17 @@ class ColumnTest extends SmartArrayTestCase
         $this->assertEquals($originalArray, $smartArray->toArray(), "Original SmartArray should remain unmodified");
     }
 
-    public function testColumnWithBothNullThrowsException(): void
+    public function testColumnWithBothNullReturnsRenumberedRows(): void
     {
         $smartArray = new SmartArray([
             ['id' => 1, 'name' => 'Alice'],
             ['id' => 2, 'name' => 'Bob'],
         ]);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("column() unexpected arguments");
+        $result = $smartArray->column(null, null);
 
-        $smartArray->column(null, null);
+        // Matches array_column($rows, null): whole rows, renumbered from 0
+        $this->assertSame([['id' => 1, 'name' => 'Alice'], ['id' => 2, 'name' => 'Bob']], $result->toArray());
     }
 
     public static function columnProvider(): array

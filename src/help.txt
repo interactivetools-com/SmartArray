@@ -54,7 +54,7 @@ $obj->key               Get a value using property syntax
 ->set(key, value)       Set a value by key (for numeric keys or keys with special characters)
 ->first()               Get the first element
 ->last()                Get the last element
-->nth(index)            Get element by index, ignoring keys (0 is first, -1 is last)
+->at(index)             Get element by position, ignoring keys (0 is first, -1 is last)
 SmartArray::getRawValue($value)  Convert Smart* objects to original values, leave other types unchanged
 
 Array Information
@@ -88,9 +88,10 @@ Array Transformation
 ->values()                  Get array of just the values
 ->indexBy(field)            Get array using field as keys to single rows (duplicates overwrite)
 ->groupBy(field)            Get array using field as keys to arrays of rows (duplicates group)
-->pluck(field, keyField)    Extract single field from nested array, optionally indexed by another field
-->pluckNth(index)           Get array containing nth element from each row
-->column(columnKey, indexKey) Mirrors PHP's array_column(). Calls pluck() or indexBy() internally
+->column(column)            Get values of one column from rows, like array_column($rows, 'name')
+->column(column, indexKey)  Get column values keyed by another column, like array_column($rows, 'name', 'id')
+->column(null, indexKey)    Get whole rows keyed by a column, like array_column($rows, null, 'id')
+->columnAt(index)           Get the column at a position from each row, ignoring key names (0 is first, -1 is last)
 ->implode(separator)        Join elements with separator into string (default: '')
 ->map(callback)             Transform each element using callback (callback receives raw values)
 ->each(callback)            Call callback on each element as Smart objects. Used for side effects, doesn't modify array.

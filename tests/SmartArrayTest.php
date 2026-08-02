@@ -446,7 +446,7 @@ class SmartArrayTest extends TestCase
         $this->assertStringContainsString('SmartArray:', $output, "Help output should contain introductory text");
         $this->assertStringContainsString('contains(value)', $output, "Help output should mention contains() method");
         $this->assertStringContainsString('each', $output, "Help output should mention each() method");
-        $this->assertStringContainsString('pluck', $output, "Help output should mention pluck() method");
+        $this->assertStringContainsString('column', $output, "Help output should mention column() method");
     }
 
     /**
@@ -460,7 +460,6 @@ class SmartArrayTest extends TestCase
         // Methods not part of the public API (internal, interface, or deprecated)
         $skipMethods = [
             'set',              // Public but rarely used directly (property syntax preferred)
-            'column',           // Alias for pluck/indexBy
             'offsetExists',     // ArrayAccess interface
             'getIterator',      // IteratorAggregate interface
             'jsonSerialize',    // JsonSerializable interface
@@ -473,6 +472,9 @@ class SmartArrayTest extends TestCase
             'smartMap',         // Deprecated (in DeprecatedAliases)
             'chunk',            // Deprecated (in DeprecatedAliases)
             'sprintf',          // Deprecated (in DeprecatedAliases)
+            'pluck',            // Deprecated alias for column() (in DeprecatedAliases)
+            'nth',              // Deprecated alias for at() (in DeprecatedAliases)
+            'pluckNth',         // Deprecated alias for columnAt() (in DeprecatedAliases)
             'toRaw',            // Deprecated alias (in DeprecatedAliases)
             'toHtml',           // Deprecated alias (in DeprecatedAliases)
             'withSmartStrings', // Deprecated alias (in DeprecatedAliases)

@@ -263,12 +263,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Get an element by its position in the array, ignoring keys.
      *
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
-     * Returns SmartNull if out of bounds.
+     * Returns SmartNull if out of bounds. Use get() for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
-     *     $max    = $result->first()->nth(0)->value(); // Get unaliased column by position
+     *     $max    = $result->first()->at(0)->value(); // Get unaliased column by position
      */
-    public function nth(int $index): static|SmartNull|SmartString|string|int|float|bool|null
+    public function at(int $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
         $count = count($this->data);
         $index = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
@@ -738,35 +738,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Extracts a single field from a nested SmartArray.
-     *
-     * This method retrieves the values of a specified key from all elements in the nested SmartArray,
-     * returning them as a new SmartArray. It's particularly useful for extracting a specific field
-     * from a collection of records.
-     *
-     * @param string|int  $valueField The key of the field to extract from each nested element.
-     * @param string|null $keyField   Optional field to use as keys in the resulting array.
-     * @return static A new SmartArray containing the extracted values.
-     *
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
-     * ]);
-     * $userEmails = $users->pluck('email');                        // $userEmails is now a SmartArray: ['john@example.com', 'jane@example.com']
-     * $csvEmails  = $users->pluck('email')->implode(', ')->value(); // $csvEmails is now a string: "john@example.com, jane@example.com"
-     */
-    public function pluck(string|int $valueField, ?string $keyField = null): static
-    {
-        $this->assertNestedArray();
-        $this->warnIfMissing($valueField);
-
-        $values = array_column($this->toArray(), $valueField, $keyField);
-        return new static($values, $this->getInternalProperties());
-    }
-
-    /**
-     * Extracts values at a specific position from each row in a nested SmartArray, ignoring key names.
+     * Extracts the column at a specific position from each row, ignoring key names.
      * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
+     * Use column() for extraction by key; columnAt() is by position.
      *
      * @param int $index Zero-based position (supports negative indices: -1=last)
      * @return static A new SmartArray containing the extracted values.
@@ -779,9 +753,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *   ['Tables_in_yourDbName (cms_%)' => 'cms_pages'],
      * ]
      *
-     * $tables = $resultSet->pluckNth(0);   // Position 0 (first value): Returns ["cms_accounts", "cms_settings", "cms_pages"]
+     * $tables = $resultSet->columnAt(0);   // Position 0 (first column): Returns ["cms_accounts", "cms_settings", "cms_pages"]
      */
-    public function pluckNth(int $index): static
+    public function columnAt(int $index): static
     {
         $this->assertNestedArray();
 
@@ -800,22 +774,32 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Mirrors PHP's array_column() - extract a column of values, optionally indexed by another column.
      *
-     *     $arr->column('name');        // same as array_column($arr, 'name'), returns values from 'name' column
-     *     $arr->column('name', 'id');  // same as array_column($arr, 'name', 'id'), returns id => name mapping
-     *     $arr->column(null, 'id');    // same as array_column($arr, null, 'id'), returns rows indexed by 'id'
+     *     $users = new SmartArray([
+     *         ['id' => 10, 'name' => 'John', 'email' => 'john@example.com'],
+     *         ['id' => 20, 'name' => 'Jane', 'email' => 'jane@example.com'],
+     *     ]);
+     *     $users->column('name');       // ['John', 'Jane']
+     *     $users->column('name', 'id'); // [10 => 'John', 20 => 'Jane']
+     *     $users->column(null, 'id');   // whole rows keyed by id, same as ->indexBy('id')
+     *     $users->column(null);         // whole rows renumbered 0..n, like array_column($rows, null)
      *
-     * @param int|string|null $columnKey Column to extract (null = entire rows via indexBy)
+     * @param int|string|null $columnKey Column to extract (null = entire rows, keyed by $indexKey)
      * @param int|string|null $indexKey  Column to use as array keys
      * @return static
      */
     public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
-        return match (true) {
-            $columnKey !== null && $indexKey === null => $this->pluck($columnKey),
-            $columnKey !== null && $indexKey !== null => $this->pluck($columnKey, (string)$indexKey),
-            $columnKey === null && $indexKey !== null => $this->indexBy((string)$indexKey),
-            default                                   => throw new RuntimeException("column() unexpected arguments"),
-        };
+        if ($columnKey === null && $indexKey !== null) {
+            return $this->indexBy((string)$indexKey);
+        }
+
+        $this->assertNestedArray();
+        if ($columnKey !== null) {
+            $this->warnIfMissing($columnKey);
+        }
+
+        $values = array_column($this->toArray(), $columnKey, $indexKey);
+        return new static($values, $this->getInternalProperties());
     }
 
     /**

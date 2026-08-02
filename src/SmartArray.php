@@ -132,9 +132,9 @@ class SmartArray extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function nth(int $index): static|SmartNull|string|int|float|bool|null
+    public function at(int $index): static|SmartNull|string|int|float|bool|null
     {
-        return parent::nth($index);
+        return parent::at($index);
     }
 
     //endregion
@@ -210,15 +210,9 @@ class SmartArray extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function pluck(string|int $valueField, ?string $keyField = null): static
+    public function columnAt(int $index): static
     {
-        return parent::pluck($valueField, $keyField);
-    }
-
-    /** {@inheritDoc} */
-    public function pluckNth(int $index): static
-    {
-        return parent::pluckNth($index);
+        return parent::columnAt($index);
     }
 
     /** {@inheritDoc} */

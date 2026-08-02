@@ -6,13 +6,21 @@
 
 ## [Unreleased]
 
+### Added
+- `at($index)` - new name for `nth()`: get an element by position, zero-based, negative indices count from the end. Matches JavaScript's `Array.at()`. `get()` is by key, `at()` is by position.
+- `columnAt($index)` - new name for `pluckNth()`: get the column at a position from each row, ignoring key names. `column()` is by key, `columnAt()` is by position.
+
 ### Changed
 - `print_r()` and `var_dump()` now show just the array data, like dumping a plain array. The injected pseudo-properties (the README help pointer and the `useSmartStrings` flag) are gone - the class name PHP prints on every dumped object already identifies the mode, and `var_dump()` rendered the fake entries as broken-looking keys. Use `->debug()` for exact types and metadata. `SmartNull` dumps as `[value] =>` instead of exposing its internal properties. Matches the same change in SmartString 3.0.0.
 - Deprecated method names (`toRaw()`, `toHtml()`, `withSmartStrings()`, `enableSmartStrings()`, `noSmartStrings()`, `disableSmartStrings()`, `isMultipleOf()`, plus `smartMap()` and `chunk()`) are now real declared methods marked `@deprecated`, organized by deprecation stage in one `DeprecatedAliases` trait, instead of `__call()` shims. IDEs now show strikethroughs with the replacement, `method_exists()` reports them, and calls skip `__call()` dispatch. Same behavior and deprecation notices as before.
 - `set()`, `->key = $value`, and array assignment now unwrap Smart values (SmartString, SmartArray, SmartNull) instead of throwing, so values can be copied between arrays in any mode without calling `->value()` first. SmartNull stores as null; nested SmartArrays convert to the target array's mode. Matches how `where()`, `contains()`, and `merge()` already treat Smart inputs.
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
+- `column(null)` and `column(null, null)` now match PHP's `array_column()`: whole rows renumbered from 0, instead of throwing "unexpected arguments"
 
 ### Deprecated
+- `nth($index)` - renamed to `at()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
+- `pluckNth($index)` - renamed to `columnAt()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
+- `pluck($valueField, $keyField)` - use `column()` instead, same arguments and behavior: `->column('name')`, `->column('name', 'id')`. One name per behavior, and `column()` matches PHP's `array_column()`. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help().
 - `sprintf($format)` - use `map()` with an inline format string instead: `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, encode explicitly and convert to raw mode first so the finished HTML isn't re-encoded on output: `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`. The method still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help(). It was a second formatting syntax that only saw use inside CMS Builder.
 
 ### Fixed

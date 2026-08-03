@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use stdClass;
-use Throwable, Error, RuntimeException, InvalidArgumentException;
+use Throwable, Error, RuntimeException;
 use ArrayAccess, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure;
 use Itools\SmartString\SmartString;
 
@@ -503,10 +503,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Recursively converts SmartArray back to a standard PHP array with original values.
      *
-     * - SmartArray objects are recursively converted to arrays
-     * - Scalar values and nulls are returned as-is
-     * - SmartNull objects are converted to null
-     * - Unexpected types will throw an InvalidArgumentException
+     * Nested SmartArrays convert to arrays; scalars and nulls return as-is.
+     * Those are the only types setElement() stores, so no other type can appear.
      *
      * @return array An array representation of the object's elements with original values.
      */
@@ -515,12 +513,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Future options: We could add a default arg $smartStringsToValues = true to allow SmartStrings to be returned as objects
         $array = [];
         foreach ($this->data as $key => $value) {  // $this->data so getIterator doesn't convert to SmartStrings
-            $array[$key] = match (true) {
-                $value instanceof self             => $value->toArray(),   // Recursively convert nested SmartArrays
-                is_scalar($value), is_null($value) => $value,              // Scalars and nulls are returned as-is
-                $value instanceof SmartNull        => null,                // Convert SmartNull to null
-                default                            => throw new InvalidArgumentException(__METHOD__ . ": Unexpected value type encountered: " . get_debug_type($value)),
-            };
+            $array[$key] = $value instanceof self ? $value->toArray() : $value;
         }
 
         return $array;
@@ -1011,9 +1004,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $varExport   .= $debugLevel ? "," : "";                                         // add trailing comma for debug mode > 0
             $loadComment = str_repeat(" ", max(12 - strlen($varExport), 0)) . $loadComment; // line up after common short value lengths
             $output      = str_pad("$keyPrefix$varExport$loadComment", $commentOffset) . "$comment\n";
-        } elseif ($var instanceof SmartNull) {
-            $varExport = 'SmartNull()';
-            $output    = str_pad("$keyPrefix$varExport,", $commentOffset) . "$comment\n";
         } else {
             // Anything else prints as its type, e.g. the loadHandler Closure in the
             // debug(1) properties block - debug output describes, it never throws
@@ -1271,11 +1261,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $keyDisplay       = is_string($key) ? self::htmlEncode($key) : $key;
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
-        $warning = match ($warningType) {
-            'offset'   => "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n",
-            'argument' => "{$caller['function']}(): '$keyDisplay' doesn't exist\n",
-            default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
-        };
+        $warning = $warningType === 'offset'
+            ? "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n"
+            : "{$caller['function']}(): '$keyDisplay' doesn't exist\n";
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces

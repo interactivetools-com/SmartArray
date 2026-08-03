@@ -10,8 +10,6 @@ use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 use RuntimeException;
-use Throwable;
-use TypeError;
 
 /**
  * Every executable example in README.md and src/help.txt, run as written.
@@ -228,38 +226,16 @@ class DocsExamplesTest extends SmartArrayTestCase
         $this->assertSame([101, 102, 103, 104], $authorById->keys()->toArray(), 'integer field values stay integer keys');
     }
 
-    // DOCS MISMATCH: doc says the join loop prints three "Title:/By:" blocks, actual is
-    // a fatal TypeError because get() rejects the SmartString $article->author_id
-    // (README.md lines 193-198, output block lines 201-212)
-    public function testReadmeIndexByJoinExampleThrowsTypeErrorOnSmartStringKey(): void
-    {
-        $authorById = self::authorsById();
-        $articles   = SmartArray::new(self::joinArticles())->asHtml();
-
-        try {
-            foreach ($articles as $article) {
-                $authorById->get($article->author_id);
-            }
-            $this->fail('Expected TypeError from get() with a SmartString key');
-        } catch (Throwable $e) {
-            $this->assertInstanceOf(TypeError::class, $e);
-            $this->assertStringStartsWith(
-                'Itools\SmartArray\SmartArrayHtml::get(): Argument #1 ($key) must be of type string|int, Itools\SmartString\SmartString given',
-                $e->getMessage(),
-            );
-        }
-    }
-
-    // The documented output block for the join loop, produced by the one change that
-    // makes the example run: unwrapping the key with ->value() (see the test above)
-    public function testReadmeIndexByJoinExampleOutputWithUnwrappedKey(): void
+    // The join loop as documented: get() unwraps the SmartString key, so the
+    // example runs as written in README.md lines 193-212
+    public function testReadmeIndexByJoinExampleOutput(): void
     {
         $authorById = self::authorsById();
         $articles   = SmartArray::new(self::joinArticles())->asHtml();
 
         [, $output] = $this->captureOutput(static function () use ($articles, $authorById): void {
             foreach ($articles as $article) {
-                $author = $authorById->get($article->author_id->value());
+                $author = $authorById->get($article->author_id);
                 echo "Title: $article->title\n";
                 echo "By: $author->name ($author->genre)\n\n";
             }

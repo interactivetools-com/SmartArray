@@ -8,7 +8,7 @@ namespace Itools\SmartArray;
  */
 class SmartArrayRaw extends SmartArray
 {
-    public function __construct(array $array = [], ?array $properties = [])
+    public function __construct(array $array = [], bool|array|null $properties = [])
     {
         @trigger_error('SmartArrayRaw is deprecated. Use SmartArray instead.', E_USER_DEPRECATED);
         parent::__construct($array, $properties);
@@ -20,9 +20,6 @@ class SmartArrayRaw extends SmartArray
     public static function new(array $array = [], array|bool $properties = []): static
     {
         @trigger_error('SmartArrayRaw::new() is deprecated. Use SmartArray::new() instead.', E_USER_DEPRECATED);
-        if (is_bool($properties)) {
-            $properties = [];
-        }
         return new static($array, $properties);
     }
 }

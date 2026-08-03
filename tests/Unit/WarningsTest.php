@@ -228,23 +228,20 @@ class WarningsTest extends SmartArrayTestCase
         [, $output] = $this->captureOutput(fn() => $sa->implode);
 
         $expected = "\nWarning: implode is undefined in TEST_FILE:LINE\n"
-            . "\n" . self::BRACES_HINT . "\n";
+            . "\n" . self::BRACES_HINT . "\n"
+            . "\n";
         $this->assertSame($expected, self::maskLocations($output));
     }
 
     #[DataProvider('modeProvider')]
     public function testMissingFieldNamedAfterAMethodSuggestsBraces(string $class): void
     {
-        // REVIEW: the hint runs into "Occurred in" with no separator, because the
-        // hint has no trailing newline and the 'argument' trace is appended right
-        // after it. The 'offset' text ends after the hint so it never shows there.
-        // Alternative: end the hint with "\n" (or prefix the trace with one).
         $rows = $class::new([['a' => 1]]);
 
         [, $output] = $this->captureOutput(fn() => $rows->groupBy('count'));
 
         $expected = "\nWarning: groupBy(): 'count' doesn't exist\n"
-            . "\n" . self::BRACES_HINT
+            . "\n" . self::BRACES_HINT . "\n"
             . "Occurred in TEST_FILE:LINE in CLOSURE()\n"
             . "Reported in SRC_FILE:LINE in SmartArrayBase->warnIfMissing()\n"
             . "\n";
@@ -331,14 +328,13 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testStringConversionWarnsAndReturnsEmptyString(string $class): void
     {
-        // REVIEW: the text says "SmartArray" for both classes; on SmartArrayHtml
-        // the name in the message doesn't match the object being converted.
-        // Alternative: use static::class (or the short class name) in the text.
-        $sa = $class::new(['name' => 'Bob']);
+        // The message names the actual class being converted
+        $shortClass = basename(str_replace('\\', '/', $class));
+        $sa         = $class::new(['name' => 'Bob']);
 
         [$result, $output] = $this->captureOutput(fn() => (string)$sa);
 
-        $expected = "\nWarning: Can't convert SmartArray to string in TEST_FILE on line LINE.\n"
+        $expected = "\nWarning: Can't convert $shortClass to string in TEST_FILE on line LINE.\n"
             . "\n" . self::BRACES_HINT . "\n"
             . "\nFor more info: \$var->help()\n"
             . "\n";
@@ -366,20 +362,22 @@ class WarningsTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => (string)$empty);
 
-        $this->assertStringContainsString("Can't convert SmartArray to string", $output);
+        $shortClass = basename(str_replace('\\', '/', $class));
+        $this->assertStringContainsString("Can't convert $shortClass to string", $output);
     }
 
     #[DataProvider('modeProvider')]
     public function testStringConversionWarningIsAlsoSentToErrorHandlers(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $shortClass = basename(str_replace('\\', '/', $class));
+        $sa         = $class::new(['name' => 'Bob']);
 
         [, $messages] = $this->captureWarnings(fn() => (string)$sa);
 
         $this->assertCount(1, $messages);
 
         // No leading newline, no "Warning:" prefix, and no trailing blank lines
-        $expected = "Can't convert SmartArray to string in TEST_FILE on line LINE.\n"
+        $expected = "Can't convert $shortClass to string in TEST_FILE on line LINE.\n"
             . "\n" . self::BRACES_HINT . "\n"
             . "\nFor more info: \$var->help()";
         $this->assertSame($expected, self::maskLocations($messages[0]));

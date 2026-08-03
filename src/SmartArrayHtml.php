@@ -103,7 +103,7 @@ class SmartArrayHtml extends SmartArrayBase
     //region Value Access
 
     /** {@inheritDoc} */
-    public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString
     {
         // Must use func_num_args() check here and call parent appropriately,
         // because parent uses func_num_args() to detect if default was provided
@@ -126,7 +126,7 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function at(int $index): static|SmartNull|SmartString
+    public function at(int|SmartString $index): static|SmartNull|SmartString
     {
         return parent::at($index);
     }

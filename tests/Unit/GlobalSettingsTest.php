@@ -13,7 +13,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use RuntimeException;
 use Throwable;
-use TypeError;
 
 /**
  * SmartArrayBase::$onOffsetAccess - how deprecated $array['key'] syntax is surfaced.
@@ -402,22 +401,19 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertSame([5 => 'five'], $sa->toArray(), 'the stored key is an integer');
     }
 
-    public function testNullOffsetReadNotifiesThenFailsOnTheTypeCheck(): void
+    public function testNullOffsetReadUsesTheEmptyStringKey(): void
     {
-        // REVIEW: $arr[null] prints "Replace [] with ->get('')" - the append-style [] with
-        // a read-style suggestion - and then throws a raw TypeError naming SmartArrayBase
-        // internals rather than a CallerException pointing at the caller. offsetUnset() and
-        // offsetExists() accept null and treat it as the '' key (tested below).
+        // PHP array semantics: $arr[null] reads key '' - same as offsetUnset()
+        // and offsetExists() (tested below)
         $sa = SmartArray::new(['' => 'blank']);
 
-        [[$thrown, $output], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
-            fn() => $this->captureOutput(fn() => $this->catchThrowable(fn() => $sa[null]))
+        [[$value, $output], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(fn() => $sa[null])
         ));
 
-        $this->assertInstanceOf(TypeError::class, $thrown);
-        $this->assertStringContainsString('must be of type string|int, null given', $thrown->getMessage());
-        $this->assertSame("\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n", $this->normalizeCaller($output));
-        $this->assertSame(["Replace [] with ->get('') in FILE:LINE."], $this->normalizeCaller($deprecations));
+        $this->assertSame('blank', $value);
+        $this->assertSame("\nDeprecated: Replace [''] with ->get('') in FILE:LINE.\n", $this->normalizeCaller($output));
+        $this->assertSame(["Replace [''] with ->get('') in FILE:LINE."], $this->normalizeCaller($deprecations));
     }
 
     public function testNullOffsetExistsAndUnsetUseTheEmptyStringKey(): void

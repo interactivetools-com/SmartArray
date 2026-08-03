@@ -323,6 +323,7 @@ trait DeprecatedAliases
      */
     public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
+        $offset ??= ''; // PHP array semantics: $arr[null] reads key ''
         $this->triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset);
     }
@@ -421,14 +422,14 @@ trait DeprecatedAliases
 
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $suggestion = self::didYouMean($method) ?? "call ->help() for available methods.";
-        $className  = substr(strrchr(static::class, '\\'), 1) ?: static::class;
+        $className  = self::stripNamespace(static::class);
         throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
     }
 
     public static function __callStatic(string $method, array $args): mixed
     {
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $className = substr(strrchr(static::class, '\\'), 1) ?: static::class;
+        $className = self::stripNamespace(static::class);
         throw new Error("Call to undefined method $className::$method(), call ->help() for available methods.\n" . self::occurredInFile());
     }
 

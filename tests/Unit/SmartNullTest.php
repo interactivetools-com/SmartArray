@@ -373,34 +373,32 @@ class SmartNullTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testSetDelegatesToAThrowawayArrayInsteadOfThrowing(string $class): void
+    public function testSetThrowsTheSameGuardAsArraySyntax(string $class): void
     {
-        // REVIEW: $smartNull['key'] = 'value' throws, but ->set() is not declared on
-        // SmartNull so __call sends it to a fresh empty array. The write appears to
-        // succeed and the result is silently discarded by the caller's next step.
-        // Alternative: declare set() on SmartNull and throw the same CallerException.
+        // All writes throw the same guard: property, set(), and array syntax
         $smartNull = $this->smartNullFrom($class);
 
-        $result = $smartNull->set('key', 'value');
+        $this->expectException(CallerException::class);
+        $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
-        $this->assertSame($class, get_class($result));
-        $this->assertSame(['key' => 'value'], $result->toArray());
-        $this->assertSame([], $smartNull->toArray(), 'the SmartNull itself is unchanged');
+        $smartNull->set('key', 'value');
     }
 
     #[DataProvider('modeProvider')]
-    public function testPropertyWriteCreatesADynamicPropertyAndBreaksTheChain(string $class): void
+    public function testPropertyWriteThrowsTheSameGuardAsArraySyntax(string $class): void
     {
-        // REVIEW: SmartNull extends stdClass and declares no __set, so a property
-        // write lands as a real dynamic property. __get is then bypassed and the
-        // read returns the written value instead of a chainable SmartNull.
-        // Alternative: declare __set on SmartNull and throw the CallerException.
+        // __set throws, so a write can't land as a dynamic property and shadow
+        // __get's chainable SmartNull
         $smartNull = $this->smartNullFrom($class);
 
-        $smartNull->color = 'blue';
+        try {
+            $smartNull->color = 'blue';
+            $this->fail('expected CallerException');
+        } catch (CallerException $e) {
+            $this->assertSame('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first', $e->getMessage());
+        }
 
-        $this->assertSame('blue', $smartNull->color);
-        $this->assertNull($smartNull->other->value(), 'untouched names still chain');
+        $this->assertNull($smartNull->color->value(), 'the name still chains as a SmartNull afterward');
     }
 
     //endregion

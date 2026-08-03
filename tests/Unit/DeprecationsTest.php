@@ -728,16 +728,22 @@ class DeprecationsTest extends SmartArrayTestCase
         $this->assertSame(['name' => 'Bob'], $sa->toArray());
     }
 
-    public function testSmartArrayRawNewIgnoresTheLegacyBooleanArgument(): void
+    public function testSmartArrayRawNewForwardsTheLegacyBooleanToTheConstructorGuard(): void
     {
-        // REVIEW: SmartArray::new($data, true) throws "Cannot create SmartArray
-        // with useSmartStrings=true", but the SmartArrayRaw factory drops the
-        // boolean and returns raw values with no signal beyond its own class
-        // deprecation - the exact silent-downgrade the throw was added to stop.
-        [$sa, ] = $this->captureDeprecations(fn() => SmartArrayRaw::new(['name' => 'Bob'], true));
+        // The boolean passes through to SmartArray's constructor, so true throws
+        // the same way SmartArray::new($data, true) does instead of silently
+        // returning raw values
+        [$thrown, ] = $this->captureDeprecations(function () {
+            try {
+                SmartArrayRaw::new(['name' => 'Bob'], true);
+                return null;
+            } catch (CallerException $e) {
+                return $e;
+            }
+        });
 
-        $this->assertInstanceOf(SmartArrayRaw::class, $sa);
-        $this->assertSame('Bob', $sa->name);
+        $this->assertInstanceOf(CallerException::class, $thrown);
+        $this->assertSame('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.', $thrown->getMessage());
     }
 
     public function testSmartArrayRawRowsAreAlsoSmartArrayRaw(): void

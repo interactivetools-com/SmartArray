@@ -185,14 +185,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         stored null    get() returns null, ?? returns 'n/a'   <- the one difference
      *         key missing    both return 'n/a'
      *
-     * @param int|string $key     The key to retrieve
-     * @param mixed      $default Returned when $key doesn't exist; treated like a stored value (Smart values
-     *                            unwrap first, then everything wraps for this array's mode - so a SmartNull
-     *                            default returns null and a SmartArray default returns this array's type)
+     * @param int|string|SmartString|SmartNull $key The key to retrieve; Smart values unwrap first, so keys read
+     *                                               from another array work directly: $users->get($article->author_id)
+     * @param mixed $default Returned when $key doesn't exist; treated like a stored value (Smart values
+     *                       unwrap first, then everything wraps for this array's mode - so a SmartNull
+     *                       default returns null and a SmartArray default returns this array's type)
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
-    public function get(int|string $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
+        // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int
+        if ($key instanceof SmartString || $key instanceof SmartNull) {
+            $key = $key->value();
+            $key = match (true) {
+                is_int($key), is_string($key) => $key,
+                is_null($key)                 => '',
+                default                       => (int) $key,
+            };
+        }
+
         // return default if key not found
         if (func_num_args() >= 2 && !array_key_exists($key, $this->data)) {
             // Defaults act like stored values: Smart defaults (SmartString,
@@ -268,8 +279,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
      *     $max    = $result->first()->at(0)->value(); // Get unaliased column by position
      */
-    public function at(int $index): static|SmartNull|SmartString|string|int|float|bool|null
+    public function at(int|SmartString $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
+        // Unwrap Smart indexes so positions read from another array work directly (MySQL returns numeric strings)
+        if ($index instanceof SmartString) {
+            $index = (int) $index->value();
+        }
+
         $count = count($this->data);
         $index = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
         $keys  = array_keys($this->data);
@@ -925,7 +941,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         match (true) {
             !$loadHandler                        => throw new CallerException("load(): no load handler is set. Handlers are normally provided by the database layer (ZenDB); arrays created directly don't have one."),
             !is_callable($loadHandler)           => throw new CallerException("Load handler is not callable"),
-            empty($field)                        => throw new CallerException("Field name is required for load() method."),
+            $field === ''                        => throw new CallerException("Field name is required for load() method."),
             (bool)preg_match('/[^\w-]/', $field) => throw new CallerException("Field name contains invalid characters: $field"),
             $this->isNested()                    => throw new CallerException("Cannot call load() on record set, only on a single row."),
             default                              => null,
@@ -938,6 +954,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // output error checking
+        if (!is_array($result) || count($result) !== 2) {
+            throw new Error("Load handler must return [rows, mysqliProperties] or false, got " . get_debug_type($result));
+        }
         [$array, $mysqliProperties] = $result; // Get new array data
         match (true) {
             !is_array($array)            => throw new Error("Load handler must return an array as the first argument"),
@@ -1356,7 +1375,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
-            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"";
+            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n";
         }
         if ($warningType === 'argument') {
             $warning .= self::occurredInFile(true);
@@ -1384,7 +1403,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // output warning and trigger PHP warning (for logging)
         // PHP Error: Fatal error: Uncaught Error: Object of class Itools\SmartArray\SmartArray could not be converted to string in C:\path\file.php:27
-        $warning = "Can't convert SmartArray to string $inFileOnLine.\n\n";
+        $className = self::stripNamespace(static::class);
+        $warning   = "Can't convert $className to string $inFileOnLine.\n\n";
         $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n\n";
         $warning .= 'For more info: $var->help()';
 

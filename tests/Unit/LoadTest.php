@@ -242,18 +242,19 @@ class LoadTest extends SmartArrayTestCase
         $sa->load('');
     }
 
-    public function testLoadWithFieldNameZeroThrowsRequiredNotInvalid(): void
+    public function testLoadWithFieldNameZeroLoadsNormally(): void
     {
-        // REVIEW: '0' passes the character check but empty('0') is true, so a
-        // column literally named "0" reports "Field name is required" instead of
-        // loading. Alternative: check $field === '' so only a blank name is
-        // rejected.
-        $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => [[], []]]);
-
-        $this->expectException(CallerException::class);
-        $this->expectExceptionMessage('Field name is required for load() method.');
+        // Only a blank name is rejected ($field === ''), so a column literally
+        // named "0" loads like any other field
+        $receivedField = null;
+        $sa = SmartArray::new(['id' => 1], ['loadHandler' => function ($row, $field) use (&$receivedField) {
+            $receivedField = $field;
+            return [[], []];
+        }]);
 
         $sa->load('0');
+
+        $this->assertSame('0', $receivedField);
     }
 
     public function testLoadOnRecordSetThrows(): void
@@ -343,23 +344,20 @@ class LoadTest extends SmartArrayTestCase
         $sa->load('products');
     }
 
-    public function testHandlerReturningAScalarThrowsTheFirstArgumentError(): void
+    public function testHandlerReturningAScalarThrowsTheShapeError(): void
     {
-        // Destructuring a string yields nulls, so the first-element check catches it
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => 'oops']);
 
         $this->expectException(Error::class);
-        $this->expectExceptionMessage('Load handler must return an array as the first argument');
+        $this->expectExceptionMessage('Load handler must return [rows, mysqliProperties] or false, got string');
 
         $sa->load('products');
     }
 
-    public function testHandlerReturningOnlyRowsWarnsAboutTheMissingSecondElement(): void
+    public function testHandlerReturningOnlyRowsThrowsTheShapeErrorWithoutPhpWarnings(): void
     {
-        // REVIEW: a handler that returns just [$rows] emits a PHP warning from
-        // inside the library ("Undefined array key 1" in SmartArrayBase.php)
-        // before throwing. Alternative: check count($result) first so the
-        // library's own error is the only thing the caller sees.
+        // The shape is checked before destructuring, so the library's own error
+        // is the only thing the caller sees - no "Undefined array key 1" warning
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => [['id' => 10]]]);
 
         $thrown   = null;
@@ -371,9 +369,9 @@ class LoadTest extends SmartArrayTestCase
             }
         });
 
-        $this->assertSame(['Undefined array key 1'], $warnings);
+        $this->assertSame([], $warnings);
         $this->assertInstanceOf(Error::class, $thrown);
-        $this->assertSame('Load handler must return an array as the second argument', $thrown->getMessage());
+        $this->assertSame('Load handler must return [rows, mysqliProperties] or false, got array', $thrown->getMessage());
     }
 
     //endregion

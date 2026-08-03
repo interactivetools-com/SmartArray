@@ -169,7 +169,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     public function offsetSet($offset, $value): void
     {
-        throw new CallerException("Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first");
+        $this->throwCannotSet();
     }
 
     public function offsetExists($offset): bool
@@ -211,6 +211,26 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     public function __get(string $name): SmartNull
     {
         return $this;
+    }
+
+    /**
+     * All writes throw: a SmartNull marks a missing key or empty result, so
+     * there is nothing real to write to and the value would be silently lost.
+     * Same guard for property, set(), and array syntax.
+     */
+    public function __set(string $name, mixed $value): void
+    {
+        $this->throwCannotSet();
+    }
+
+    public function set(int|string $key, mixed $value): never
+    {
+        $this->throwCannotSet();
+    }
+
+    private function throwCannotSet(): never
+    {
+        throw new CallerException("Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first");
     }
 
     /**

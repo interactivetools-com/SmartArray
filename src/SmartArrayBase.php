@@ -427,7 +427,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Numeric row keys are re-indexed; string keys are preserved
      * (array_multisort() default behavior).
      */
-    public function sortBy(string $field, int $type = SORT_REGULAR): static
+    public function sortBy(string $field, int $flags = SORT_REGULAR): static
     {
         $this->assertNestedArray();
         $this->warnIfMissing($field);
@@ -435,7 +435,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // sort by field value, treating missing fields as null (?? also covers non-array rows in mixed data)
         $sorted      = $this->toArray();
         $fieldValues = array_map(fn($row) => $row[$field] ?? null, $sorted);
-        array_multisort($fieldValues, SORT_ASC, $type, $sorted);
+        array_multisort($fieldValues, SORT_ASC, $flags, $sorted);
 
         return new static($sorted, $this->getInternalProperties());
     }

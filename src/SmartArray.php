@@ -144,9 +144,9 @@ class SmartArray extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function sortBy(string $field, int $type = SORT_REGULAR): static
+    public function sortBy(string $field, int $flags = SORT_REGULAR): static
     {
-        return parent::sortBy($field, $type);
+        return parent::sortBy($field, $flags);
     }
 
     /** {@inheritDoc} */

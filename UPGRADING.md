@@ -72,6 +72,32 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > Search: `catch (RuntimeException`
 
+### Removed methods
+
+> Undocumented methods with no found uses were removed:
+>
+> - `usingSmartStrings()` - check the class instead; it is the mode:
+>   `$arr instanceof SmartArrayHtml`
+> - `setLoadHandler()` - pass the handler as a constructor property:
+>   `new SmartArray($data, ['loadHandler' => $handler])`. Setting it after
+>   construction never worked on record sets - rows are built during
+>   construction and never saw a handler set later.
+>
+> Search: `usingSmartStrings|setLoadHandler`
+
+### sortBy() parameter renamed for named arguments
+
+> `sortBy(string $field, int $flags = SORT_REGULAR)` - the second parameter
+> was named `$type` but always held PHP sort flags. It now matches `sort()`
+> and PHP's own sort functions. Only named-argument calls are affected:
+>
+> ```php
+> $rows->sortBy('name', type: SORT_NATURAL);   // before
+> $rows->sortBy('name', flags: SORT_NATURAL);  // after
+> ```
+>
+> Regex: `->sortBy\([^)]*type:`
+
 ### Silent changes
 
 > - `print_r()` and `var_dump()` show just the array data, like dumping a

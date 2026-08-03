@@ -74,7 +74,7 @@ Sorting & Filtering
 --------------------
 ->sort()                      Sort elements by value, reindexing keys
 ->sortBy(field)               Sort nested array by field value (numeric keys reindexed, string keys preserved)
-->sortBy(field, type)         Sort with type: SORT_STRING, SORT_NUMERIC, SORT_REGULAR (default)
+->sortBy(field, flags)        Sort with flags: SORT_STRING, SORT_NUMERIC, SORT_REGULAR (default)
 ->unique()                    Remove duplicate values, keeping first occurrence
 ->filter(callback)            Keep elements where callback returns true, using raw values
 ->where(field, value)         Keep elements where field matches value (uses == for type-tolerant matching)

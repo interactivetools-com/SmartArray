@@ -4,7 +4,7 @@
 > target - tagged releases roll up every change since the previous tag.
 > Versions bundled with CMS Builder are marked on their sections.
 
-## [Unreleased]
+## [3.0.0] - [UNRELEASED]
 
 ### Security
 - Missing-key warnings and array-syntax deprecation notices HTML-encode the key before echoing it. With a dynamic key (`->get($_GET['sort'])`, `$arr[$_GET['sort']]`), a key containing HTML reached the browser unencoded - a reflected XSS vector. The `trigger_error()` copy carries the same encoded key.

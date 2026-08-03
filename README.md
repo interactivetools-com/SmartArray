@@ -264,13 +264,13 @@ Output:
 
 ```
 Literary Fiction Books:
-------------------
+-----------------------
 - Pride and Prejudice (1813)
 - Emma (1815)
 - Persuasion (1818)
 
 Science Fiction Books:
--------------------
+----------------------
 - 1984 (1949)
 - Foundation (1951)
 - I, Robot (1950)
@@ -280,12 +280,12 @@ Jane Austen published 3 books (1813-1818):
 - Emma (1815)
 - Persuasion (1818)
 
+George Orwell published 1 books (1949-1949):
+- 1984 (1949)
+
 Isaac Asimov published 2 books (1950-1951):
 - I, Robot (1950)
 - Foundation (1951)
-
-George Orwell published 1 books (1949-1949):
-- 1984 (1949)
 ```
 
 **Common Use Cases for groupBy():**

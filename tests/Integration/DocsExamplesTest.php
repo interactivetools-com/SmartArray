@@ -15,10 +15,9 @@ use RuntimeException;
  * Every executable example in README.md and src/help.txt, run as written.
  *
  * The setup and the chain come from the document; the expected values are
- * whatever the library actually produces. Where the document shows an output
- * block that disagrees with the code, the test pins the ACTUAL output and a
- * "DOCS MISMATCH" comment records the disagreement (see the final report for
- * the full list).
+ * whatever the library actually produces. If a document's output block ever
+ * disagrees with the code, the test pins the ACTUAL output and a "DOCS
+ * MISMATCH" comment records the disagreement until the document is fixed.
  *
  * Skipped examples, and why:
  * - README "Common use cases" fragments under at() ($results, $activities,
@@ -297,9 +296,6 @@ class DocsExamplesTest extends SmartArrayTestCase
         ];
     }
 
-    // DOCS MISMATCH: doc's underline is 18 dashes under "Literary Fiction Books:" and 19
-    // under "Science Fiction Books:", actual is 23 and 22 (str_repeat('-', strlen($genre) + 7))
-    // (README.md lines 267 and 273)
     public function testReadmeGroupByGenreExampleOutput(): void
     {
         $booksByGenre = SmartArray::new(self::books())->groupBy('genre')->asHtml();
@@ -330,10 +326,6 @@ class DocsExamplesTest extends SmartArrayTestCase
         );
     }
 
-    // DOCS MISMATCH: doc's output block orders the author groups Jane Austen, Isaac Asimov,
-    // George Orwell; actual order is first appearance (Jane Austen, George Orwell, Isaac
-    // Asimov), which is what the "Groups are created in order of first appearance" note
-    // promises (README.md lines 278-288)
     public function testReadmeGroupByAuthorExampleOutput(): void
     {
         $booksByAuthor = SmartArray::new(self::books())->groupBy('author')->asHtml();

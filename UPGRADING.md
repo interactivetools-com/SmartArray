@@ -18,10 +18,10 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## [Unreleased]
+## v3.0.0
 
-*Follow this section when upgrading from SmartArray v2.7.0 or earlier.*
-<!-- At release: replace [Unreleased] with the version number and add the CMS Builder gate, e.g. "(or CMS Builder before 3.85)" -->
+*Follow this section when upgrading from SmartArray before v3.0.0
+(or CMS Builder before 3.85).*
 
 ### Boolean argument to `new()` or the constructor
 

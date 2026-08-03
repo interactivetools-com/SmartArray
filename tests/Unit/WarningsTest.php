@@ -96,16 +96,15 @@ class WarningsTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testMissingKeyWarningPrintsTheKeyUnencodedInBothModes(string $class): void
+    public function testMissingKeyWarningEncodesTheKeyInBothModes(string $class): void
     {
-        // REVIEW: warnings are developer diagnostics, not page content, so the key
-        // is printed raw even on SmartArrayHtml. A key containing HTML reaches the
-        // browser unencoded. Alternative: htmlspecialchars() the key in HTML mode.
+        // SECURITY: the key can be user input (->get($_GET['sort'])) and the warning
+        // echoes into the page, so it is HTML-encoded in both modes
         $sa = $class::new(['name' => 'Bob']);
 
         [, $output] = $this->captureOutput(fn() => $sa->{'<b>'});
 
-        $this->assertSame("\nWarning: <b> is undefined in TEST_FILE:LINE\n\n", self::maskLocations($output));
+        $this->assertSame("\nWarning: &lt;b&gt; is undefined in TEST_FILE:LINE\n\n", self::maskLocations($output));
     }
 
     #[DataProvider('modeProvider')]

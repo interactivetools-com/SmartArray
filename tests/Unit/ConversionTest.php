@@ -423,16 +423,13 @@ class ConversionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testJsonEncodeFailsOnMalformedUtf8Key(string $class): void
+    public function testJsonEncodeSubstitutesMalformedUtf8InKeys(string $class): void
     {
-        // REVIEW: the substitution covers values only, so one corrupt byte in a
-        // KEY still returns false and loses the whole document - the failure the
-        // value scrubbing exists to prevent. Keys come from column names, so this
-        // is rare, but jsonSerialize() could scrub them the same way.
+        // Keys scrub to U+FFFD like values, so one corrupt byte in a key can't
+        // make json_encode() return false and lose the whole document.
         $sa = $class::new(["caf\xE9" => 'value']);
 
-        $this->assertFalse(json_encode($sa));
-        $this->assertSame('Malformed UTF-8 characters, possibly incorrectly encoded', json_last_error_msg());
+        $this->assertSame('{"caf\\ufffd":"value"}', json_encode($sa));
     }
 
     //endregion

@@ -479,8 +479,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * objects, and should return true to keep the element, false to remove it.
      * When called without a callback, removes all falsy values (empty strings, 0, null, false).
      *
+     * Keys are preserved, like PHP's array_filter(), so a filtered list json_encodes as an
+     * object ({"0":...,"2":...}) - chain ->values() first to reindex and get a JSON array.
+     *
      *     $active   = $users->filter(fn($row) => $row['status'] === 'active');
      *     $nonEmpty = $values->filter();
+     *     $json     = json_encode($values->filter()->values());  // reindex for a JSON array
      *
      * @param callable|null $callback A function($value, $key) that returns true to keep, false to remove.
      * @return static A new SmartArray containing only the elements that passed the test.
@@ -1118,7 +1122,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $varExport = 'SmartNull()';
             $output    = str_pad("$keyPrefix$varExport,", $commentOffset) . "$comment\n";
         } else {
-            throw new RuntimeException("Unsupported type: $debugType");
+            // Anything else prints as its type, e.g. the loadHandler Closure in the
+            // debug(1) properties block - debug output describes, it never throws
+            $output = str_pad("$keyPrefix$debugType,", $commentOffset) . "$comment\n";
         }
 
         // Indent each line
@@ -1209,7 +1215,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Error Handling
 
     /**
-     * Sends a 404 header and message if the array is empty, then exits.
+     * Sends a 404 header and message if the array is empty, then exits with status 1
+     * so shell scripts and cron jobs see the failure.
      *
      * @param string|null $text Plain-text message; HTML-encoded automatically before output. Defaults to "The requested URL was not found on this server."
      * @return static Returns $this if not empty, exits with 404 if empty
@@ -1238,7 +1245,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             </body>
             </html>
             __HTML__;
-        exit;
+        exit(1);
     }
 
     /**
@@ -1364,12 +1371,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if (empty($target->data) || array_key_exists($key, $target->data)) {
             return;
         }
-        $caller           = self::getExternalCaller();
-        $keyOrEmptyQuotes = $key === "" ? "''" : $key; // Show empty quotes for empty string keys
+        $caller = self::getExternalCaller();
+
+        // SECURITY: the key can be user input (e.g. ->get($_GET['sort'])) and the warning echoes
+        // into the page, so encode it. The trigger_error() copy gets the same encoded key.
+        $keyDisplay       = is_string($key) ? htmlspecialchars($key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
+        $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
         $warning = match ($warningType) {
             'offset'   => "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n",
-            'argument' => "{$caller['function']}(): '$key' doesn't exist\n",
+            'argument' => "{$caller['function']}(): '$keyDisplay' doesn't exist\n",
             default    => throw new InvalidArgumentException("Invalid warning type '$warningType'"),
         };
 
@@ -1478,18 +1489,23 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Values are raw, not HTML-encoded, even for SmartArrayHtml: JSON is a data
      * format, and HTML encoding applies only when values are output as HTML.
      *
-     * Substitutes malformed UTF-8 with � (U+FFFD) so json_encode($smartArray) returns valid JSON
-     * instead of false. Nested SmartArrays scrub themselves when json_encode() descends into them.
+     * Substitutes malformed UTF-8 in keys and values with � (U+FFFD) so json_encode($smartArray)
+     * returns valid JSON instead of false. Nested SmartArrays scrub themselves when json_encode()
+     * descends into them.
      *
      * @return array The internal data array.
      */
     public function jsonSerialize(): array
     {
-        $data = $this->data;
-        foreach ($data as $key => $value) {
-            if (is_string($value) && preg_match('//u', $value) !== 1) { // isMalformed: ~5x faster than mb_check_encoding()
-                $data[$key] = json_decode(json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE)); // json_encode's own U+FFFD substitution
+        $data = [];
+        foreach ($this->data as $key => $value) {
+            if (is_string($key) && preg_match('//u', $key) !== 1) { // isMalformed: ~5x faster than mb_check_encoding()
+                $key = json_decode(json_encode($key, JSON_INVALID_UTF8_SUBSTITUTE)); // json_encode's own U+FFFD substitution
             }
+            if (is_string($value) && preg_match('//u', $value) !== 1) {
+                $value = json_decode(json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE));
+            }
+            $data[$key] = $value;
         }
         return $data;
     }

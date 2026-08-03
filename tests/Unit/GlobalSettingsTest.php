@@ -52,8 +52,8 @@ class GlobalSettingsTest extends SmartArrayTestCase
         return [
             // offsetGet
             'get string key'          => [fn(SmartArrayBase $sa) => $sa['name'],       ["Replace ['name'] with ->name"]],
-            'get int key'             => [fn(SmartArrayBase $sa) => $sa[0],            ["Replace [0] with ->get(0)"]],
-            'get invalid prop name'   => [fn(SmartArrayBase $sa) => $sa['users.id'],   ["Replace ['users.id'] with ->get('users.id')"]],
+            'get int key'             => [fn(SmartArrayBase $sa) => $sa[0],            ["Replace [0] with ->{0}"]],
+            'get invalid prop name'   => [fn(SmartArrayBase $sa) => $sa['users.id'],   ["Replace ['users.id'] with ->{'users.id'}"]],
             'get empty string key'    => [fn(SmartArrayBase $sa) => $sa[''],           ["Replace [''] with ->get('')"]],
 
             // offsetSet
@@ -73,11 +73,11 @@ class GlobalSettingsTest extends SmartArrayTestCase
             'isset invalid prop name' => [fn(SmartArrayBase $sa) => isset($sa['users.id']), ["Replace ['users.id'] with ->{'users.id'}"]],
             'isset missing key'       => [fn(SmartArrayBase $sa) => isset($sa['zzz']),      ["Replace ['zzz'] with ->zzz"]],
 
-            // offsetExists via empty(): PHP calls offsetExists, then offsetGet when the key exists
-            // REVIEW: an existing key signals twice for one empty() check, and on an integer key
-            // the two suggestions differ ("->{0}" from the existence check, "->get(0)" from the read).
+            // offsetExists via empty(): PHP calls offsetExists, then offsetGet when the key exists,
+            // so an existing key signals twice for one empty() check - both notices give the
+            // same suggestion (reads and existence checks share one suggestion style)
             'empty existing key'      => [fn(SmartArrayBase $sa) => empty($sa['name']), ["Replace ['name'] with ->name", "Replace ['name'] with ->name"]],
-            'empty int key'           => [fn(SmartArrayBase $sa) => empty($sa[0]),      ["Replace [0] with ->{0}", "Replace [0] with ->get(0)"]],
+            'empty int key'           => [fn(SmartArrayBase $sa) => empty($sa[0]),      ["Replace [0] with ->{0}", "Replace [0] with ->{0}"]],
             'empty missing key'       => [fn(SmartArrayBase $sa) => empty($sa['zzz']),  ["Replace ['zzz'] with ->zzz"]],
         ];
     }
@@ -384,11 +384,11 @@ class GlobalSettingsTest extends SmartArrayTestCase
     //region Key shapes the suggestion text gets wrong
 
     #[DataProvider('modeProvider')]
-    public function testNumericStringKeySuggestsAStringGetter(string $class): void
+    public function testNumericStringKeySuggestsBraceSyntax(string $class): void
     {
-        // REVIEW: PHP converts '5' to int 5 in an array literal, but hands ArrayAccess
-        // the string it was written with, so the suggestion is ->get('5') for a key
-        // that ->get(5) also reaches. Both work; the text just doesn't match the stored key.
+        // PHP converts '5' to int 5 in an array literal, but hands ArrayAccess the
+        // string it was written with, so the suggestion is ->{'5'} for a key that
+        // ->{5} also reaches. Both work; the text just doesn't match the stored key.
         $sa = $class::new(['5' => 'five']);
 
         [[$value, $output], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
@@ -396,8 +396,8 @@ class GlobalSettingsTest extends SmartArrayTestCase
         ));
 
         $this->assertModeValue('five', $value, $class);
-        $this->assertSame("\nDeprecated: Replace ['5'] with ->get('5') in FILE:LINE.\n", $this->normalizeCaller($output));
-        $this->assertSame(["Replace ['5'] with ->get('5') in FILE:LINE."], $this->normalizeCaller($deprecations));
+        $this->assertSame("\nDeprecated: Replace ['5'] with ->{'5'} in FILE:LINE.\n", $this->normalizeCaller($output));
+        $this->assertSame(["Replace ['5'] with ->{'5'} in FILE:LINE."], $this->normalizeCaller($deprecations));
         $this->assertSame([5 => 'five'], $sa->toArray(), 'the stored key is an integer');
     }
 
@@ -431,11 +431,11 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertTrue($exists);
         $this->assertSame([], $sa->toArray());
         $this->assertSame(
-            "\nDeprecated: Replace [] with ->{''} in FILE:LINE.\n\nDeprecated: Replace [] with ->{''} in FILE:LINE.\n",
+            "\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n",
             $this->normalizeCaller($output),
         );
         $this->assertSame(
-            ["Replace [] with ->{''} in FILE:LINE.", "Replace [] with ->{''} in FILE:LINE."],
+            ["Replace [] with ->get('') in FILE:LINE.", "Replace [] with ->get('') in FILE:LINE."],
             $this->normalizeCaller($deprecations),
         );
     }
@@ -445,9 +445,9 @@ class GlobalSettingsTest extends SmartArrayTestCase
 
     public function testNestedIssetChainSignalsThreeTimes(): void
     {
-        // REVIEW: isset($sa['user']['name']) reports ['user'] twice - PHP checks the
-        // outer key with offsetExists, then reads it with offsetGet to reach the inner
-        // one. One statement, three notices, two of them identical.
+        // isset($sa['user']['name']) reports ['user'] twice - PHP checks the outer key
+        // with offsetExists, then reads it with offsetGet to reach the inner one. That
+        // call sequence is PHP's, not ours; all notices agree on the suggestion.
         $sa = SmartArray::new(['user' => ['name' => 'Bob']]);
 
         [$exists, $deprecations] = $this->withOffsetAccess('log', fn() => $this->captureDeprecations(

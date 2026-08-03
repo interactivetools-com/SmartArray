@@ -51,7 +51,7 @@ final class DocsCoverageTest extends SmartArrayTestCase
      * the forward check so the rest of the guard still runs, and each one is a docs bug
      * waiting to be written, not a permanent exemption.
      */
-    // REVIEW: empty as of 2026-08-02 - every public method is documented in both files.
+    // Empty as of 2026-08-02: every public method is documented in both files.
     private const UNDOCUMENTED_TODAY = [];
 
     //endregion

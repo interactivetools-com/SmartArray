@@ -10,7 +10,6 @@ use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\Fixtures;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use RuntimeException;
 
 /**
  * Developer output: debug(), help(), and what print_r()/var_dump() show.
@@ -269,19 +268,18 @@ class DebugTest extends SmartArrayTestCase
     }
 
     /**
-     * REVIEW: debug(1) is unusable on exactly the arrays that have a load
-     * handler. The properties block prints loadHandler, prettyPrintR() only
-     * handles arrays, scalars and null, and a handler from the database layer
-     * is a closure. Level 0 works fine. Plausible fix: print callables as
-     * their type (or "Closure", "callable") instead of throwing.
+     * The properties block includes the loadHandler, and a handler from the
+     * database layer is a closure - it prints as its type ("Closure") so
+     * debug(1) works on database results, the arrays it exists for.
      */
-    public function testDebugLevelOneThrowsWhenLoadHandlerIsAClosure(): void
+    public function testDebugLevelOnePrintsClosureLoadHandlerAsItsType(): void
     {
         $sa = SmartArray::new(['author_id' => 7], ['loadHandler' => $this->authorLoadHandler()]);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unsupported type: Closure');
-        $sa->debug(1);
+        [, $output] = $this->captureOutput(fn() => $sa->debug(1));
+
+        $this->assertStringContainsString('Closure', $output);
+        $this->assertStringContainsString("'author_id'", $output, 'the data still prints');
     }
 
     //endregion
@@ -566,20 +564,18 @@ class DebugTest extends SmartArrayTestCase
     }
 
     /**
-     * REVIEW: SmartNull::help() wraps in <xmp> only when a text/html
-     * Content-Type header is already listed, while SmartArray::help() treats a
-     * missing Content-Type as HTML and wraps. Under CLI (no headers at all) the
-     * two disagree, as pinned here. Plausible fix: have SmartNull::help() use
-     * the same xmpWrap() rule.
+     * SmartNull::help() uses the same wrapping rule as SmartArray::help(): no
+     * Content-Type header means PHP sends its default text/html, so wrap. Under
+     * CLI headers_list() is empty, so the wrapped path is what this pins.
      */
-    public function testSmartNullHelpIsNotWrappedInXmpUnderCli(): void
+    public function testSmartNullHelpWrapsInXmpWhenNoContentTypeIsSet(): void
     {
         $smartNull = SmartArray::new([])->first();
 
         [$result, $output] = $this->captureOutput(fn() => $smartNull->help());
 
         $expected = <<<'__TEXT__'
-            SmartNull - Chainable Null Object for Missing Elements
+            <xmp>SmartNull - Chainable Null Object for Missing Elements
             ===================================================
             SmartNull is returned when accessing non-existent elements where the type
             (SmartArray or SmartString) is ambiguous.
@@ -588,7 +584,7 @@ class DebugTest extends SmartArrayTestCase
             are called, it delegates to either a new empty SmartArray or a null
             SmartString as appropriate. This allows unlimited method chaining
             without null checks, returning appropriate empty/null values when
-            the final result is accessed.
+            the final result is accessed.</xmp>
             __TEXT__;
 
         $this->assertNull($result, 'help() is void');

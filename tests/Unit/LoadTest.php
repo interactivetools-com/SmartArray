@@ -272,10 +272,10 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadOnRowWithAnyArrayValueThrowsTheRecordSetError(): void
     {
-        // REVIEW: "record set" means "contains at least one array value", so a
-        // single row holding a sub-array (a joined table, a decoded JSON column)
-        // can't load. Alternative: treat a row as a record set only when every
-        // value is an array.
+        // Intentional: the guard fires on any array value, so a single row holding
+        // a sub-array can't load. No real case hits this (database rows are always
+        // flat), and the guard also keeps array values out of the handler, which
+        // can only look up scalars. Revisit if a real mixed-row case appears.
         $sa = SmartArray::new(['id' => 1, 'tags' => ['red', 'blue']], ['loadHandler' => fn($row, $field) => [[], []]]);
 
         $this->expectException(CallerException::class);

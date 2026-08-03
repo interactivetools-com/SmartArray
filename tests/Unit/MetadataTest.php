@@ -240,10 +240,9 @@ class MetadataTest extends SmartArrayTestCase
 
     public function testRootKeepsPointingAtTheOtherModeAfterAsRaw(): void
     {
-        // REVIEW: asRaw()/asHtml() convert the array but not its root, so a load
-        // handler calling $row->root()->column('id') on a converted array gets the
-        // other mode's values back (SmartStrings here). Pinned as-is; ConversionTest
-        // owns the rest of the conversion contract.
+        // Conversion keeps the source's root pointer, same as where()/filter()/map().
+        // root() is @internal and its consumers only read metadata, which is
+        // mode-independent. ConversionTest owns the rest of the conversion contract.
         $source = SmartArrayHtml::new(self::rows(), ['mysqli' => self::METADATA]);
 
         $raw = $source->asRaw();

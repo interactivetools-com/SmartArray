@@ -254,9 +254,9 @@ class SmartNullTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testUnknownMethodThrowsErrorWithHelpPointer(string $class): void
     {
-        // REVIEW: the message names the delegate class ("SmartArray->bogusMethod()")
-        // rather than SmartNull, so the reader can't tell the call landed on a null
-        // object. Alternative: have SmartNull::__call name its own class.
+        // The message names the delegate class ("SmartArray->bogusMethod()") rather
+        // than SmartNull - accurate to where dispatch landed, and an undefined method
+        // is a typo to fix regardless of which class reports it.
         $smartNull     = $this->smartNullFrom($class);
         $delegateClass = $class === SmartArrayHtml::class ? 'SmartArrayHtml' : 'SmartArray';
 

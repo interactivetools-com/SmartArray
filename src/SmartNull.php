@@ -101,7 +101,11 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
             the final result is accessed.
             __TEXT__;
 
-        $isHtmlOutput = stripos(implode("\n", headers_list()), 'text/html') !== false;
+        // Wrap in <xmp> for readability when output is (or will default to) HTML - same rule
+        // as SmartArrayBase::xmpWrap(): no Content-Type header means PHP sends its default text/html
+        $headersList  = implode("\n", headers_list());
+        $isHtmlOutput = !preg_match('|^\s*Content-Type:\s*|im', $headersList)
+                     || preg_match('|^\s*Content-Type:\s*text/html\b|im', $headersList);
         if ($isHtmlOutput) {
             $output = "<xmp>$output</xmp>";
         }

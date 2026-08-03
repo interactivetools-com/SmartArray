@@ -357,12 +357,18 @@ trait DeprecatedAliases
      */
     private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
     {
+        // SECURITY: the key can be user input (e.g. $arr[$_GET['sort']]) and 'notify' mode echoes
+        // the message into the page, so encode it. $key is display-only from here on; the actual
+        // data access already happened with the original key.
+        if (is_string($key)) {
+            $key = htmlspecialchars($key, self::HTML_ENCODE_FLAGS, 'UTF-8');
+        }
         $keyStr          = is_string($key) ? "'$key'" : (string) $key;
         $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
 
         // Suggest the preferred access method. A null key only reaches 'set' via
-        // the append syntax `$arr[] = $value`; for 'unset'/'get' it indicates a
-        // programmer error that PHP itself treats as an empty-string key.
+        // the append syntax `$arr[] = $value`; for 'unset'/'get'/'exists' it indicates
+        // a programmer error that PHP itself treats as an empty-string key.
         $suggestion = match ($operation) {
             'set' => match (true) {
                 is_null($key)    => '->set($key, $value) using an explicit key',
@@ -370,15 +376,11 @@ trait DeprecatedAliases
                 $isValidPropName => "->$key = \$value",
                 default          => "->set('$key', \$value) or ->{'$key'} = \$value",
             },
-            'unset', 'exists' => match (true) {
-                is_int($key)     => '->{' . $key . '}',
-                $isValidPropName => "->$key",
-                default          => "->{'$key'}",
-            },
             default => match (true) {
-                is_int($key)     => "->get($key)",
-                $isValidPropName => "->$key",
-                default          => "->get('$key')",
+                is_int($key)                 => '->{' . $key . '}',
+                $isValidPropName             => "->$key",
+                $key === '' || $key === null => "->get('')", // PHP treats a null/'' key as key ''; ->{''} is a fatal "Cannot access empty property"
+                default                      => "->{'$key'}",
             },
         };
 

@@ -311,9 +311,9 @@ class ProductionRecipesTest extends SmartArrayTestCase
             fn() => $tables->pluck('TABLE_NAME')->filter(fn($name) => str_starts_with($name, 'cms_'))->toArray(),
         );
 
-        // REVIEW: filter() keeps the source keys, so this "flat value list" comes back
-        // with a gap (0 and 2). json_encode() then emits an object instead of an array.
-        // Alternative: reindex in filter(), or document ->values() as the finisher here.
+        // filter() keeps source keys like array_filter(), so this value list comes back
+        // with a gap (0 and 2) and json_encode() would emit an object, not an array.
+        // Chain ->values() to reindex when that matters (noted in the filter() phpdoc).
         $this->assertSame([0 => 'cms_accounts', 2 => 'cms_orders'], $ours);
         $this->assertSame('', $output);
     }

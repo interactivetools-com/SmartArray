@@ -173,8 +173,7 @@ class EmptyGuardsTest extends SmartArrayTestCase
 
         $this->assertSame(sprintf(self::NOT_FOUND_PAGE, $expectedMessageHtml), $stdout);
         $this->assertSame('status=404', $stderr, 'status set to 404 and the guard exited (no NOT-REACHED)');
-        // REVIEW: orDie() was changed to exit 1 so shells and cron see the failure; or404() still exits 0
-        $this->assertSame(0, $exitCode, 'or404() exits with the default status 0');
+        $this->assertSame(1, $exitCode, 'or404() exits with status 1 like orDie(), so shells and cron see the failure');
     }
 
     public function testOr404WithEmptyMessageSkipsTheDefault(): void
@@ -184,7 +183,7 @@ class EmptyGuardsTest extends SmartArrayTestCase
 
         $this->assertSame(sprintf(self::NOT_FOUND_PAGE, ''), $stdout);
         $this->assertSame('status=404', $stderr);
-        $this->assertSame(0, $exitCode);
+        $this->assertSame(1, $exitCode);
     }
 
     //endregion

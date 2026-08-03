@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Security
+- Missing-key warnings and array-syntax deprecation notices HTML-encode the key before echoing it. With a dynamic key (`->get($_GET['sort'])`, `$arr[$_GET['sort']]`), a key containing HTML reached the browser unencoded - a reflected XSS vector. The `trigger_error()` copy carries the same encoded key.
+- `json_encode($smartArray)` also substitutes malformed UTF-8 in keys with � (U+FFFD), not just values - one corrupt byte in a key no longer makes it return false and lose the whole document.
+
 ### Added
 - `at($index)` - new name for `nth()`: get an element by position, zero-based, negative indices count from the end. Matches JavaScript's `Array.at()`. `get()` is by key, `at()` is by position.
 - `columnAt($index)` - new name for `pluckNth()`: get the column at a position from each row, ignoring key names. `column()` is by key, `columnAt()` is by position.
@@ -25,9 +29,10 @@
 - `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
 - `sortBy()` second parameter renamed `$type` → `$flags` - it always held PHP sort flags, and now matches `sort()` and PHP's own sort functions. Affects named-argument calls only: `sortBy('name', flags: SORT_NATURAL)`.
 - `column(null)` and `column(null, null)` now match PHP's `array_column()`: whole rows renumbered from 0, instead of throwing "unexpected arguments"
+- Array-syntax deprecation notices suggest one replacement style for reads, `isset()`, and `unset()`: `->key` for property-safe names, `->{0}` for integer keys, `->{'users.id'}` for other keys (`->get()` also works for reads). Reads used to suggest `->get(0)` while existence checks suggested `->{0}`, so one `empty()` call printed two notices with different advice. Null and `''` keys suggest `->get('')` - the brace form is a fatal error for an empty property name.
 - `isset($array['key'])` and `empty($array['key'])` now follow `$onOffsetAccess` like reads, writes, and `unset()` - notice by default, exception in `'throw'` mode. Existence checks were the one silent form of the deprecated `[]` syntax; if `[]` support is removed in a future version, `isset()` on the object would silently return false instead of erroring, so these call sites need migrating with the rest. Property-syntax checks (`isset($array->key)`) are unaffected and stay signal-free. Internal existence checks now call `array_key_exists()` directly, removing two method calls from every `get()`.
 - `or404()` outputs `<html>` instead of `<html lang>` - an empty `lang` reads as an invalid value to accessibility checkers, and the message language is caller-supplied so it can't be declared. Matches SmartString.
-- `orDie()` now exits with status 1 instead of 0, so shell scripts and cron jobs see the failure. Output is unchanged. Matches SmartString.
+- `orDie()` and `or404()` now exit with status 1 instead of 0, so shell scripts and cron jobs see the failure. Output is unchanged. Matches SmartString.
 - Developer-mistake exceptions (bad types, wrong context, misuse) now throw `CallerException`, which reports your file and line instead of the library's internals - the same class SmartString uses. It extends `InvalidArgumentException`, so existing catch blocks keep working, except six throws that previously used `RuntimeException`: `load()` misuse (no handler, non-callable handler, bad or empty field name, called on a record set), `orRedirect()` after headers sent, and writing to a `SmartNull`. See UPGRADING.md. `orThrow()` still throws `RuntimeException` by contract.
 - Clearer messages for two of those throws: `load()` with no handler now explains handlers come from the database layer (was "No loadHandler property is defined"), and writing to a `SmartNull` now says the value came from a missing key or empty result (was "Cannot set values on SmartNull"). The unsupported-type message from `set()` no longer prefixes the library's internal method name.
 - Unknown methods on `SmartNull` now throw the same `Error` as the rest of the library - method name, "did you mean" hint, caller's file and line - instead of `InvalidArgumentException("Method 'x' not found")`. Chains from a missing key now fail with the same message quality as everything else.
@@ -44,6 +49,8 @@
 - `setLoadHandler()` - the handler is passed as the `loadHandler` constructor property, which is how the database layer (ZenDB) has always set it. The setter had no known callers, and it couldn't work on record sets anyway: rows are built during construction and snapshot the handler at that moment, so a handler set afterward never reached them.
 
 ### Fixed
+- `SmartNull->help()` wraps its output in `<xmp>` when no Content-Type header is set, same rule as every other `help()` and `debug()` - PHP's default response type is text/html. Previously it only wrapped when text/html was explicitly set via `header()`, so on typical pages (which never call `header()`) it printed as collapsed, unformatted text.
+- `debug(1)` no longer throws `Unsupported type: Closure` on arrays with a load handler - exactly the database results it exists to inspect. Callables and other objects in the properties block print as their type (`Closure,`) instead.
 - `get($key, $default)` defaults now act like stored values: Smart defaults (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's mode. Previously a SmartNull default threw `InvalidArgumentException`, and cross-mode Smart defaults (a SmartString default on SmartArray, a raw SmartArray default on SmartArrayHtml) threw `TypeError` from the return declarations.
 - `sortBy()` no longer throws a bare `ValueError: Array sizes are inconsistent` when a row is missing the sort field. Missing fields sort first (treated as null for ordering, like MySQL ORDER BY); rows are returned unchanged.
 - `indexBy()` no longer gives rows missing the index field a leftover numeric key that looks like a real field value. Null and missing values now both index under `''` (matching how null field values were already handled), duplicates last-wins.

@@ -169,7 +169,7 @@ trait DeprecatedAliases
         $newArray = [];
         foreach ($this as $key => $value) {
             $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? htmlspecialchars((string)$key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
+            $encodedKey = $this->useSmartStrings ? self::htmlEncode((string)$key) : $key;
             $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
@@ -361,7 +361,7 @@ trait DeprecatedAliases
         // the message into the page, so encode it. $key is display-only from here on; the actual
         // data access already happened with the original key.
         if (is_string($key)) {
-            $key = htmlspecialchars($key, self::HTML_ENCODE_FLAGS, 'UTF-8');
+            $key = self::htmlEncode($key);
         }
         $keyStr          = is_string($key) ? "'$key'" : (string) $key;
         $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);

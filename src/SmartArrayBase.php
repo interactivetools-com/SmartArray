@@ -22,12 +22,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     use ErrorHelpersTrait;
     use DeprecatedAliases;
 
-    /**
-     * Flags for HTML-encoding output. ENT_DISALLOWED substitutes code points HTML5 forbids
-     * (C1 controls, noncharacters) with � so they can't hide in page source.
-     */
-    private const HTML_ENCODE_FLAGS = ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5;
-
     //region Internal Storage
 
     /**
@@ -1231,7 +1225,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         http_response_code(404);
         header("Content-Type: text/html; charset=utf-8");
         $text ??= "The requested URL was not found on this server.";
-        $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8');
+        $text = self::htmlEncode($text);
 
         echo <<<__HTML__
             <!DOCTYPE html>
@@ -1262,7 +1256,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orDie(string $text): static
     {
         if (empty($this->data)) {
-            echo htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
+            echo self::htmlEncode($text); // SECURITY: intentional encode, do not remove (see docblock)
             exit(1);
         }
         return $this;
@@ -1287,7 +1281,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orThrow(string $text): static
     {
         if (empty($this->data)) {
-            $text = htmlspecialchars($text, self::HTML_ENCODE_FLAGS, 'UTF-8'); // SECURITY: intentional encode, do not remove (see docblock)
+            $text = self::htmlEncode($text); // SECURITY: intentional encode, do not remove (see docblock)
             throw new RuntimeException($text);
         }
         return $this;
@@ -1375,7 +1369,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // SECURITY: the key can be user input (e.g. ->get($_GET['sort'])) and the warning echoes
         // into the page, so encode it. The trigger_error() copy gets the same encoded key.
-        $keyDisplay       = is_string($key) ? htmlspecialchars($key, self::HTML_ENCODE_FLAGS, 'UTF-8') : $key;
+        $keyDisplay       = is_string($key) ? self::htmlEncode($key) : $key;
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
         $warning = match ($warningType) {
@@ -1508,6 +1502,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $data[$key] = $value;
         }
         return $data;
+    }
+
+    /**
+     * HTML-encode text for output in warnings, notices, and guard messages.
+     * ENT_DISALLOWED substitutes code points HTML5 forbids (C1 controls, noncharacters)
+     * with � so they can't hide in page source.
+     *
+     * Same flags as SmartString::HTML_ENCODE_FLAGS - keep in sync.
+     */
+    private static function htmlEncode(string $text): string
+    {
+        return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
     }
 
     //endregion

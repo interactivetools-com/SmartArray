@@ -204,10 +204,14 @@ class WriteAccessTest extends SmartArrayTestCase
         $sa = $class::new(['existing']);
 
         [[, $output], ] = $this->captureDeprecations(
-            fn() => $this->captureOutput(fn() => $sa[] = 'appended')
+            fn() => $this->captureOutput(function () use ($sa) {
+                $sa[] = 'appended';
+                $sa[] = ['nested' => 1];   // arrays convert to same-mode children on append too
+            })
         );
 
-        $this->assertSame(['existing', 'appended'], $sa->toArray());
+        $this->assertSame(['existing', 'appended', ['nested' => 1]], $sa->toArray());
+        $this->assertInstanceOf($class, $sa->at(2));
         $this->assertStringContainsString('an explicit key: ->key = $value', $output);
     }
 

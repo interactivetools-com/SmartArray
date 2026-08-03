@@ -77,6 +77,20 @@ class ReadAccessTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testGetUnwrapsSmartKeys(string $class): void
+    {
+        // Smart keys unwrap to raw values before lookup, then coerce like PHP array
+        // keys. Property syntax can't do this: ->{$smartString} goes through
+        // __toString, which HTML-encodes in HTML mode, so 'a&b' would look up 'a&amp;b'
+        $sa = $class::new(['5' => 'five', 'a&b' => 'amp', '' => 'empty', 2 => 'two']);
+
+        $this->assertModeValue('five', $sa->get(new SmartString(5)), $class);
+        $this->assertModeValue('amp', $sa->get(new SmartString('a&b')), $class, 'reads the raw key, not the encoded form');
+        $this->assertModeValue('two', $sa->get(new SmartString(2.7)), $class, 'float keys truncate to int like PHP array keys');
+        $this->assertModeValue('empty', $sa->get($class::new([])->first()), $class, 'a SmartNull key reads key "" like PHP null');
+    }
+
+    #[DataProvider('modeProvider')]
     public function testGetMissingKeyWarnsAndReturnsSmartNull(string $class): void
     {
         $sa = $class::new(['name' => 'Bob']);
@@ -255,6 +269,16 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertSmartNull($class::new([])->at(-1));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testAtUnwrapsSmartStringIndexes(string $class): void
+    {
+        // Positions read from another array work directly (MySQL returns numeric strings)
+        $sa = $class::new(['a', 'b', 'c']);
+
+        $this->assertModeValue('b', $sa->at(new SmartString('1')), $class);
+        $this->assertModeValue('c', $sa->at(new SmartString(-1)), $class);
+    }
+
     //endregion
     //region __get (property access)
 
@@ -314,6 +338,23 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertStringContainsString("Replace ['name'] with ->name", $output);
         $this->assertCount(1, $deprecations);
         $this->assertStringContainsString("Replace ['name'] with ->name", $deprecations[0]);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testOffsetGetMissingKeyWarnsAfterTheDeprecationNotice(string $class): void
+    {
+        // Both signals fire: the deprecation notice for the [] syntax, then the
+        // missing-key warning from the read itself
+        $sa = $class::new(['name' => 'Bob']);
+
+        [[$result, $output], $deprecations] = $this->captureDeprecations(
+            fn() => $this->captureOutput(fn() => $sa['zzz'])
+        );
+
+        $this->assertSmartNull($result);
+        $this->assertStringContainsString("Replace ['zzz'] with ->zzz", $output);
+        $this->assertStringContainsString('Warning: zzz is undefined', $output);
+        $this->assertCount(1, $deprecations);
     }
 
     //endregion

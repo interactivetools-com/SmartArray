@@ -202,6 +202,21 @@ class ProjectionTest extends SmartArrayTestCase
         $class::new(['a', 'b'])->indexBy('id');
     }
 
+    #[DataProvider('modeProvider')]
+    public function testIndexBySkipsScalarRows(string $class): void
+    {
+        // One array value makes the array "nested"; scalar rows have no fields to index by
+        $sa = $class::new([['id' => 1, 'n' => 'a'], 'scalar', ['id' => 2, 'n' => 'b']]);
+
+        [$result, $output] = $this->captureOutput(fn() => $sa->indexBy('id'));
+
+        $this->assertSame([
+            1 => ['id' => 1, 'n' => 'a'],
+            2 => ['id' => 2, 'n' => 'b'],
+        ], $result->toArray());
+        $this->assertSame('', $output);
+    }
+
     //endregion
     //region groupBy()
 

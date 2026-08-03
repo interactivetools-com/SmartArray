@@ -85,7 +85,7 @@ class SmartArrayHtml extends SmartArrayBase
      */
     public function asRaw(): SmartArray
     {
-        return new SmartArray($this->toArray(), $this->getInternalProperties());
+        return new SmartArray($this->toArray(), $this->getInternalProperties(withPosition: true));
     }
 
     /**

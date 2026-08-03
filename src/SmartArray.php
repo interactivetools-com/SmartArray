@@ -101,7 +101,7 @@ class SmartArray extends SmartArrayBase
      */
     public function asHtml(): SmartArrayHtml
     {
-        return new SmartArrayHtml($this->toArray(), $this->getInternalProperties());
+        return new SmartArrayHtml($this->toArray(), $this->getInternalProperties(withPosition: true));
     }
 
     //endregion

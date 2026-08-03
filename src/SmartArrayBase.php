@@ -1509,14 +1509,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Returns an array of internal properties for passing to nested SmartArrays or type conversions.
      * Does NOT include useSmartStrings since child classes force their own values.
+     *
+     * asRaw()/asHtml() pass withPosition: true - the result is the same row in a
+     * different mode, not a new derived array, so it keeps its place in the result set.
      */
-    protected function getInternalProperties(): array
+    protected function getInternalProperties(bool $withPosition = false): array
     {
-        return [
+        $properties = [
             'loadHandler' => $this->loadHandler,
             'mysqli'      => $this->mysqli,
             'root'        => $this->root,
         ];
+        if ($withPosition) {
+            $properties += [
+                'position' => $this->position,
+                'isFirst'  => $this->isFirst,
+                'isLast'   => $this->isLast,
+            ];
+        }
+        return $properties;
     }
 
     //endregion

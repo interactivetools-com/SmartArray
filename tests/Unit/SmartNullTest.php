@@ -209,16 +209,15 @@ class SmartNullTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testDelegatedArraysDoNotCarryTheSourceMetadata(string $class): void
+    public function testDelegatedArraysCarryTheSourceMetadata(string $class): void
     {
-        // REVIEW: asRaw()/asHtml() preserve mysqli/root, but __call builds a bare
-        // ::new() array, so `$row->missing->filter(...)->mysqli()` loses the query
-        // metadata that `$row->missing->asRaw()->mysqli()` keeps. Alternative:
-        // delegate through asRaw()/asHtml() so every chain keeps metadata.
+        // __call passes mysqli/root/loadHandler to the delegate array, same as
+        // asRaw()/asHtml(), so metadata answers don't depend on which path a
+        // chain took through SmartNull.
         $smartNull = $this->smartNullFrom($class, ['insert_id' => 42]);
 
         $this->assertSame(['insert_id' => 42], $smartNull->mysqli());
-        $this->assertSame([], $smartNull->filter(fn() => true)->mysqli());
+        $this->assertSame(['insert_id' => 42], $smartNull->filter(fn() => true)->mysqli());
     }
 
     //endregion

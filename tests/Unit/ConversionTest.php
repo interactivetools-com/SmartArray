@@ -199,10 +199,9 @@ class ConversionTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testConversionKeepsTheSourceAsRootEvenThoughItIsTheOtherMode(string $class): void
     {
-        // REVIEW: conversion copies the source's root pointer instead of making
-        // the converted array its own root, so root() hands back an object of the
-        // mode you just converted away from. $row->root()->column('x') after
-        // ->asRaw() still yields SmartStrings. This is also why
+        // Conversion keeps the source's root pointer, same as where()/filter()/map().
+        // root() is @internal and its consumers only read metadata, which is
+        // mode-independent, so root() being the other mode is fine. This is also why
         // assertValidStructure() cannot run on a converted nested array: it
         // requires every descendant to share the root's class.
         $sa = $class::new(Fixtures::records());
@@ -215,12 +214,10 @@ class ConversionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testConversionResetsRowPositionMetadata(string $class): void
+    public function testConversionKeepsRowPositionMetadata(string $class): void
     {
-        // REVIEW: position metadata is set by the parent during construction and
-        // is not among the properties conversion copies, so converting a single
-        // row loses its place in the result set. Alternative: carry position,
-        // isFirst and isLast through asRaw()/asHtml() like mysqli and root.
+        // asRaw()/asHtml() return the same row in a different mode, not a new
+        // derived array, so it keeps its place in the result set.
         $rows = $class::new([['a' => 1], ['a' => 2]]);
         $row  = $rows->last();
 
@@ -229,9 +226,9 @@ class ConversionTest extends SmartArrayTestCase
 
         $converted = self::convert($row);
 
-        $this->assertSame(0, $converted->position());
+        $this->assertSame(2, $converted->position());
         $this->assertFalse($converted->isFirst());
-        $this->assertFalse($converted->isLast());
+        $this->assertTrue($converted->isLast());
     }
 
     //endregion

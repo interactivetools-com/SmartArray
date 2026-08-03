@@ -252,8 +252,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
             return SmartString::new(null)->$name(...$arguments);
         }
         return $this->useSmartStrings
-            ? SmartArrayHtml::new()->$name(...$arguments)
-            : SmartArray::new()->$name(...$arguments);
+            ? (new SmartArrayHtml([], $this->getInternalProperties()))->$name(...$arguments)
+            : (new SmartArray([], $this->getInternalProperties()))->$name(...$arguments);
     }
 
     public function __toString(): string

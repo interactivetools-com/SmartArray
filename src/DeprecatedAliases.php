@@ -236,7 +236,7 @@ trait DeprecatedAliases
         }
 
         // Show warning if key doesn't exist (only when no default provided)
-        $this->warnIfMissing($key, 'offset');
+        $this->warnIfMissing($key, isOffset: true);
 
         return $this->newSmartNull();
     }

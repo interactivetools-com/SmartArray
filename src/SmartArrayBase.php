@@ -246,7 +246,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Show warning if key doesn't exist and array isn't empty
-        $this->warnIfMissing($key, 'offset');
+        $this->warnIfMissing($key, isOffset: true);
 
         return $this->newSmartNull();
     }
@@ -1063,7 +1063,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Key doesn't exist: warn (suppressed for empty arrays) and return SmartNull
-        $this->warnIfMissing($name, 'offset');
+        $this->warnIfMissing($name, isOffset: true);
         return $this->newSmartNull();
     }
 
@@ -1233,18 +1233,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Emits a PHP warning if $key is missing. Skips the check when the array is empty.
-     * Skipped for 'argument' checks on mixed data (scalar config + array fields)
+     * Skipped for method-argument checks on mixed data (scalar config + array fields)
      * since there's no first row to check against.
      *
-     * @param string|int $key         The key to check for
-     * @param string     $warningType 'argument' for method args (default), 'offset' for key access
+     * @param string|int $key      The key to check for
+     * @param bool       $isOffset True for key access ($array->key), false for method args (where, sortBy, etc.)
      */
-    private function warnIfMissing(string|int $key, string $warningType = 'argument'): void
+    private function warnIfMissing(string|int $key, bool $isOffset = false): void
     {
         // For property access (offset) - check this array's own keys.
         // For nested method args (where, sortBy, etc.) - check the first row's keys.
         $target = $this;
-        if ($warningType === 'argument') {
+        if (!$isOffset) {
             $first = $this->first();
             if (!($first instanceof self)) {
                 return; // Non-uniform data (e.g., schemas with scalar config + array fields)
@@ -1261,7 +1261,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $keyDisplay       = is_string($key) ? self::htmlEncode($key) : $key;
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
-        $warning = $warningType === 'offset'
+        $warning = $isOffset
             ? "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n"
             : "{$caller['function']}(): '$keyDisplay' doesn't exist\n";
 
@@ -1269,7 +1269,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
             $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n";
         }
-        if ($warningType === 'argument') {
+        if (!$isOffset) {
             $warning .= self::occurredInFile(true);
         }
 

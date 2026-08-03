@@ -5,7 +5,10 @@ declare(strict_types=1);
  * Subprocess target for EmptyGuardsTest: runs one or*() guard on an empty
  * SmartArray so exit paths can be observed from outside the process.
  *
- *     php empty-guard.php <method> [message-or-url]
+ *     php empty-guard.php <method> [message-or-url] [raw|html]
+ *
+ * The mode picks the collection class, so the same guard can be observed on
+ * SmartArray and SmartArrayHtml. Defaults to raw.
  *
  * stdout: whatever the guard echoes (404 page, die message)
  * stderr: "status=<int|false>" from a shutdown handler (http_response_code
@@ -20,6 +23,7 @@ declare(strict_types=1);
 require dirname(__DIR__, 3) . '/vendor/autoload.php';
 
 use Itools\SmartArray\SmartArray;
+use Itools\SmartArray\SmartArrayHtml;
 
 register_shutdown_function(function () {
     fwrite(STDERR, "status=" . var_export(http_response_code(), true));
@@ -27,7 +31,11 @@ register_shutdown_function(function () {
 
 $method = $argv[1] ?? '';
 $arg    = $argv[2] ?? null;
-$empty  = SmartArray::new([]);
+$class  = match ($argv[3] ?? 'raw') {  // an unknown mode raises UnhandledMatchError
+    'raw'  => SmartArray::class,
+    'html' => SmartArrayHtml::class,
+};
+$empty  = $class::new([]);
 
 match ($method) {
     'or404-default' => $empty->or404(),

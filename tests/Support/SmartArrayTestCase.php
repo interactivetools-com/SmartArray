@@ -137,7 +137,7 @@ abstract class SmartArrayTestCase extends TestCase
         if (!$isTop) {
             $this->assertSame($root, $obj->root(), "$path root() should reference the top array's root");
             $this->assertSame($root->mysqli(), $obj->mysqli(), "$path mysqli() should match root");
-            $this->assertSame($root->usingSmartStrings(), $obj->usingSmartStrings(), "$path usingSmartStrings() should match root");
+            $this->assertSame(get_class($root), get_class($obj), "$path class (mode) should match root");
         }
 
         // Recurse over child SmartArrays
@@ -156,7 +156,7 @@ abstract class SmartArrayTestCase extends TestCase
     {
         $this->assertSame($source->mysqli(), $result->mysqli(), 'mysqli metadata should carry to derived arrays');
         $this->assertSame($source->root(), $result->root(), 'root reference should carry to derived arrays');
-        $this->assertSame($source->usingSmartStrings(), $result->usingSmartStrings(), 'mode should carry to derived arrays');
+        $this->assertSame(get_class($source), get_class($result), 'mode (class) should carry to derived arrays');
     }
 
     //endregion

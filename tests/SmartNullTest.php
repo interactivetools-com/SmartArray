@@ -316,7 +316,7 @@ class SmartNullTest extends TestCase
         $array = new SmartArrayHtml([]);
 
         ob_start();
-        $result = $array->newSmartNull()->filter(fn() => true);
+        $result = $array->first()->filter(fn() => true);
         ob_end_clean();
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);

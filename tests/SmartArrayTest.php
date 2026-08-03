@@ -75,11 +75,9 @@ class SmartArrayTest extends TestCase
             throw new InvalidArgumentException("Invalid mysqli metadata at $path. Expected " . var_export($actualRoot->mysqli(), true) . ", got " . var_export($obj->mysqli(), true) . " instead.");
         }
 
-        // Check useSmartStrings
-        $thisObjectUseSmartStrings = $obj->usingSmartStrings();
-        $actualRootUseSmartStrings = $obj->root()->usingSmartStrings();
-        if (!$weAreRoot && $thisObjectUseSmartStrings !== $actualRootUseSmartStrings) {
-            throw new InvalidArgumentException("Invalid useSmartStrings at $path. Expected " . var_export($actualRootUseSmartStrings, true) . ", got " . var_export($thisObjectUseSmartStrings, true) . " instead.");
+        // Check mode (class) matches root
+        if (!$weAreRoot && get_class($obj) !== get_class($obj->root())) {
+            throw new InvalidArgumentException("Invalid mode at $path. Expected " . get_class($obj->root()) . ", got " . get_class($obj) . " instead.");
         }
 
         // Recurse over child SmartArrays
@@ -318,16 +316,16 @@ class SmartArrayTest extends TestCase
     public function testWithSmartStringsNewCopy($inputArray): void
     {
         $original = new SmartArray($inputArray);
-        $this->assertFalse($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $original);
 
         // Get new copy with SmartStrings enabled
         $copy = $original->enableSmartStrings(true);
 
         // Verify original is unchanged
-        $this->assertFalse($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $original);
 
         // Verify copy has SmartStrings enabled
-        $this->assertTrue($copy->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $copy);
 
         // Verify they have the same data but different instances
         $this->assertEquals($original->toArray(), $copy->toArray());
@@ -340,16 +338,16 @@ class SmartArrayTest extends TestCase
     public function testNoSmartStringsNewCopy($inputArray): void
     {
         $original = new SmartArrayHtml($inputArray);
-        $this->assertTrue($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $original);
 
         // Get new copy with SmartStrings disabled
         $copy = $original->disableSmartStrings(true);
 
         // Verify original is unchanged
-        $this->assertTrue($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $original);
 
         // Verify copy has SmartStrings disabled
-        $this->assertFalse($copy->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $copy);
 
         // Verify they have the same data but different instances
         $this->assertEquals($original->toArray(), $copy->toArray());
@@ -362,16 +360,16 @@ class SmartArrayTest extends TestCase
     public function testWithSmartStringsModifyInPlace($inputArray): void
     {
         $original = new SmartArray($inputArray);
-        $this->assertFalse($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $original);
 
         // Get new instance with SmartStrings enabled
         $result = $original->enableSmartStrings();
 
         // Verify result has SmartStrings enabled
-        $this->assertTrue($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
 
         // Verify original is unchanged
-        $this->assertFalse($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $original);
     }
 
     /**
@@ -380,16 +378,16 @@ class SmartArrayTest extends TestCase
     public function testNoSmartStringsModifyInPlace($inputArray): void
     {
         $original = new SmartArrayHtml($inputArray);
-        $this->assertTrue($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $original);
 
         // Get new instance with SmartStrings disabled
         $result = $original->disableSmartStrings();
 
         // Verify result has SmartStrings disabled
-        $this->assertFalse($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $result);
 
         // Verify original is unchanged
-        $this->assertTrue($original->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $original);
     }
 
     /**
@@ -398,19 +396,19 @@ class SmartArrayTest extends TestCase
     public function testUsingSmartStrings($inputArray): void
     {
         $withoutSS = new SmartArray($inputArray);
-        $this->assertFalse($withoutSS->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $withoutSS);
 
         $withSS = new SmartArrayHtml($inputArray);
-        $this->assertTrue($withSS->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $withSS);
 
         // Test toggling
         $withSSEnabled = $withoutSS->enableSmartStrings();
-        $this->assertTrue($withSSEnabled->usingSmartStrings());
-        $this->assertFalse($withoutSS->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $withSSEnabled);
+        $this->assertInstanceOf(SmartArray::class, $withoutSS);
 
         $withSSDisabled = $withSS->disableSmartStrings();
-        $this->assertFalse($withSSDisabled->usingSmartStrings());
-        $this->assertTrue($withSS->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $withSSDisabled);
+        $this->assertInstanceOf(SmartArrayHtml::class, $withSS);
     }
 
 //endregion
@@ -463,11 +461,8 @@ class SmartArrayTest extends TestCase
             'offsetExists',     // ArrayAccess interface
             'getIterator',      // IteratorAggregate interface
             'jsonSerialize',    // JsonSerializable interface
-            'newSmartNull',     // Internal
             'isFlat',           // Internal helper
             'isNested',         // Internal helper
-            'usingSmartStrings', // Internal
-            'setLoadHandler',   // Advanced/internal (set by ZenDB)
             'root',             // Advanced/internal
             'smartMap',         // Deprecated (in DeprecatedAliases)
             'chunk',            // Deprecated (in DeprecatedAliases)

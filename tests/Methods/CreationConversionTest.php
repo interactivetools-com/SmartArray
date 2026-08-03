@@ -34,8 +34,7 @@ class CreationConversionTest extends SmartArrayTestCase
     {
         $arr = new SmartArray(['name' => 'John', 'age' => 30]);
 
-        $this->assertInstanceOf(SmartArray::class, $arr);
-        $this->assertFalse($arr->usingSmartStrings(), 'new SmartArray() should be raw by default');
+        $this->assertInstanceOf(SmartArray::class, $arr, 'new SmartArray() should be raw by default');
     }
 
     public function testNewSmartArrayReturnsRawValues(): void
@@ -54,7 +53,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $arr = new SmartArray([]);
 
         $this->assertInstanceOf(SmartArray::class, $arr);
-        $this->assertFalse($arr->usingSmartStrings());
         $this->assertCount(0, $arr);
     }
 
@@ -78,7 +76,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $arr = new SmartArrayHtml(['name' => 'John', 'age' => 30]);
 
         $this->assertInstanceOf(SmartArrayHtml::class, $arr);
-        $this->assertTrue($arr->usingSmartStrings());
     }
 
     public function testNewSmartArrayHtmlReturnsSmartStrings(): void
@@ -127,7 +124,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $arr = SmartArray::new(['name' => 'John']);
 
         $this->assertInstanceOf(SmartArray::class, $arr);
-        $this->assertFalse($arr->usingSmartStrings());
     }
 
     public function testSmartArrayNewAllowsChaining(): void
@@ -156,7 +152,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $arr = SmartArrayHtml::new(['name' => 'John']);
 
         $this->assertInstanceOf(SmartArrayHtml::class, $arr);
-        $this->assertTrue($arr->usingSmartStrings());
     }
 
     public function testSmartArrayHtmlNewAllowsChaining(): void
@@ -190,7 +185,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $html = $raw->asHtml();
 
         $this->assertInstanceOf(SmartArrayHtml::class, $html);
-        $this->assertTrue($html->usingSmartStrings());
     }
 
     public function testAsHtmlReturnsNewInstance(): void
@@ -199,7 +193,7 @@ class CreationConversionTest extends SmartArrayTestCase
         $html = $raw->asHtml();
 
         // Original should be unchanged (still raw behavior)
-        $this->assertFalse($raw->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $raw);
 
         // New instance should be HTML
         $this->assertNotSame($raw, $html);
@@ -246,7 +240,6 @@ class CreationConversionTest extends SmartArrayTestCase
         $raw  = $html->asRaw();
 
         $this->assertInstanceOf(SmartArray::class, $raw);
-        $this->assertFalse($raw->usingSmartStrings());
     }
 
     public function testAsRawReturnsNewInstance(): void
@@ -256,7 +249,6 @@ class CreationConversionTest extends SmartArrayTestCase
 
         // Original should be unchanged
         $this->assertInstanceOf(SmartArrayHtml::class, $html);
-        $this->assertTrue($html->usingSmartStrings());
 
         // New instance should be raw
         $this->assertNotSame($html, $raw);
@@ -393,8 +385,7 @@ class CreationConversionTest extends SmartArrayTestCase
             return [['loaded' => 'data'], []];
         };
 
-        $raw = SmartArray::new(['id' => 1]);
-        $raw->setLoadHandler($handler);
+        $raw = SmartArray::new(['id' => 1], ['loadHandler' => $handler]);
 
         $html = $raw->asHtml();
         $html->load('related');
@@ -410,8 +401,7 @@ class CreationConversionTest extends SmartArrayTestCase
             return [['loaded' => 'data'], []];
         };
 
-        $html = SmartArrayHtml::new(['id' => 1]);
-        $html->setLoadHandler($handler);
+        $html = SmartArrayHtml::new(['id' => 1], ['loadHandler' => $handler]);
 
         $raw = $html->asRaw();
         $raw->load('related');

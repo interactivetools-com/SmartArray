@@ -30,6 +30,10 @@
 - `each($callback)` - use a `foreach` loop instead, same behavior in plain PHP. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from help(). It had no measured uses and a foreach is clearer and faster.
 - `sprintf($format)` - use `map()` with an inline format string instead: `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, encode explicitly and convert to raw mode first so the finished HTML isn't re-encoded on output: `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`. The method still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from README and help(). It was a second formatting syntax that only saw use inside CMS Builder.
 
+### Removed
+- `usingSmartStrings()` - use `instanceof SmartArrayHtml` to check the mode; the class is the mode. The method was never documented and had no found uses.
+- `setLoadHandler()` - the handler is passed as the `loadHandler` constructor property, which is how the database layer (ZenDB) has always set it. The setter had no known callers, and it couldn't work on record sets anyway: rows are built during construction and snapshot the handler at that moment, so a handler set afterward never reached them.
+
 ### Fixed
 - `get($key, $default)` defaults now act like stored values: Smart defaults (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's mode. Previously a SmartNull default threw `InvalidArgumentException`, and cross-mode Smart defaults (a SmartString default on SmartArray, a raw SmartArray default on SmartArrayHtml) threw `TypeError` from the return declarations.
 - `sortBy()` no longer throws a bare `ValueError: Array sizes are inconsistent` when a row is missing the sort field. Missing fields sort first (treated as null for ordering, like MySQL ORDER BY); rows are returned unchanged.

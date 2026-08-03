@@ -34,7 +34,6 @@ class CreationTest extends SmartArrayTestCase
         $this->assertValidStructure($sa);
         $this->assertSame(Fixtures::records(), $sa->toArray(), 'toArray() round-trips the input exactly');
         $this->assertInstanceOf($class, $sa->first(), 'child rows take the parent class');
-        $this->assertSame($class === SmartArrayHtml::class, $sa->usingSmartStrings());
     }
 
     #[DataProvider('modeProvider')]

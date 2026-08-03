@@ -43,7 +43,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result     = $smartArray->enableSmartStrings();
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);
-        $this->assertTrue($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
     }
 
     public function testWithSmartStringsReturnsSmartArrayHtml(): void
@@ -52,7 +52,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result     = $smartArray->withSmartStrings();
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);
-        $this->assertTrue($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
     }
 
     public function testDisableSmartStringsReturnsSmartArray(): void
@@ -61,7 +61,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result     = $smartArray->disableSmartStrings();
 
         $this->assertInstanceOf(SmartArray::class, $result);
-        $this->assertFalse($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $result);
     }
 
     public function testNoSmartStringsReturnsSmartArray(): void
@@ -70,7 +70,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result     = $smartArray->noSmartStrings();
 
         $this->assertInstanceOf(SmartArray::class, $result);
-        $this->assertFalse($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $result);
     }
 
     //endregion
@@ -166,7 +166,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result = new SmartArray(['name' => 'John'], false);
 
         $this->assertInstanceOf(SmartArray::class, $result);
-        $this->assertFalse($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArray::class, $result);
     }
 
     public function testSmartArrayHtmlWithBooleanTrueWorks(): void
@@ -175,7 +175,7 @@ class LegacyMethodsTest extends SmartArrayTestCase
         $result = new SmartArrayHtml(['name' => 'John'], true);
 
         $this->assertInstanceOf(SmartArrayHtml::class, $result);
-        $this->assertTrue($result->usingSmartStrings());
+        $this->assertInstanceOf(SmartArrayHtml::class, $result);
     }
 
     public function testLegacyConstructorTriggersDeprecationBeforeException(): void

@@ -958,18 +958,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Set the load handler for lazy-loading nested arrays.
-     *
-     * @param callable $customLoadHandler Handler: fn(SmartArray $row, string $field): array|false
-     * @noinspection PhpUnused
-     */
-    public function setLoadHandler(callable $customLoadHandler): void
-    {
-        $this->loadHandler = $customLoadHandler;
-    }
-
-    /**
      * Return the root SmartArray object for nested arrays, or the current object if not nested.
+     *
+     * Exists for load handlers, which use it to batch-cache values across sibling
+     * rows (e.g., $row->root()->column($field) to collect every row's foreign keys
+     * in one query). Not needed in templates.
+     *
+     * @internal
      */
     public function root(): self
     {
@@ -1416,7 +1411,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * The spread (`...`) is intentional: if `getInternalProperties()` ever starts
      * including `useSmartStrings`, the explicit value here will still override it.
      */
-    public function newSmartNull(): SmartNull
+    protected function newSmartNull(): SmartNull
     {
         return new SmartNull([...$this->getInternalProperties(), 'useSmartStrings' => $this->useSmartStrings]);
     }
@@ -1490,14 +1485,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     protected mixed $loadHandler = null;       // Handler for lazy-loading nested arrays
     protected array $mysqli = [];              // Metadata from last mysqli result
     private ?self $root = null;                // The root SmartArray
-
-    /**
-     * Check if SmartStrings mode is enabled.
-     */
-    public function usingSmartStrings(): bool
-    {
-        return $this->useSmartStrings;
-    }
 
     /**
      * Returns an array of internal properties for passing to nested SmartArrays or type conversions.

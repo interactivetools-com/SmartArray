@@ -12,25 +12,23 @@ use InvalidArgumentException;
 use Itools\SmartArray\CallerException;
 
 /**
- * Tests for SmartArray::load() and SmartArray::setLoadHandler() methods.
+ * Tests for SmartArray::load().
  *
- * load($field) lazily loads related data using a handler function.
- * setLoadHandler($handler) sets the handler for lazy loading.
+ * load($field) lazily loads related data using a handler function,
+ * passed in as the 'loadHandler' constructor property (how ZenDB wires it).
  */
 class LoadTest extends SmartArrayTestCase
 {
 
-    //region setLoadHandler()
+    //region loadHandler constructor property
 
-    public function testSetLoadHandlerSetsCallable(): void
+    public function testLoadHandlerSetViaConstructorProperty(): void
     {
-        $smartArray = new SmartArray(['id' => 1, 'name' => 'Test']);
-
         $handler = function ($smartArray, $field) {
             return [['child' => 'data'], []];
         };
 
-        $smartArray->setLoadHandler($handler);
+        $smartArray = new SmartArray(['id' => 1, 'name' => 'Test'], ['loadHandler' => $handler]);
 
         // Verify handler is set by calling load
         $result = $smartArray->load('related');
@@ -44,16 +42,16 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadReturnsSmartArrayWithHandlerResult(): void
     {
-        $smartArray = new SmartArray(['id' => 1, 'name' => 'Test']);
-
-        $smartArray->setLoadHandler(function ($row, $field) {
+        $handler = function ($row, $field) {
             $this->assertInstanceOf(SmartArray::class, $row);
             $this->assertSame('products', $field);
             return [
                 ['product1', 'product2', 'product3'],
                 ['query' => 'SELECT * FROM products']
             ];
-        });
+        };
+
+        $smartArray = new SmartArray(['id' => 1, 'name' => 'Test'], ['loadHandler' => $handler]);
 
         $result = $smartArray->load('products');
 
@@ -63,13 +61,13 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadPassesRowDataToHandler(): void
     {
-        $smartArray = new SmartArray(['user_id' => 42, 'name' => 'John']);
         $receivedRow = null;
-
-        $smartArray->setLoadHandler(function ($row, $field) use (&$receivedRow) {
+        $handler     = function ($row, $field) use (&$receivedRow) {
             $receivedRow = $row->toArray();
             return [[], []];
-        });
+        };
+
+        $smartArray = new SmartArray(['user_id' => 42, 'name' => 'John'], ['loadHandler' => $handler]);
 
         $smartArray->load('orders');
 
@@ -78,13 +76,13 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadPassesFieldNameToHandler(): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
         $receivedField = null;
-
-        $smartArray->setLoadHandler(function ($row, $field) use (&$receivedField) {
+        $handler       = function ($row, $field) use (&$receivedField) {
             $receivedField = $field;
             return [[], []];
-        });
+        };
+
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => $handler]);
 
         $smartArray->load('invoices');
 
@@ -95,11 +93,12 @@ class LoadTest extends SmartArrayTestCase
     {
         $handlerCalled = 0;
 
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(function ($row, $field) use (&$handlerCalled) {
+        $handler = function ($row, $field) use (&$handlerCalled) {
             $handlerCalled++;
             return [['nested' => 'data'], []];
-        });
+        };
+
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => $handler]);
 
         // First load
         $result = $smartArray->load('level1');
@@ -112,13 +111,14 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadStoresMysqliMetadata(): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(function ($row, $field) {
+        $handler = function ($row, $field) {
             return [
                 ['data' => 'value'],
                 ['query' => 'SELECT * FROM related', 'affected_rows' => 1]
             ];
-        });
+        };
+
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => $handler]);
 
         $result = $smartArray->load('related');
 
@@ -131,12 +131,12 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadReturnsSmartNullWhenArrayIsEmpty(): void
     {
-        $smartArray = new SmartArray([]);
-
-        $smartArray->setLoadHandler(function ($row, $field) {
+        $handler = function ($row, $field) {
             $this->fail('Handler should not be called for empty array');
             return [[], []];
-        });
+        };
+
+        $smartArray = new SmartArray([], ['loadHandler' => $handler]);
 
         $result = $smartArray->load('anything');
 
@@ -158,8 +158,7 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadThrowsWithEmptyFieldName(): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => fn($row, $col) => [[], []]]);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Field name is required');
@@ -172,8 +171,7 @@ class LoadTest extends SmartArrayTestCase
         $smartArray = new SmartArray([
             ['id' => 1, 'name' => 'Row 1'],
             ['id' => 2, 'name' => 'Row 2'],
-        ]);
-        $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
+        ], ['loadHandler' => fn($row, $col) => [[], []]]);
 
         $this->expectException(CallerException::class);
         $this->expectExceptionMessage('Cannot call load() on record set');
@@ -183,8 +181,7 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadThrowsWhenHandlerReturnsFalse(): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(fn($row, $col) => false);
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => fn($row, $col) => false]);
 
         $this->expectException(Error::class);
         $this->expectExceptionMessage("Load handler doesn't support field 'products'");
@@ -194,8 +191,7 @@ class LoadTest extends SmartArrayTestCase
 
     public function testLoadThrowsWhenHandlerReturnsNonArray(): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(fn($row, $col) => ['invalid', 'not an array with two arrays']);
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => fn($row, $col) => ['invalid', 'not an array with two arrays']]);
 
         $this->expectException(Error::class);
         $this->expectExceptionMessage('Load handler must return an array');
@@ -211,8 +207,7 @@ class LoadTest extends SmartArrayTestCase
      */
     public function testLoadAcceptsValidFieldNames(string $fieldName): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => fn($row, $col) => [[], []]]);
 
         $result = $smartArray->load($fieldName);
 
@@ -236,8 +231,7 @@ class LoadTest extends SmartArrayTestCase
      */
     public function testLoadRejectsInvalidFieldNames(string $fieldName): void
     {
-        $smartArray = new SmartArray(['id' => 1]);
-        $smartArray->setLoadHandler(fn($row, $col) => [[], []]);
+        $smartArray = new SmartArray(['id' => 1], ['loadHandler' => fn($row, $col) => [[], []]]);
 
         $this->expectException(CallerException::class);
         $this->expectExceptionMessage('Field name contains invalid characters');

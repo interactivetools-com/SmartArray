@@ -225,7 +225,7 @@ class ProjectionTest extends SmartArrayTestCase
                 ['city' => 'Vancouver', 'name' => 'Bob'],
             ],
         ], $result->toArray(), 'groups appear in first-seen order; rows keep encounter order');
-        $this->assertInstanceOf($class, $result->get('NYC'), 'each group is a same-mode SmartArray');
+        $this->assertInstanceOf($class, $result->NYC, 'each group is a same-mode SmartArray');
         $this->assertValidStructure($result);
     }
 
@@ -291,7 +291,7 @@ class ProjectionTest extends SmartArrayTestCase
         $result = $sa->values();
 
         $this->assertSame([0 => 'a', 1 => 'b', 2 => ['nested' => 1]], $result->toArray());
-        $this->assertInstanceOf($class, $result->nth(2), 'nested rows stay same-mode children');
+        $this->assertInstanceOf($class, $result->at(2), 'nested rows stay same-mode children');
     }
 
     #[DataProvider('modeProvider')]

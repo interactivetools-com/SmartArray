@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpDeprecationInspection */ // get() is a Silent alias; its behavior is pinned here
 declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
@@ -14,11 +15,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
 
 /**
- * Read access: get(), first(), last(), nth(), __get, offsetGet, __isset.
+ * Read access: __get (property access), first(), last(), at(), get()
+ * (deprecated, Silent), offsetGet, __isset.
  *
  * Pins exact return types per mode (raw scalar vs SmartString, SmartNull vs
  * null) and the warning contract (missing keys warn with the caller's
- * file:line; happy paths and empty arrays stay silent).
+ * file:line; happy paths and empty arrays stay silent). get() is a Silent
+ * alias (DeprecatedAliases trait) but keeps full behavior - including the
+ * default parameter and Smart-key unwrapping nothing else replicates - so
+ * its contract stays pinned here alongside __get.
  */
 class ReadAccessTest extends SmartArrayTestCase
 {
@@ -213,41 +218,41 @@ class ReadAccessTest extends SmartArrayTestCase
     }
 
     //endregion
-    //region nth()
+    //region at()
 
     #[DataProvider('modeProvider')]
-    public function testNthIsPositionalNotKeyBased(string $class): void
+    public function testAtIsPositionalNotKeyBased(string $class): void
     {
-        // Non-sequential integer keys: nth() must count positions, not look up keys
+        // Non-sequential integer keys: at() must count positions, not look up keys
         $sa = $class::new([2 => 'first', 4 => 'second', 6 => 'third']);
 
-        $this->assertModeValue('first', $sa->nth(0), $class);
-        $this->assertModeValue('second', $sa->nth(1), $class);
-        $this->assertModeValue('third', $sa->nth(2), $class);
+        $this->assertModeValue('first', $sa->at(0), $class);
+        $this->assertModeValue('second', $sa->at(1), $class);
+        $this->assertModeValue('third', $sa->at(2), $class);
 
         $assoc = $class::new(['a' => 'alpha', 'b' => 'beta']);
-        $this->assertModeValue('beta', $assoc->nth(1), $class);
+        $this->assertModeValue('beta', $assoc->at(1), $class);
     }
 
     #[DataProvider('modeProvider')]
-    public function testNthNegativeCountsFromEnd(string $class): void
+    public function testAtNegativeCountsFromEnd(string $class): void
     {
         $sa = $class::new(['a', 'b', 'c']);
 
-        $this->assertModeValue('c', $sa->nth(-1), $class);
-        $this->assertModeValue('b', $sa->nth(-2), $class);
-        $this->assertModeValue('a', $sa->nth(-3), $class);
+        $this->assertModeValue('c', $sa->at(-1), $class);
+        $this->assertModeValue('b', $sa->at(-2), $class);
+        $this->assertModeValue('a', $sa->at(-3), $class);
     }
 
     #[DataProvider('modeProvider')]
-    public function testNthOutOfBoundsReturnsSmartNull(string $class): void
+    public function testAtOutOfBoundsReturnsSmartNull(string $class): void
     {
         $sa = $class::new(['a', 'b']);
 
-        $this->assertSmartNull($sa->nth(2));
-        $this->assertSmartNull($sa->nth(-3));
-        $this->assertSmartNull($class::new([])->nth(0));
-        $this->assertSmartNull($class::new([])->nth(-1));
+        $this->assertSmartNull($sa->at(2));
+        $this->assertSmartNull($sa->at(-3));
+        $this->assertSmartNull($class::new([])->at(0));
+        $this->assertSmartNull($class::new([])->at(-1));
     }
 
     //endregion
@@ -320,7 +325,7 @@ class ReadAccessTest extends SmartArrayTestCase
         $sa = $class::new(['name' => 'Bob', 'middle' => null]);
 
         // Unlike plain PHP arrays, isset() on a stored null is true: it checks
-        // key existence (so ?? only fires for missing keys, per the get() docblock)
+        // key existence (so with SmartStrings on, ?? only fires for missing keys)
         $this->assertTrue(isset($sa->name));
         $this->assertTrue(isset($sa->middle));
         $this->assertFalse(isset($sa->zzz));

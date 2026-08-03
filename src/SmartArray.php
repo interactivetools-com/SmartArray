@@ -108,17 +108,6 @@ class SmartArray extends SmartArrayBase
     //region Value Access
 
     /** {@inheritDoc} */
-    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|string|int|float|bool|null
-    {
-        // Must use func_num_args() check here and call parent appropriately,
-        // because parent uses func_num_args() to detect if default was provided
-        if (func_num_args() >= 2) {
-            return parent::get($key, $default);
-        }
-        return parent::get($key);
-    }
-
-    /** {@inheritDoc} */
     public function first(): static|SmartNull|string|int|float|bool|null
     {
         return parent::first();

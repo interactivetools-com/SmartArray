@@ -58,9 +58,10 @@ class GlobalSettingsTest extends SmartArrayTestCase
 
             // offsetSet
             'set string key'          => [function (SmartArrayBase $sa) { $sa['city'] = 'Vancouver'; },  ['Replace [\'city\'] with ->city = $value']],
-            'set int key'             => [function (SmartArrayBase $sa) { $sa[9] = 'nine'; },            ['Replace [9] with ->set(9, $value)']],
-            'set invalid prop name'   => [function (SmartArrayBase $sa) { $sa['a-b'] = 'dashed'; },      ['Replace [\'a-b\'] with ->set(\'a-b\', $value) or ->{\'a-b\'} = $value']],
-            'append'                  => [function (SmartArrayBase $sa) { $sa[] = 'appended'; },         ['Replace [] with ->set($key, $value) using an explicit key']],
+            'set int key'             => [function (SmartArrayBase $sa) { $sa[9] = 'nine'; },            ['Replace [9] with ->{9} = $value']],
+            'set invalid prop name'   => [function (SmartArrayBase $sa) { $sa['a-b'] = 'dashed'; },      ['Replace [\'a-b\'] with ->{\'a-b\'} = $value']],
+            'set empty string key'    => [function (SmartArrayBase $sa) { $sa[''] = 'blanked'; },        ['Replace [\'\'] with ->set(\'\', $value)']],
+            'append'                  => [function (SmartArrayBase $sa) { $sa[] = 'appended'; },         ['Replace [] with an explicit key: ->key = $value']],
 
             // offsetUnset
             'unset string key'        => [function (SmartArrayBase $sa) { unset($sa['name']); },     ["Replace ['name'] with ->name"]],

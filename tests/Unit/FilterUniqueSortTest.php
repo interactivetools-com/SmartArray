@@ -151,7 +151,7 @@ class FilterUniqueSortTest extends SmartArrayTestCase
 
         $this->assertSame(['Amy', 'Bob', 'Cid'], array_column($byName->toArray(), 'name'));
         $this->assertSame([20, 25, 30], array_column($byAge->toArray(), 'age'));
-        $this->assertModeValue('Cid', $sa->first()->get('name'), $class, 'source order unchanged');
+        $this->assertModeValue('Cid', $sa->first()->name, $class, 'source order unchanged');
         $this->assertValidStructure($byName);
         $this->assertMetadataPreserved($sa, $byName);
     }

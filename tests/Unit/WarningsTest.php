@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpDeprecationInspection */ // get() is a Silent alias; its warning contract is pinned here
 declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
@@ -98,7 +99,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingKeyWarningEncodesTheKeyInBothModes(string $class): void
     {
-        // SECURITY: the key can be user input (->get($_GET['sort'])) and the warning
+        // SECURITY: the key can be user input (->{$_GET['sort']}) and the warning
         // echoes into the page, so it is HTML-encoded in both modes
         $sa = $class::new(['name' => 'Bob']);
 

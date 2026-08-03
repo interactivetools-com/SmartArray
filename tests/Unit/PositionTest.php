@@ -49,9 +49,9 @@ class PositionTest extends SmartArrayTestCase
         // Mixed data: scalars can't carry metadata but still count as slots
         $sa = $class::new([['n' => 'a'], 'scalar', ['n' => 'b']]);
 
-        $this->assertSame(1, $sa->nth(0)->position());
-        $this->assertSame(3, $sa->nth(2)->position(), 'the scalar at slot 2 advanced the counter');
-        $this->assertTrue($sa->nth(2)->isLast());
+        $this->assertSame(1, $sa->at(0)->position());
+        $this->assertSame(3, $sa->at(2)->position(), 'the scalar at slot 2 advanced the counter');
+        $this->assertTrue($sa->at(2)->isLast());
     }
 
     #[DataProvider('modeProvider')]
@@ -59,9 +59,9 @@ class PositionTest extends SmartArrayTestCase
     {
         $sa = $class::new([20 => ['n' => 'a'], 10 => ['n' => 'b'], 30 => ['n' => 'c']]);
 
-        $this->assertTrue($sa->get(20)->isFirst(), 'first by position, not by lowest key');
-        $this->assertTrue($sa->get(30)->isLast());
-        $this->assertSame(2, $sa->get(10)->position());
+        $this->assertTrue($sa->{20}->isFirst(), 'first by position, not by lowest key');
+        $this->assertTrue($sa->{30}->isLast());
+        $this->assertSame(2, $sa->{10}->position());
     }
 
     #[DataProvider('modeProvider')]
@@ -104,8 +104,8 @@ class PositionTest extends SmartArrayTestCase
         $sorted = $rows->sortBy('n');
 
         $this->assertTrue($sorted->first()->isFirst());
-        $this->assertModeValue('a', $sorted->first()->get('n'), $class);
-        $this->assertSame([1, 2, 3], array_map(fn($i) => $sorted->nth($i)->position(), [0, 1, 2]));
+        $this->assertModeValue('a', $sorted->first()->n, $class);
+        $this->assertSame([1, 2, 3], array_map(fn($i) => $sorted->at($i)->position(), [0, 1, 2]));
         $this->assertValidStructure($sorted);
     }
 }

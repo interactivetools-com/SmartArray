@@ -478,6 +478,8 @@ class SmartArrayTest extends TestCase
             'noSmartStrings',      // Deprecated alias (in DeprecatedAliases)
             'disableSmartStrings', // Deprecated alias (in DeprecatedAliases)
             'isMultipleOf',     // Deprecated (in DeprecatedAliases)
+            'get',              // Deprecated (in DeprecatedAliases)
+            'set',              // Deprecated (in DeprecatedAliases)
             'offsetGet',        // Deprecated array access (in DeprecatedAliases)
             'offsetSet',        // Deprecated array access (in DeprecatedAliases)
             'offsetUnset',      // Deprecated array access (in DeprecatedAliases)

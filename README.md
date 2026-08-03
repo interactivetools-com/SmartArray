@@ -179,9 +179,9 @@ $authors = [
 // Create a lookup array indexed by author_id
 $authorById = SmartArray::new($authors)->indexBy('author_id')->asHtml();
 
-// Now you can quickly look up authors by their ID
-echo $authorById->get(101)->name;  // Output: Jane Austen
-echo $authorById->get(103)->genre; // Output: Science Fiction
+// Now you can quickly look up authors by their ID (braces for numeric keys)
+echo $authorById->{101}->name;  // Output: Jane Austen
+echo $authorById->{103}->genre; // Output: Science Fiction
 
 // Particularly useful when joining data from multiple sources
 $articles = [
@@ -192,7 +192,7 @@ $articles = [
 
 // Display articles with author information
 foreach (SmartArray::new($articles)->asHtml() as $article) {
-    $author = $authorById->get($article->author_id);
+    $author = $authorById->{$article->author_id};
     echo "Title: $article->title\n";
     echo "By: $author->name ($author->genre)\n\n";
 }
@@ -463,9 +463,9 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 |                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                           |
 |                       |     SmartArrayHtml::new($array) | Create a SmartArray with HTML-safe SmartString values directly (equivalent to SmartArray::new()->asHtml())                   |
 | Value Access          |                       $obj->key | Get a value using property syntax                                                                                            |
-|                       |                        get(key) | Get a value by key (for numeric keys or keys with special characters)                                                        |
-|                       |               get(key, default) | Get a value with optional default if key not found                                                                           |
-|                       |                 set(key, value) | Set a value by key (for numeric keys or keys with special characters)                                                        |
+|                       |              $obj->{'users.id'} | Get keys property syntax can't type (dots, dashes, numeric keys)                                                             |
+|                       |              $obj->key = $value | Set a value using property syntax                                                                                            |
+|                       |          $obj->key ?? 'default' | Fallback for possibly-missing keys, same as plain PHP                                                                        |
 |                       |                         first() | Get the first element                                                                                                        |
 |                       |                          last() | Get the last element                                                                                                         |
 |                       |                       at(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |

@@ -47,8 +47,9 @@ trait DeprecatedAliases
     /**
      * Controls how deprecated `$array['key']` offset access is surfaced.
      *
-     * Offset access (`[]` syntax) is deprecated in favor of property access
-     * (`$array->key`) or the explicit `->get()` / `->set()` methods. This setting
+     * Offset access (`[]` syntax) is deprecated in favor of property access:
+     * `$array->key` for reads, `$array->key = $value` for writes, and brace
+     * syntax (`$array->{'users.id'}`) for keys property syntax can't type. This setting
      * controls how the library signals that deprecation at runtime. It covers
      * reads, writes, unset(), and isset()/empty() checks alike; only the
      * property forms (`$array->key`, `isset($array->key)`) are signal-free.
@@ -178,6 +179,92 @@ trait DeprecatedAliases
         return new SmartArray($newArray, $properties);
     }
 
+    /**
+     * Returns the element at $key, same as $array->key, with an optional
+     * default for missing keys.
+     *
+     * The default replaces missing keys only, never stored nulls. Smart keys
+     * and defaults unwrap first; defaults then wrap for this array's mode the
+     * same as a stored value would (arrays become same-mode SmartArrays).
+     *
+     * get('') is the only way to read an empty-string key: ->{''} is a PHP
+     * fatal error.
+     *
+     * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
+     *             can't type. For a missing-key default use ->key ?? $default.
+     *
+     * @param int|string|SmartString|SmartNull $key The key to retrieve; Smart values unwrap first
+     * @param mixed $default Returned when $key doesn't exist; treated like a stored value
+     * @return static|SmartNull|SmartString|string|int|float|bool|null
+     */
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
+    {
+        // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int
+        if ($key instanceof SmartString || $key instanceof SmartNull) {
+            $key = $key->value();
+            $key = match (true) {
+                is_int($key), is_string($key) => $key,
+                is_null($key)                 => '',
+                default                       => (int) $key,
+            };
+        }
+
+        // return default if key not found
+        if (func_num_args() >= 2 && !array_key_exists($key, $this->data)) {
+            // Defaults act like stored values: Smart defaults (SmartString,
+            // SmartArray, SmartNull) unwrap to raw equivalents, then everything
+            // wraps for this array's mode the same as a stored value would
+            if ($default instanceof SmartBase || $default instanceof SmartString) {
+                $default = self::getRawValue($default);
+            }
+            return match (true) {
+                is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
+                is_array($default)                     => new static($default, $this->getInternalProperties()),
+                default                                => throw new CallerException("Unsupported default value type: " . get_debug_type($default)),
+            };
+        }
+
+        // skip if empty
+        if (empty($this->data)) {
+            return $this->newSmartNull();
+        }
+
+        // Return via getElement (no deprecation warning - Silent stage)
+        if (array_key_exists($key, $this->data)) {
+            return $this->getElement($key);
+        }
+
+        // Show warning if key doesn't exist (only when no default provided)
+        $this->warnIfMissing($key, 'offset');
+
+        return $this->newSmartNull();
+    }
+
+    /**
+     * Sets a value by key, same as $array->key = $value. Returns $this for
+     * chaining.
+     *
+     * Smart values are unwrapped on storage: a SmartString stores its raw
+     * value, a SmartArray stores as a child array of this array's mode, and
+     * a SmartNull stores as null.
+     *
+     * set('') is the only way to write an empty-string key: ->{''} = $value
+     * is a PHP fatal error.
+     *
+     * @deprecated Use property assignment: ->key = $value, or ->{'users.id'} = $value for keys property syntax can't type
+     *
+     * @param int|string $key The key to set
+     * @param mixed $value The value to set
+     * @return static Returns $this for method chaining
+     */
+    #[Deprecated(reason: "use property assignment ->key = \$value or ->{'key'} = \$value")]
+    public function set(int|string $key, mixed $value): static
+    {
+        $this->setElement($key, $value);
+        return $this;
+    }
+
     //endregion
     //region Logged Aliases
 
@@ -300,7 +387,7 @@ trait DeprecatedAliases
     /**
      * Sets a value in the SmartArray using array syntax.
      *
-     * @deprecated Use ->set('key', $value) or ->key = $value instead of $array['key'] = $value
+     * @deprecated Use ->key = $value or ->{'key'} = $value instead of $array['key'] = $value
      *
      * Note: If you add a key after the array is created the position properties will not be updated.
      * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
@@ -319,7 +406,7 @@ trait DeprecatedAliases
     /**
      * Retrieves a value from the SmartArray using array syntax.
      *
-     * @deprecated Use ->property or ->get('key') instead of $array['key']
+     * @deprecated Use ->property or ->{'key'} instead of $array['key']
      */
     public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
@@ -371,10 +458,11 @@ trait DeprecatedAliases
         // a programmer error that PHP itself treats as an empty-string key.
         $suggestion = match ($operation) {
             'set' => match (true) {
-                is_null($key)    => '->set($key, $value) using an explicit key',
-                is_int($key)     => "->set($key, \$value)",
+                is_null($key)    => 'an explicit key: ->key = $value',
+                is_int($key)     => '->{' . $key . '} = $value',
                 $isValidPropName => "->$key = \$value",
-                default          => "->set('$key', \$value) or ->{'$key'} = \$value",
+                $key === ''      => "->set('', \$value)", // ->{''} = $value is a fatal "Cannot access empty property"
+                default          => "->{'$key'} = \$value",
             },
             default => match (true) {
                 is_int($key)                 => '->{' . $key . '}',

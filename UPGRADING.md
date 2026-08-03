@@ -197,13 +197,13 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 > ```php
 > echo $row['name'];         // works, but prints a Deprecated: notice into the page
 > echo $row->name;           // correct
-> echo $row->get('name');    // correct - for keys property syntax can't type, like 'users.id'
+> echo $row->{'users.id'};   // correct - for keys property syntax can't type
 > ```
 >
 > Fix:
 >
 > - Follow the file and line in each notice and switch to `->key` or
->   `->get('key')`
+>   `->{'key'}`
 > - Sites mid-migration can silence the echo (notices still reach error
 >   logs): `SmartArrayBase::$onOffsetAccess = 'log';`
 

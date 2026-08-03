@@ -146,107 +146,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Value Access
 
     /**
-     * Returns the element at $key, same as $array->key. Use it for keys property
-     * syntax can't type (Smart Join keys like 'users.id') or to supply a default
-     * for missing keys.
-     *
-     *     $row->get('users.id');      // same as $row->{'users.id'}
-     *     $row->get('name', 'n/a');   // same as $row->name ?? 'n/a' (SmartStrings on)
-     *
-     * The default replaces missing keys only, never stored nulls. The same is
-     * mostly true of PHP's null coalescing operator (??): with SmartStrings on
-     * (the default), every stored value comes back as a SmartString object,
-     * even nulls, so ?? never fires on a value; only a missing key triggers
-     * it, same as get(). With SmartStrings off, values are raw PHP types, so a
-     * stored null is a real null and ?? falls through to its default, which
-     * get() never does.
-     *
-     * On objects, ?? runs two checks in order: first __isset(), which here
-     * means "does the key exist", and only when that's true does it read the
-     * value and apply the usual null test.
-     *
-     * Every outcome of the two forms, with 'n/a' as the default:
-     *
-     *     $row->get('name', 'n/a')    vs    $row->name ?? 'n/a'
-     *
-     *     SmartStrings ON - every value comes back as a SmartString object:
-     *         stored 'Bob'   both return SmartString('Bob')
-     *         stored null    both return SmartString(null), NOT 'n/a' - use ->ifNull('n/a')
-     *         key missing    both return 'n/a'
-     *
-     *     SmartStrings OFF - every value comes back as a raw PHP type:
-     *         stored 'Bob'   both return 'Bob'
-     *         stored null    get() returns null, ?? returns 'n/a'   <- the one difference
-     *         key missing    both return 'n/a'
-     *
-     * @param int|string|SmartString|SmartNull $key The key to retrieve; Smart values unwrap first, so keys read
-     *                                               from another array work directly: $users->get($article->author_id)
-     * @param mixed $default Returned when $key doesn't exist; treated like a stored value (Smart values
-     *                       unwrap first, then everything wraps for this array's mode - so a SmartNull
-     *                       default returns null and a SmartArray default returns this array's type)
-     * @return static|SmartNull|SmartString|string|int|float|bool|null
-     */
-    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
-    {
-        // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int
-        if ($key instanceof SmartString || $key instanceof SmartNull) {
-            $key = $key->value();
-            $key = match (true) {
-                is_int($key), is_string($key) => $key,
-                is_null($key)                 => '',
-                default                       => (int) $key,
-            };
-        }
-
-        // return default if key not found
-        if (func_num_args() >= 2 && !array_key_exists($key, $this->data)) {
-            // Defaults act like stored values: Smart defaults (SmartString,
-            // SmartArray, SmartNull) unwrap to raw equivalents, then everything
-            // wraps for this array's mode the same as a stored value would
-            if ($default instanceof SmartBase || $default instanceof SmartString) {
-                $default = self::getRawValue($default);
-            }
-            return match (true) {
-                is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
-                is_array($default)                     => new static($default, $this->getInternalProperties()),
-                default                                => throw new CallerException("Unsupported default value type: " . get_debug_type($default)),
-            };
-        }
-
-        // skip if empty
-        if (empty($this->data)) {
-            return $this->newSmartNull();
-        }
-
-        // Return via getElement (no deprecation warning - this is a preferred access method)
-        if (array_key_exists($key, $this->data)) {
-            return $this->getElement($key);
-        }
-
-        // Show warning if key doesn't exist (only when no default provided)
-        $this->warnIfMissing($key, 'offset');
-
-        return $this->newSmartNull();
-    }
-
-    /**
-     * Sets a value by key. Preferred over array assignment syntax.
-     *
-     * Smart values are unwrapped on storage: a SmartString stores its raw
-     * value, a SmartArray stores as a child array of this array's mode, and
-     * a SmartNull stores as null. So `$a->set('x', $b->x)` works in any mode.
-     *
-     * @param int|string $key The key to set
-     * @param mixed $value The value to set
-     * @return static Returns $this for method chaining
-     */
-    public function set(int|string $key, mixed $value): static
-    {
-        $this->setElement($key, $value);
-        return $this;
-    }
-
-    /**
      * Get first element in array, or SmartNull if array is empty (to allow for further chaining).
      */
     public function first(): static|SmartString|SmartNull|string|int|float|bool|null
@@ -268,7 +167,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Get an element by its position in the array, ignoring keys.
      *
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
-     * Returns SmartNull if out of bounds. Use get() for access by key; at() is by position.
+     * Returns SmartNull if out of bounds. Use $array->key for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
      *     $max    = $result->first()->at(0)->value(); // Get unaliased column by position
@@ -1154,7 +1053,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Magic method for property access: $array->key
      *
      * This is the preferred way to access array elements.
-     * For keys with special characters or numeric keys, use ->get('key') or ->{'key'} instead.
+     * For keys with special characters or numeric keys, use ->{'key'} instead.
      */
     public function __get(string $name): static|SmartNull|SmartString|string|int|float|bool|null
     {
@@ -1182,7 +1081,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Magic method for property assignment: $array->key = $value
      *
      * This is the preferred way to set array elements.
-     * For keys with special characters or numeric keys, use ->set('key', $value) or ->{'key'} = $value instead.
+     * For keys with special characters or numeric keys, use ->{'key'} = $value instead.
      */
     public function __set(string $name, mixed $value): void
     {
@@ -1367,7 +1266,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
         $caller = self::getExternalCaller();
 
-        // SECURITY: the key can be user input (e.g. ->get($_GET['sort'])) and the warning echoes
+        // SECURITY: the key can be user input (e.g. ->{$_GET['sort']}) and the warning echoes
         // into the page, so encode it. The trigger_error() copy gets the same encoded key.
         $keyDisplay       = is_string($key) ? self::htmlEncode($key) : $key;
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys

@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpDeprecationInspection */ // get() is a Silent alias; SmartNull results from it are pinned here
 declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;

@@ -136,7 +136,7 @@ class ProductionRecipesTest extends SmartArrayTestCase
     }
 
     /**
-     * A5: `->first()->get('col')->value()` and `->first()->nth(1)->value()` for a single cell.
+     * A5: `->first()->{'Column Name'}->value()` and `->first()->at(1)->value()` for a single cell.
      * Production source: SHOW CREATE TABLE, where the wanted cell is the second column.
      */
     public function testA5FirstCellByNameAndByPositionMatch(): void
@@ -147,8 +147,8 @@ class ProductionRecipesTest extends SmartArrayTestCase
             ['mysqli' => ['query' => 'SHOW CREATE TABLE `users`', 'baseTable' => 'users']],
         );
 
-        [$byName, $nameOutput]         = $this->captureOutput(fn() => $result->first()->get('Create Table')->value());
-        [$byPosition, $positionOutput] = $this->captureOutput(fn() => $result->first()->nth(1)->value());
+        [$byName, $nameOutput]         = $this->captureOutput(fn() => $result->first()->{'Create Table'}->value());
+        [$byPosition, $positionOutput] = $this->captureOutput(fn() => $result->first()->at(1)->value());
 
         $this->assertSame($createSql, $byName);
         $this->assertSame($createSql, $byPosition);
@@ -372,7 +372,7 @@ class ProductionRecipesTest extends SmartArrayTestCase
             ['num' => '3', 'author_id' => '7', 'title' => 'Third'],
         ], ['mysqli' => ['query' => 'SELECT * FROM `articles`', 'baseTable' => 'articles']]);
 
-        $row = $articles->nth(1);
+        $row = $articles->at(1);
 
         [$idsToFetch, $output] = $this->captureOutput(fn() => $row->root()->pluck('author_id')->merge(['0'])->toArray());
 

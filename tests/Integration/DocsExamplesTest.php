@@ -217,17 +217,17 @@ class DocsExamplesTest extends SmartArrayTestCase
         $authorById = self::authorsById();
 
         [, $output] = $this->captureOutput(static function () use ($authorById): void {
-            echo $authorById->get(101)->name;
+            echo $authorById->{101}->name;
             echo "|";
-            echo $authorById->get(103)->genre;
+            echo $authorById->{103}->genre;
         });
 
         $this->assertSame('Jane Austen|Science Fiction', $output);
         $this->assertSame([101, 102, 103, 104], $authorById->keys()->toArray(), 'integer field values stay integer keys');
     }
 
-    // The join loop as documented: get() unwraps the SmartString key, so the
-    // example runs as written in README.md lines 193-212
+    // The join loop as documented: ->{$smartStringKey} stringifies the key via
+    // __toString, which is safe for numeric ids, so the example runs as written
     public function testReadmeIndexByJoinExampleOutput(): void
     {
         $authorById = self::authorsById();
@@ -235,7 +235,7 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(static function () use ($articles, $authorById): void {
             foreach ($articles as $article) {
-                $author = $authorById->get($article->author_id);
+                $author = $authorById->{$article->author_id};
                 echo "Title: $article->title\n";
                 echo "By: $author->name ($author->genre)\n\n";
             }
@@ -670,22 +670,22 @@ class DocsExamplesTest extends SmartArrayTestCase
 
     public function testHelpTxtValueAccessReadsByKeyAndPosition(): void
     {
-        $row = SmartArray::new(['a' => 1, 'b' => 2, 'c' => 3]);
+        $row = SmartArray::new(['a' => 1, 'b' => 2, 'c' => 3, 'users.id' => 5]);
 
         $this->assertSame(1, $row->a, 'property syntax');
-        $this->assertSame(2, $row->get('b'), 'get(key)');
-        $this->assertSame('fallback', $row->get('missing', 'fallback'), 'get(key, default)');
+        $this->assertSame(5, $row->{'users.id'}, 'brace syntax for keys property syntax cannot type');
+        $this->assertSame('fallback', $row->missing ?? 'fallback', '?? fallback for possibly-missing keys');
         $this->assertSame(1, $row->first());
-        $this->assertSame(3, $row->last());
+        $this->assertSame(5, $row->last());
         $this->assertSame(1, $row->at(0), 'at(0) is the first element');
-        $this->assertSame(3, $row->at(-1), 'at(-1) is the last element');
+        $this->assertSame(5, $row->at(-1), 'at(-1) is the last element');
     }
 
-    public function testHelpTxtSetStoresValueByKey(): void
+    public function testHelpTxtPropertyAssignmentStoresValue(): void
     {
         $row = SmartArray::new(['a' => 1]);
 
-        $row->set('b', 2);
+        $row->b = 2;
 
         $this->assertSame(['a' => 1, 'b' => 2], $row->toArray());
     }

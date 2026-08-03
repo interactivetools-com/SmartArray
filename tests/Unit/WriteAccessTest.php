@@ -1,4 +1,5 @@
 <?php
+/** @noinspection PhpDeprecationInspection */ // set() is a Silent alias; its behavior is pinned here
 declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
@@ -16,11 +17,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
 
 /**
- * Write access: set(), __set, offsetSet, [] append, __unset, offsetUnset.
+ * Write access: __set (property assignment), set() (deprecated, Silent),
+ * offsetSet, [] append, __unset, offsetUnset.
  *
  * Pins storage conversion (arrays and Smart values become mode-correct
  * children, scalars store raw), the deprecation contract for array syntax,
  * and the rule that late writes don't recalculate sibling position metadata.
+ * set() is a Silent alias (DeprecatedAliases trait) but keeps full behavior,
+ * so its storage contract stays pinned here alongside __set.
  */
 class WriteAccessTest extends SmartArrayTestCase
 {
@@ -204,7 +208,7 @@ class WriteAccessTest extends SmartArrayTestCase
         );
 
         $this->assertSame(['existing', 'appended'], $sa->toArray());
-        $this->assertStringContainsString('->set($key, $value) using an explicit key', $output);
+        $this->assertStringContainsString('an explicit key: ->key = $value', $output);
     }
 
     //endregion
@@ -252,12 +256,12 @@ class WriteAccessTest extends SmartArrayTestCase
 
         $sa->set('late', ['a' => 3]);
 
-        $late = $sa->get('late');
+        $late = $sa->late;
         $this->assertSame(0, $late->position());
         $this->assertFalse($late->isFirst());
         $this->assertFalse($late->isLast());
 
-        $this->assertTrue($sa->nth(1)->isLast(), 'original last row keeps isLast even though it no longer is');
+        $this->assertTrue($sa->at(1)->isLast(), 'original last row keeps isLast even though it no longer is');
     }
 
     //endregion

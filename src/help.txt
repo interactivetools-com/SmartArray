@@ -49,9 +49,9 @@ foreach ($users->asHtml() as $user) {
 Value Access
 -------------
 $obj->key               Get a value using property syntax
-->get(key)              Get a value by key (for numeric keys or keys with special characters)
-->get(key, default)     Get a value with optional default if key not found
-->set(key, value)       Set a value by key (for numeric keys or keys with special characters)
+$obj->{'users.id'}      Get keys property syntax can't type (dots, dashes, numeric)
+$obj->key = value       Set a value using property syntax
+$obj->key ?? 'default'  Fallback for possibly-missing keys, same as plain PHP
 ->first()               Get the first element
 ->last()                Get the last element
 ->at(index)             Get element by position, ignoring keys (0 is first, -1 is last)

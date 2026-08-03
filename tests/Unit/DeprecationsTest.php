@@ -26,7 +26,8 @@ use ReflectionClass;
  * Every alias is a real declared method (method_exists() sees it, IDEs show a
  * strikethrough), sorted into the stage regions of src/DeprecatedAliases.php:
  *
- *     Silent  pluck, nth, pluckNth, each, sprintf - work, no runtime signal
+ *     Silent  pluck, nth, pluckNth, each, sprintf, get, set - work, no runtime
+ *             signal (get/set behavior is pinned in ReadAccessTest/WriteAccessTest)
  *     Logged  toRaw, toHtml, withSmartStrings, enableSmartStrings,
  *             noSmartStrings, disableSmartStrings, isMultipleOf, smartMap,
  *             chunk - work, one E_USER_DEPRECATED with the caller's file:line
@@ -58,6 +59,7 @@ class DeprecationsTest extends SmartArrayTestCase
             'disableSmartStrings',
             'each',
             'enableSmartStrings',
+            'get',
             'isMultipleOf',
             'noSmartStrings',
             'nth',
@@ -67,6 +69,7 @@ class DeprecationsTest extends SmartArrayTestCase
             'offsetUnset',
             'pluck',
             'pluckNth',
+            'set',
             'smartMap',
             'sprintf',
             'toHtml',
@@ -83,7 +86,7 @@ class DeprecationsTest extends SmartArrayTestCase
     public static function aliasNameProvider(): array
     {
         $names = [
-            'pluck', 'nth', 'pluckNth', 'each', 'sprintf',
+            'pluck', 'nth', 'pluckNth', 'each', 'sprintf', 'get', 'set',
             'toRaw', 'toHtml', 'withSmartStrings', 'enableSmartStrings',
             'noSmartStrings', 'disableSmartStrings', 'isMultipleOf', 'smartMap', 'chunk',
         ];
@@ -119,6 +122,8 @@ class DeprecationsTest extends SmartArrayTestCase
             'pluckNth' => ['nested', [0]],
             'each'     => ['flat', [null]],   // filled in below: providers can't share a closure instance safely
             'sprintf'  => ['flat', ['{value}']],
+            'get'      => ['flat', [0]],      // existing key: a miss would warn, which is warnIfMissing, not a deprecation signal
+            'set'      => ['flat', [0, 'z']],
         ];
         $calls['each'][1] = [static fn() => null];
 

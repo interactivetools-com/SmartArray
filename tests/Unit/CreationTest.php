@@ -62,7 +62,7 @@ class CreationTest extends SmartArrayTestCase
     public function testConstructorSetsPositionMetadataOnRows(string $class): void
     {
         $sa   = $class::new([['a' => 1], ['a' => 2], ['a' => 3]]);
-        $rows = [$sa->nth(0), $sa->nth(1), $sa->nth(2)];
+        $rows = [$sa->at(0), $sa->at(1), $sa->at(2)];
 
         $this->assertSame([1, 2, 3], array_map(fn($r) => $r->position(), $rows));
         $this->assertSame([true, false, false], array_map(fn($r) => $r->isFirst(), $rows));

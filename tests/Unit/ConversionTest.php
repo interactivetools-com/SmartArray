@@ -136,8 +136,8 @@ class ConversionTest extends SmartArrayTestCase
         $sa = $class::new([['a' => 1], ['a' => 2]]);
 
         $converted = self::convert($sa);
-        $converted->first()->set('a', 99);
-        $converted->set('extra', 'added');
+        $converted->first()->a = 99;
+        $converted->extra      = 'added';
 
         $this->assertSame([['a' => 1], ['a' => 2]], $sa->toArray(), 'source rows are copies, not shared objects');
         $this->assertSame([['a' => 99], ['a' => 2], 'extra' => 'added'], $converted->toArray());

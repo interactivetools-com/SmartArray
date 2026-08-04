@@ -182,6 +182,65 @@ class WhereTest extends SmartArrayTestCase
     }
 
     //endregion
+    //region single-argument forms
+
+    #[DataProvider('modeProvider')]
+    public function testWhereWithOnlyAFieldKeepsNonEmptyRows(string $class): void
+    {
+        // Single-argument where('field') uses PHP's empty() rule: NULL, false,
+        // 0, "0", "", and missing fields are empty; everything else is kept
+        $sa = $class::new([
+            1 => ['featured' => 1],
+            2 => ['featured' => 0],
+            3 => ['featured' => '1'],
+            4 => ['featured' => null],
+            5 => ['featured' => ''],
+            6 => ['featured' => '0'],
+            7 => ['featured' => '0.0'],   // not empty to PHP
+            8 => ['name' => 'no featured field'],
+        ]);
+
+        [$result, $output] = $this->captureOutput(fn() => $sa->where('featured'));
+
+        $this->assertSame([1, 3, 7], $result->keys()->toArray());
+        $this->assertSame('', $output);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereNotWithOnlyAFieldKeepsEmptyRows(string $class): void
+    {
+        $sa = $class::new([
+            1 => ['featured' => 1],
+            2 => ['featured' => 0],
+            4 => ['featured' => null],
+            8 => ['name' => 'no featured field'],
+        ]);
+
+        [$result, $output] = $this->captureOutput(fn() => $sa->whereNot('featured'));
+
+        $this->assertSame([2, 4, 8], $result->keys()->toArray());
+        $this->assertSame('', $output);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSingleArgumentFormsPartitionEveryRow(string $class): void
+    {
+        // Unlike the two-argument forms, where($f) and whereNot($f) are strict
+        // complements: every row lands in exactly one result
+        $sa = $class::new([
+            1 => ['featured' => 1],
+            2 => ['featured' => 0],
+            3 => ['other' => 'x'],
+        ]);
+
+        [$kept, ]    = $this->captureOutput(fn() => $sa->where('featured'));
+        [$dropped, ] = $this->captureOutput(fn() => $sa->whereNot('featured'));
+
+        $this->assertSame([1], $kept->keys()->toArray());
+        $this->assertSame([2, 3], $dropped->keys()->toArray());
+    }
+
+    //endregion
     //region whereInList()
 
     #[DataProvider('modeProvider')]

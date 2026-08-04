@@ -69,7 +69,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingKeyWarningNamesTheKeyAndCallerLocation(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->zzz);
 
@@ -79,7 +79,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingKeyWarningShowsEmptyStringKeyAsQuotes(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->get(''));
 
@@ -89,7 +89,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingKeyWarningShowsIntegerKeysUnquoted(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->get(5));
 
@@ -101,7 +101,7 @@ class WarningsTest extends SmartArrayTestCase
     {
         // SECURITY: the key can be user input (->{$_GET['sort']}) and the warning
         // echoes into the page, so it is HTML-encoded in both modes
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->{'<b>'});
 
@@ -111,7 +111,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingKeyWarningIsAlsoSentToErrorHandlers(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$output, $messages] = $this->captureWarnings(fn() => $sa->zzz);
 
@@ -223,7 +223,7 @@ class WarningsTest extends SmartArrayTestCase
     public function testMissingKeyNamedAfterAMethodSuggestsBraces(string $class): void
     {
         // "Total: $list->implode" in a string reads as a property, not a call
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->implode);
 
@@ -253,7 +253,7 @@ class WarningsTest extends SmartArrayTestCase
     {
         // The hint keys off method_exists(), so the deprecated aliases (now real
         // declared methods) are matched the same as current ones
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(fn() => $sa->pluckNth);
 
@@ -312,7 +312,7 @@ class WarningsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testValueReadsOfAMissingKeyWarnOncePerRead(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [, $output] = $this->captureOutput(function () use ($sa) {
             $sa->zzz;
@@ -320,6 +320,34 @@ class WarningsTest extends SmartArrayTestCase
         });
 
         $this->assertSame(2, substr_count($output, 'Warning:'));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testMissingKeysOnTopLevelCollectionsAreSilent(string $class): void
+    {
+        // Only result-set rows warn: top-level and derived collections (indexBy/column
+        // maps, standalone arrays) are keyed by data, where a miss is a normal no-match
+        $standalone = $class::new(['name' => 'Bob']);
+        $byId       = $class::new([['id' => 7, 'name' => 'Alice']])->indexBy('id');
+        $nameById   = $class::new([['id' => 7, 'name' => 'Alice']])->column('name', 'id');
+
+        [, $output] = $this->captureOutput(function () use ($standalone, $byId, $nameById) {
+            $standalone->zzz;
+            $byId->{99};
+            $nameById->{99};
+        });
+
+        $this->assertSame('', $output);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowsInsideDerivedCollectionsStillWarn(string $class): void
+    {
+        $rows = $class::new([['name' => 'Bob'], ['name' => 'Sue']]);
+
+        [, $output] = $this->captureOutput(fn() => $rows->where('name', 'Sue')->first()->zzz);
+
+        $this->assertSame(1, substr_count($output, 'Warning:'));
     }
 
     //endregion

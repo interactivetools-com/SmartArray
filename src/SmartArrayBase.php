@@ -305,7 +305,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 : $value;
         }
 
-        // Show warning if key doesn't exist and array isn't empty
+        // Key doesn't exist: warn if this is a result-set row (see warnIfMissing)
         $this->warnIfMissing($key, isOffset: true);
 
         return $this->newSmartNull();
@@ -455,9 +455,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
      * Chain multiple where() calls to filter by multiple fields.
      *
+     * With just a field name, keeps rows where that field is non-empty
+     * (PHP empty() rule: NULL, false, 0, "0", "", and missing fields are empty).
+     *
      *     $active   = $users->where('status', 'active');
      *     $admins   = $users->where('status', 'active')->where('role', 'admin');
-     *     $featured = $products->where('featured', 1);
+     *     $featured = $products->where('featured');
      *
      * @param array|string $field Field name to compare, or associative array of field=>value pairs (deprecated)
      * @param mixed        $value Value to match (supports SmartString, automatically unwrapped)
@@ -466,6 +469,19 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function where(array|string $field, mixed $value = null): static
     {
         $this->assertNestedArray();
+
+        // Single-argument syntax: where('field') keeps rows where the field is non-empty
+        if (is_string($field) && func_num_args() === 1) {
+            $this->warnIfMissing($field);
+            $matches = [];
+            foreach ($this->toArray() as $key => $row) {
+                if (is_array($row) && !empty($row[$field])) {
+                    $matches[$key] = $row;
+                }
+            }
+
+            return new static($matches, $this->getInternalProperties());
+        }
 
         // Two-argument syntax: where('field', value)
         if (is_string($field) && func_num_args() === 2) {
@@ -500,18 +516,34 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Uses loose comparison (==) to match where() behavior.
      *
+     * With just a field name, keeps rows where that field is empty
+     * (PHP empty() rule: NULL, false, 0, "0", "", and missing fields are empty).
+     *
      *     $otherPages = $pages->whereNot('num', $currentPage->num);
      *     $published  = $articles->whereNot('status', 'draft');
-     *     $visible    = $records->whereNot('hidden', 1);
+     *     $unfeatured = $products->whereNot('featured');
      *
      * @param string $field Field name to compare
      * @param mixed  $value Value to exclude
      * @return static A new SmartArray excluding matching elements
      */
-    public function whereNot(string $field, mixed $value): static
+    public function whereNot(string $field, mixed $value = null): static
     {
         $this->assertNestedArray();
         $this->warnIfMissing($field);
+
+        // Single-argument syntax: whereNot('field') keeps rows where the field is empty
+        if (func_num_args() === 1) {
+            $matches = [];
+            foreach ($this->toArray() as $key => $row) {
+                if (is_array($row) && empty($row[$field])) {
+                    $matches[$key] = $row;
+                }
+            }
+
+            return new static($matches, $this->getInternalProperties());
+        }
+
         $value   = self::getRawValue($value);
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
@@ -1115,7 +1147,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 : $value;
         }
 
-        // Key doesn't exist: warn (suppressed for empty arrays) and return SmartNull
+        // Key doesn't exist: warn if this is a result-set row (see warnIfMissing)
         $this->warnIfMissing($name, isOffset: true);
         return $this->newSmartNull();
     }
@@ -1290,6 +1322,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Emits a PHP warning if $key is missing. Skips the check when the array is empty.
+     * Key access only warns on rows inside a parent collection: row keys are column
+     * names, so a miss there is almost always a typo. Everywhere else (lookup maps
+     * from indexBy()/column(), standalone arrays) keys are data, a miss is a normal
+     * no-match, and the access renders blank silently.
      * Skipped for method-argument checks on mixed data (scalar config + array fields)
      * since there's no first row to check against.
      *
@@ -1298,6 +1334,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private function warnIfMissing(string|int $key, bool $isOffset = false): void
     {
+        // Key access: only rows inside a parent collection warn (position is 1-based
+        // on rows, 0 on top-level and derived collections)
+        if ($isOffset && $this->position === 0) {
+            return;
+        }
+
         // For property access (offset) - check this array's own keys.
         // For nested method args (where, sortBy, etc.) - check the first row's keys.
         $target = $this;

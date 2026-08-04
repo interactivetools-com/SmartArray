@@ -6,15 +6,19 @@
 
 ## [3.0.0] - [UNRELEASED]
 
+> **Bundled with CMS Builder v3.85**
+
 ### Security
 - Missing-key warnings and array-syntax deprecation notices HTML-encode the key before echoing it. With a dynamic key (`->get($_GET['sort'])`, `$arr[$_GET['sort']]`), a key containing HTML reached the browser unencoded - a reflected XSS vector. The `trigger_error()` copy carries the same encoded key.
 - `json_encode($smartArray)` also substitutes malformed UTF-8 in keys with � (U+FFFD), not just values - one corrupt byte in a key no longer makes it return false and lose the whole document.
 
 ### Added
+- `where($field)` and `whereNot($field)` with just a field name filter by PHP's `empty()` rule: `where('featured')` keeps rows where the field is non-empty, `whereNot('featured')` keeps the rest, and every row lands in exactly one of the two. Previously a single-argument `where()` silently ran as `where($field, null)` (a loose match against NULL) because the mode subclasses forwarded a default second argument; the forwarding is fixed so the one- and two-argument forms are detected correctly.
 - `at($index)` - new name for `nth()`: get an element by position, zero-based, negative indices count from the end. Matches JavaScript's `Array.at()`. `$row->key` is by key, `at()` is by position.
 - `columnAt($index)` - new name for `pluckNth()`: get the column at a position from each row, ignoring key names. `column()` is by key, `columnAt()` is by position.
 
 ### Changed
+- Missing-key warnings now fire only on rows inside a result set, where keys are column names and a miss is almost always a typo. Lookups on top-level and derived collections (`indexBy()`/`column()` maps, standalone arrays) render blank silently - a missing id or category there is a normal no-match, not a mistake - so fallbacks chain cleanly: `$authorById->{$id}->or('Unknown Author')`. Method-argument checks (`where('typo')`) still warn everywhere.
 - `get()` and `at()` now unwrap Smart arguments, so keys read from another array work directly: `$users->get($article->author_id)` no longer needs `->value()` first. Matches how `set()` and `get()` defaults already unwrap. Unwrapped keys follow PHP array-key rules (null reads key `''`, bool/float truncate to int).
 - `$arr[null]` (deprecated `[]` syntax) now reads key `''` like a plain PHP array, instead of printing a misleading `Replace []` suggestion and then throwing a TypeError that named library internals. `unset()` and `isset()` already worked this way.
 - All writes to a `SmartNull` now throw the same "Cannot set values on SmartNull" `RuntimeException`: property writes (previously created a silent dynamic property that shadowed chaining) and `->set()` (previously delegated to a throwaway empty array, silently discarding the value) now match the existing `['key'] =` guard.

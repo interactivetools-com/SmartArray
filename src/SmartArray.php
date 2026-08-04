@@ -156,13 +156,13 @@ class SmartArray extends SmartArrayBase
     /** {@inheritDoc} */
     public function where(array|string $field, mixed $value = null): static
     {
-        return parent::where($field, $value);
+        return parent::where(...func_get_args());  // real arg count picks the one- vs two-argument form
     }
 
     /** {@inheritDoc} */
-    public function whereNot(string $field, mixed $value): static
+    public function whereNot(string $field, mixed $value = null): static
     {
-        return parent::whereNot($field, $value);
+        return parent::whereNot(...func_get_args());  // real arg count picks the one- vs two-argument form
     }
 
     /** {@inheritDoc} */

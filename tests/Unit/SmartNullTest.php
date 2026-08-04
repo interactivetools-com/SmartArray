@@ -45,7 +45,7 @@ class SmartNullTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testMissingPropertyWarnsAndReturnsSmartNull(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$result, $output] = $this->captureOutput(fn() => $sa->zzz);
 
@@ -56,7 +56,7 @@ class SmartNullTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testGetWithoutDefaultWarnsAndReturnsSmartNull(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$result, $output] = $this->captureOutput(fn() => $sa->get('zzz'));
 

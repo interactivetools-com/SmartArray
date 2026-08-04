@@ -93,7 +93,7 @@ class ReadAccessTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testGetMissingKeyWarnsAndReturnsSmartNull(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$result, $output] = $this->captureOutput(fn() => $sa->get('zzz'));
 
@@ -299,7 +299,7 @@ class ReadAccessTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testPropertyGetMissingWarnsOnceAndChainsSafely(string $class): void
     {
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$result, $output] = $this->captureOutput(fn() => $sa->missing->deeper->deepest);
 
@@ -312,7 +312,7 @@ class ReadAccessTest extends SmartArrayTestCase
     public function testPropertyGetMissingMethodNameKeySuggestsBraces(string $class): void
     {
         // "$sa->pluck" in a string is a common mistake for "{$sa->pluck(...)}"
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [$result, $output] = $this->captureOutput(fn() => $sa->pluck);
 
@@ -345,7 +345,7 @@ class ReadAccessTest extends SmartArrayTestCase
     {
         // Both signals fire: the deprecation notice for the [] syntax, then the
         // missing-key warning from the read itself
-        $sa = $class::new(['name' => 'Bob']);
+        $sa = $class::new([['name' => 'Bob']])->first();  // only result-set rows warn
 
         [[$result, $output], $deprecations] = $this->captureDeprecations(
             fn() => $this->captureOutput(fn() => $sa['zzz'])

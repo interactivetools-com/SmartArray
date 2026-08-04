@@ -465,7 +465,7 @@ Note: All methods return a new `SmartArray` object unless otherwise specified.
 | Value Access          |                       $obj->key | Get a value using property syntax                                                                                            |
 |                       |              $obj->{'users.id'} | Get keys property syntax can't type (dots, dashes, numeric keys)                                                             |
 |                       |              $obj->key = $value | Set a value using property syntax                                                                                            |
-|                       |          $obj->key ?? 'default' | Fallback for possibly-missing keys, same as plain PHP                                                                        |
+|                       |          $obj->key ?? 'default' | Fallback for missing keys and NULL values, same as plain PHP                                                                 |
 |                       |                         first() | Get the first element                                                                                                        |
 |                       |                          last() | Get the last element                                                                                                         |
 |                       |                       at(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |

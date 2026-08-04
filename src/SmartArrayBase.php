@@ -1079,11 +1079,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Magic method for isset($array->key) and empty($array->key)
+     * Magic method for isset($array->key), empty($array->key), and $array->key ?? $default.
+     *
+     * Stored nulls read as missing, matching plain PHP arrays, so ?? fallbacks fire on
+     * them. Direct access still returns the stored null; use ->keys()->contains('key')
+     * to ask whether the key itself exists.
      */
     public function __isset(string $name): bool
     {
-        return array_key_exists($name, $this->data);
+        return isset($this->data[$name]);
     }
 
     /**

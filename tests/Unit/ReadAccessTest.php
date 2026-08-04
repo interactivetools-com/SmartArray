@@ -361,26 +361,39 @@ class ReadAccessTest extends SmartArrayTestCase
     //region __isset / offsetExists
 
     #[DataProvider('modeProvider')]
-    public function testIssetChecksKeyExistenceNotNullness(string $class): void
+    public function testIssetTreatsStoredNullAsMissing(string $class): void
     {
         $sa = $class::new(['name' => 'Bob', 'middle' => null]);
 
-        // Unlike plain PHP arrays, isset() on a stored null is true: it checks
-        // key existence (so with SmartStrings on, ?? only fires for missing keys)
+        // Like plain PHP arrays, isset() on a stored null is false, so ??
+        // fallbacks fire on stored nulls and missing keys alike
         $this->assertTrue(isset($sa->name));
-        $this->assertTrue(isset($sa->middle));
+        $this->assertFalse(isset($sa->middle));
         $this->assertFalse(isset($sa->zzz));
 
         // Array-syntax existence checks follow $onOffsetAccess like reads and
         // writes do (default 'notify'); only the property forms are signal-free
         [, $output] = $this->captureOutput(function () use ($sa) {
-            $this->assertTrue($sa->offsetExists('middle'));
+            $this->assertFalse($sa->offsetExists('middle'));
             $this->assertFalse($sa->offsetExists('zzz'));
-            $this->assertTrue(isset($sa['middle']));
+            $this->assertTrue(isset($sa['name']));
         });
         $this->assertSame(3, substr_count($output, 'Deprecated:'), 'one notice per array-syntax check');
         $this->assertStringContainsString("Replace ['middle'] with ->middle", $output);
         $this->assertStringContainsString("Replace ['zzz'] with ->zzz", $output);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testNullCoalescingFiresOnStoredNullAndMissingKeys(string $class): void
+    {
+        $sa = $class::new(['name' => 'Bob', 'middle' => null]);
+
+        // ?? short-circuits on __isset() before any value is fetched or wrapped,
+        // so the fallback comes through as-is (a raw string) in both modes, and
+        // missing keys produce no undefined-key warning
+        $this->assertSame('Bob', (string)($sa->name ?? '(fallback)'));
+        $this->assertSame('(fallback)', $sa->middle ?? '(fallback)');
+        $this->assertSame('(fallback)', $sa->zzz ?? '(fallback)');
     }
 
     //endregion

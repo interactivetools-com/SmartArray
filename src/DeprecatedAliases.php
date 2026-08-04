@@ -417,13 +417,14 @@ trait DeprecatedAliases
 
     /**
      * Check if a key exists, for isset($array['key']) and empty($array['key']).
+     * Stored nulls read as missing, same as __isset() and plain PHP arrays.
      *
      * @deprecated Use isset($array->key) instead of isset($array['key'])
      */
     public function offsetExists(mixed $offset): bool
     {
         $this->triggerArrayAccessDeprecation($offset, 'exists');
-        return array_key_exists($offset, $this->data);
+        return isset($this->data[$offset]);
     }
 
     /**

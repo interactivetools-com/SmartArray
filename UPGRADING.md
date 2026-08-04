@@ -120,6 +120,42 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > Regex: `->sortBy\([^)]*type:`
 
+### `isset()`, `empty()`, and `??` treat stored NULL as missing
+
+> These now match plain PHP arrays: a column whose value is NULL reads as
+> missing, so `isset()` answers false, `empty()` answers true, and `??`
+> returns its fallback. Previously they answered "does the column exist",
+> which meant `??` fallbacks never fired on NULL columns in HTML mode - the
+> wrapped null echoed as `""`:
+>
+> ```php
+> $row = SmartArrayHtml::new(['nickname' => null]);
+>
+> echo $row->nickname ?? 'none';  // before: "" - after: none
+> isset($row->nickname);          // before: true - after: false
+> empty($row->nickname);          // before: false - after: true
+> ```
+>
+> Bracket syntax (`isset($row['field'])`) changes the same way. Direct
+> access is unchanged: `$row->nickname` still returns the stored null
+> (wrapped in HTML mode) with no warning.
+>
+> Fix:
+>
+> - Check templates using `??` on nullable columns - they print the fallback
+>   where they used to print nothing. That's usually the intent; if the
+>   fallback carries user data, use `->or()` instead, which HTML-encodes.
+>   A `??` fallback skips encoding because PHP substitutes it before the
+>   library runs.
+> - When migrating deprecated `get($key, $default)` calls to
+>   `$row->key ?? $default`: `get()` returns a stored NULL instead of the
+>   default, the `??` form returns the default. Same results everywhere
+>   except NULL columns.
+> - To ask "does the key exist, even if NULL", use
+>   `$row->keys()->contains('field')`.
+>
+> Regex: `->\w+ \?\?` - also search `isset(` and `empty(` on row fields
+
 ### Silent changes
 
 > - `print_r()` and `var_dump()` show just the array data, like dumping a

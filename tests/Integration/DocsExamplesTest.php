@@ -662,11 +662,12 @@ class DocsExamplesTest extends SmartArrayTestCase
 
     public function testHelpTxtValueAccessReadsByKeyAndPosition(): void
     {
-        $row = SmartArray::new(['a' => 1, 'b' => 2, 'c' => 3, 'users.id' => 5]);
+        $row = SmartArray::new(['a' => 1, 'b' => 2, 'c' => 3, 'd' => null, 'users.id' => 5]);
 
         $this->assertSame(1, $row->a, 'property syntax');
         $this->assertSame(5, $row->{'users.id'}, 'brace syntax for keys property syntax cannot type');
-        $this->assertSame('fallback', $row->missing ?? 'fallback', '?? fallback for possibly-missing keys');
+        $this->assertSame('fallback', $row->missing ?? 'fallback', '?? fallback for missing keys');
+        $this->assertSame('fallback', $row->d ?? 'fallback', '?? fallback for stored NULL values');
         $this->assertSame(1, $row->first());
         $this->assertSame(5, $row->last());
         $this->assertSame(1, $row->at(0), 'at(0) is the first element');

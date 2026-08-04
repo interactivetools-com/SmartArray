@@ -165,12 +165,11 @@ trait Deprecations
      *     $list->sprintf('<li>{value}</li>')->implode("\n");
      *     $list->map(fn($v) => "<li>$v</li>")->implode("\n");
      *
-     *     // SmartArrayHtml (HTML-encoded), old and new:
+     *     // SmartArrayHtml (HTML-encoded), old and new. asRaw() matters here:
+     *     // without it, implode() returns a SmartString that would re-encode
+     *     // the HTML tags at output.
      *     $row->sprintf('<td>{value}</td>')->implode("\n");
      *     $row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n"); // or h() in CMS Builder
-     *
-     * The asRaw() in the HTML-mode replacement matters: without it, implode()
-     * returns a SmartString that would re-encode the HTML tags at output.
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
@@ -404,11 +403,10 @@ trait Deprecations
     /**
      * Sets a value in the SmartArray using array syntax.
      *
-     * @deprecated Use ->key = $value or ->{'key'} = $value instead of $array['key'] = $value
-     *
      * Note: If you add a key after the array is created the position properties will not be updated.
      * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
      *
+     * @deprecated Use ->key = $value or ->{'key'} = $value instead of $array['key'] = $value
      * @param mixed $offset The key to set. If null, the value is appended to the array.
      * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
      *

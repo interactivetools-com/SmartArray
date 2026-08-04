@@ -118,6 +118,15 @@ class ProjectionTest extends SmartArrayTestCase
         $class::new(['a', 'b'])->pluckNth(0);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testColumnAtSkipsScalarRows(string $class): void
+    {
+        // One array value makes the array "nested"; scalar rows have no columns to extract
+        $sa = $class::new([['a', 'b'], 'scalar', ['c', 'd']]);
+
+        $this->assertSame(['a', 'c'], $sa->columnAt(0)->toArray());
+    }
+
     //endregion
     //region column()
 
@@ -278,6 +287,18 @@ class ProjectionTest extends SmartArrayTestCase
         $this->expectExceptionMessage('groupBy(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->groupBy('g');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testGroupBySkipsScalarRows(string $class): void
+    {
+        // One array value makes the array "nested"; scalar rows have no fields to group by
+        $sa = $class::new([['g' => 'a', 'v' => 1], 'scalar', ['g' => 'a', 'v' => 2]]);
+
+        [$result, $output] = $this->captureOutput(fn() => $sa->groupBy('g'));
+
+        $this->assertSame(['a' => [['g' => 'a', 'v' => 1], ['g' => 'a', 'v' => 2]]], $result->toArray());
+        $this->assertSame('', $output);
     }
 
     //endregion

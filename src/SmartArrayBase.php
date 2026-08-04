@@ -724,6 +724,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $values = [];
         foreach ($this->toArray() as $row) {
+            if (!is_array($row)) {
+                continue; // scalar rows have no fields to group by
+            }
             $key            = $row[$field] ?? null;
             $values[$key][] = $row;
         }
@@ -755,6 +758,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $values = [];
         foreach ($this->toArray() as $row) {
+            if (!is_array($row)) {
+                continue; // scalar rows have no columns to extract
+            }
             $count    = count($row);
             $rowIndex = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
 

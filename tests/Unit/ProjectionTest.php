@@ -212,6 +212,23 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testIndexByFloatAndBoolKeys(string $class): void
+    {
+        // Floats keep precision as string keys; bools key as 1/0 like plain PHP
+        $floats = $class::new([['price' => 19.99, 'n' => 'a'], ['price' => 19.50, 'n' => 'b']]);
+        $this->assertSame([
+            '19.99' => ['price' => 19.99, 'n' => 'a'],
+            '19.5'  => ['price' => 19.5, 'n' => 'b'],
+        ], $floats->indexBy('price')->toArray());
+
+        $bools = $class::new([['ok' => true, 'n' => 'a'], ['ok' => false, 'n' => 'b']]);
+        $this->assertSame([
+            1 => ['ok' => true, 'n' => 'a'],
+            0 => ['ok' => false, 'n' => 'b'],
+        ], $bools->indexBy('ok')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
     public function testIndexBySkipsScalarRows(string $class): void
     {
         // One array value makes the array "nested"; scalar rows have no fields to index by
@@ -287,6 +304,23 @@ class ProjectionTest extends SmartArrayTestCase
         $this->expectExceptionMessage('groupBy(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->groupBy('g');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testGroupByFloatAndBoolKeys(string $class): void
+    {
+        // Floats keep precision as string keys; bools key as 1/0 like plain PHP
+        $floats = $class::new([['price' => 19.99], ['price' => 19.50]]);
+        $this->assertSame([
+            '19.99' => [['price' => 19.99]],
+            '19.5'  => [['price' => 19.5]],
+        ], $floats->groupBy('price')->toArray());
+
+        $bools = $class::new([['ok' => true, 'n' => 'a'], ['ok' => false, 'n' => 'b'], ['ok' => true, 'n' => 'c']]);
+        $this->assertSame([
+            1 => [['ok' => true, 'n' => 'a'], ['ok' => true, 'n' => 'c']],
+            0 => [['ok' => false, 'n' => 'b']],
+        ], $bools->groupBy('ok')->toArray());
     }
 
     #[DataProvider('modeProvider')]

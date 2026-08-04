@@ -150,6 +150,10 @@ the docs - IDEs show a strikethrough with the replacement.
 - `indexBy()` no longer gives rows missing the index field a leftover numeric
   key that looks like a real field value. Null and missing values both index
   under `''`, duplicates last-wins.
+- `indexBy()` and `groupBy()` keep float precision: `19.99` and `19.50` key as
+  `'19.99'` and `'19.5'` instead of both truncating to `19` (PHP array-key
+  casting, which also printed a PHP deprecation naming library internals).
+  Integer and boolean keys are unchanged.
 - `asRaw()` and `asHtml()` on a row keep its position metadata, so
   `position()`, `isFirst()`, and `isLast()` answer the same before and after
   converting (conversion used to reset them to position 0 with both flags

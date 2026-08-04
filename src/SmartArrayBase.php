@@ -650,6 +650,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Rows with a null or missing field value index under '' (PHP's array-key
      * form of null). Duplicate values: last row wins.
      *
+     * Float values keep full precision by keying as strings ('19.99'). Integers
+     * and integer-like strings key as ints (PHP array-key rules), booleans as
+     * 1/0.
+     *
      *     $users = new SmartArray([
      *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
      *         ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
@@ -686,7 +690,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             if (!is_array($row)) {
                 continue; // scalar rows have no fields to index by
             }
-            $values[$row[$field] ?? ''] = $row;
+            $key          = $row[$field] ?? '';
+            $key          = is_bool($key) ? (int)$key : (string)$key; // string cast keeps float precision; ints re-key as ints, bools as 1/0
+            $values[$key] = $row;
         }
 
         return new static($values, $this->getInternalProperties());
@@ -700,6 +706,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Rows with a null or missing field value group under '' (PHP's array-key
      * form of null), like SQL GROUP BY keeps a NULL group. No rows are dropped.
+     *
+     * Float values keep full precision by keying as strings ('19.99'). Integers
+     * and integer-like strings key as ints (PHP array-key rules), booleans as
+     * 1/0.
      *
      *     $users = new SmartArray([
      *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
@@ -733,7 +743,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             if (!is_array($row)) {
                 continue; // scalar rows have no fields to group by
             }
-            $key            = $row[$field] ?? null;
+            $key            = $row[$field] ?? '';
+            $key            = is_bool($key) ? (int)$key : (string)$key; // string cast keeps float precision; ints re-key as ints, bools as 1/0
             $values[$key][] = $row;
         }
 

@@ -1,8 +1,13 @@
 # Benchmarks
 
-SmartArray's speed benchmarks live in the SmartString repository: one shared
-matrix covers both libraries, since SmartArray's hot paths (field access,
-iteration) end in SmartString output.
+`news-page.php` measures a realistic 25-record news page with SmartArrayHtml
+against plain arrays with `htmlspecialchars()`; every number in
+[docs/performance.md](../docs/performance.md) comes from it (the run command
+is on that page).
+
+SmartArray's per-operation speed benchmarks live in the SmartString
+repository: one shared matrix covers both libraries, since SmartArray's hot
+paths (field access, iteration) end in SmartString output.
 
 In [interactivetools-com/SmartString](https://github.com/interactivetools-com/SmartString):
 

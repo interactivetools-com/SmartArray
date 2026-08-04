@@ -121,11 +121,6 @@ the docs - IDEs show a strikethrough with the replacement.
   `$row->missing->or('n/a')` on a raw array throws the standard
   undefined-method Error instead of returning an HTML-encoding SmartString.
   Raw fallbacks use `??`. HTML mode is unchanged.
-- `isset($array['key'])` and `empty($array['key'])` follow `$onOffsetAccess`
-  like reads, writes, and `unset()` - notice by default, exception in
-  `'throw'` mode. Existence checks were the one silent form of the deprecated
-  `[]` syntax. Property-syntax checks (`isset($array->key)`) stay
-  signal-free.
 - `set()`, `->key = $value`, and array assignment unwrap Smart values
   (SmartString, SmartArray, SmartNull) instead of throwing, so values copy
   between arrays in any mode without calling `->value()` first. SmartNull
@@ -168,10 +163,8 @@ the docs - IDEs show a strikethrough with the replacement.
   TypeError that named library internals. `unset()` and `isset()` already
   worked this way.
 - Array-syntax deprecation notices suggest one replacement style across reads,
-  writes, `isset()`, and `unset()`: `->key` and `->key = $value` for
-  property-safe names, `->{0}` for integer keys, `->{'users.id'}` for other
-  keys. Reads used to suggest `->get(0)` while existence checks suggested
-  `->{0}`, so one `empty()` call printed two notices with different advice.
+  writes, and `unset()`: `->key` and `->key = $value` for property-safe
+  names, `->{0}` for integer keys, `->{'users.id'}` for other keys.
   Null and `''` keys suggest `->get('')` / `->set('', $value)` - the brace
   form is a fatal error for an empty property name.
 - Unknown methods on `SmartNull` throw the same `Error` as the rest of the

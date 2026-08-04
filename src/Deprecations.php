@@ -51,8 +51,10 @@ trait Deprecations
      * `$array->key` for reads, `$array->key = $value` for writes, and brace
      * syntax (`$array->{'users.id'}`) for keys property syntax can't type. This setting
      * controls how the library signals that deprecation at runtime. It covers
-     * reads, writes, unset(), and isset()/empty() checks alike; only the
-     * property forms (`$array->key`, `isset($array->key)`) are signal-free.
+     * reads, writes, and unset(); existence checks (offsetExists) are signal-free
+     * because PHP also calls offsetGet() for `??` and empty(), which carries the
+     * one notice. Property forms (`$array->key`, `isset($array->key)`) are always
+     * signal-free.
      *
      *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
      *                by PHP's error handling. Use for legacy codebases mid-migration.
@@ -438,7 +440,9 @@ trait Deprecations
      */
     public function offsetExists(mixed $offset): bool
     {
-        $this->triggerArrayAccessDeprecation($offset, 'exists');
+        // No notice here: PHP calls offsetExists() then offsetGet() for `??` and empty(),
+        // and offsetGet() already notifies, so one here would print every message twice.
+        // A bare isset() with no read stays silent; any access that reads data notifies.
         return isset($this->data[$offset]);
     }
 

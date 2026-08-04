@@ -20,8 +20,9 @@ use Throwable;
  * Covers the full matrix: modes (notify/log/throw) x operations (offsetGet,
  * offsetSet, append, offsetUnset, offsetExists via isset() and empty()), the
  * exact suggestion text for each key shape, and the invalid-mode error. Also
- * pins what must stay signal-free: property syntax and the library's own
- * internal element access.
+ * pins what must stay signal-free: property syntax, existence checks
+ * (offsetExists - the read carries the notice for `??` and empty()), and the
+ * library's own internal element access.
  *
  * Every test swaps the static through withOffsetAccess(), which restores it in a
  * finally block so a failure here cannot poison other test files.
@@ -68,18 +69,19 @@ class GlobalSettingsTest extends SmartArrayTestCase
             'unset int key'           => [function (SmartArrayBase $sa) { unset($sa[0]); },          ["Replace [0] with ->{0}"]],
             'unset invalid prop name' => [function (SmartArrayBase $sa) { unset($sa['users.id']); }, ["Replace ['users.id'] with ->{'users.id'}"]],
 
-            // offsetExists via isset(): one call, whether or not the key is there
-            'isset string key'        => [fn(SmartArrayBase $sa) => isset($sa['name']),     ["Replace ['name'] with ->name"]],
-            'isset int key'           => [fn(SmartArrayBase $sa) => isset($sa[0]),          ["Replace [0] with ->{0}"]],
-            'isset invalid prop name' => [fn(SmartArrayBase $sa) => isset($sa['users.id']), ["Replace ['users.id'] with ->{'users.id'}"]],
-            'isset missing key'       => [fn(SmartArrayBase $sa) => isset($sa['zzz']),      ["Replace ['zzz'] with ->zzz"]],
+            // offsetExists via isset(): silent - PHP also calls offsetGet() for `??` and
+            // empty(), which carries the one notice, so a notice here would double every
+            // message. A bare isset() gives no signal but still returns the right answer.
+            'isset string key'        => [fn(SmartArrayBase $sa) => isset($sa['name']),     []],
+            'isset int key'           => [fn(SmartArrayBase $sa) => isset($sa[0]),          []],
+            'isset invalid prop name' => [fn(SmartArrayBase $sa) => isset($sa['users.id']), []],
+            'isset missing key'       => [fn(SmartArrayBase $sa) => isset($sa['zzz']),      []],
 
-            // offsetExists via empty(): PHP calls offsetExists, then offsetGet when the key exists,
-            // so an existing key signals twice for one empty() check - both notices give the
-            // same suggestion (reads and existence checks share one suggestion style)
-            'empty existing key'      => [fn(SmartArrayBase $sa) => empty($sa['name']), ["Replace ['name'] with ->name", "Replace ['name'] with ->name"]],
-            'empty int key'           => [fn(SmartArrayBase $sa) => empty($sa[0]),      ["Replace [0] with ->{0}", "Replace [0] with ->{0}"]],
-            'empty missing key'       => [fn(SmartArrayBase $sa) => empty($sa['zzz']),  ["Replace ['zzz'] with ->zzz"]],
+            // offsetExists via empty(): offsetExists is silent, then PHP calls offsetGet
+            // when the key exists - one notice for existing keys, none for missing ones
+            'empty existing key'      => [fn(SmartArrayBase $sa) => empty($sa['name']), ["Replace ['name'] with ->name"]],
+            'empty int key'           => [fn(SmartArrayBase $sa) => empty($sa[0]),      ["Replace [0] with ->{0}"]],
+            'empty missing key'       => [fn(SmartArrayBase $sa) => empty($sa['zzz']),  []],
         ];
     }
 
@@ -140,7 +142,7 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertTrue($issetName);
         $this->assertFalse($issetMissing);
         $this->assertSame(['name' => 'Bob', '' => 'blank', 0 => 'zero', 'city' => 'Vancouver', 1 => 'appended'], $sa->toArray());
-        $this->assertSame(6, substr_count($output, "\nDeprecated: "), 'one notice per offset operation');
+        $this->assertSame(4, substr_count($output, "\nDeprecated: "), 'one notice per read/write; isset checks are silent');
     }
 
     //endregion
@@ -190,8 +192,12 @@ class GlobalSettingsTest extends SmartArrayTestCase
             fn() => $this->captureOutput(fn() => $this->catchThrowable(fn() => $operation($sa)))
         ));
 
-        $this->assertInstanceOf(RuntimeException::class, $thrown);
-        $this->assertSame($expectedMessages[0] . ' in FILE:LINE.', $this->normalizeCaller($thrown->getMessage()));
+        if ($expectedMessages === []) {
+            $this->assertNull($thrown, 'signal-free operations run normally in throw mode');
+        } else {
+            $this->assertInstanceOf(RuntimeException::class, $thrown);
+            $this->assertSame($expectedMessages[0] . ' in FILE:LINE.', $this->normalizeCaller($thrown->getMessage()));
+        }
         $this->assertSame('', $output, 'throw mode replaces the notice, it does not add to it');
         $this->assertSame([], $deprecations, 'throw mode exits before trigger_error()');
     }
@@ -287,7 +293,7 @@ class GlobalSettingsTest extends SmartArrayTestCase
                 'set'    => function () use ($sa) { $sa['city'] = 'Vancouver'; },
                 'append' => function () use ($sa) { $sa[] = 'appended'; },
                 'unset'  => function () use ($sa) { unset($sa['name']); },
-                'isset'  => fn() => isset($sa['name']),
+                // no 'isset' row: offsetExists is signal-free and never consults the setting
             ];
 
             foreach ($operations as $label => $operation) {
@@ -431,12 +437,14 @@ class GlobalSettingsTest extends SmartArrayTestCase
 
         $this->assertTrue($exists);
         $this->assertSame([], $sa->toArray());
+
+        // One notice, from the unset - the isset is signal-free
         $this->assertSame(
-            "\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n",
+            "\nDeprecated: Replace [] with ->get('') in FILE:LINE.\n",
             $this->normalizeCaller($output),
         );
         $this->assertSame(
-            ["Replace [] with ->get('') in FILE:LINE.", "Replace [] with ->get('') in FILE:LINE."],
+            ["Replace [] with ->get('') in FILE:LINE."],
             $this->normalizeCaller($deprecations),
         );
     }
@@ -444,11 +452,11 @@ class GlobalSettingsTest extends SmartArrayTestCase
     //endregion
     //region Nested chains
 
-    public function testNestedIssetChainSignalsThreeTimes(): void
+    public function testNestedIssetChainSignalsOnce(): void
     {
-        // isset($sa['user']['name']) reports ['user'] twice - PHP checks the outer key
-        // with offsetExists, then reads it with offsetGet to reach the inner one. That
-        // call sequence is PHP's, not ours; all notices agree on the suggestion.
+        // isset($sa['user']['name']): PHP checks the outer key with offsetExists
+        // (silent), reads it with offsetGet (the one notice) to reach the inner
+        // offsetExists (silent). That call sequence is PHP's, not ours.
         $sa = SmartArray::new(['user' => ['name' => 'Bob']]);
 
         [$exists, $deprecations] = $this->withOffsetAccess('log', fn() => $this->captureDeprecations(
@@ -456,11 +464,7 @@ class GlobalSettingsTest extends SmartArrayTestCase
         ));
 
         $this->assertTrue($exists);
-        $this->assertSame([
-            "Replace ['user'] with ->user in FILE:LINE.",
-            "Replace ['user'] with ->user in FILE:LINE.",
-            "Replace ['name'] with ->name in FILE:LINE.",
-        ], $this->normalizeCaller($deprecations));
+        $this->assertSame(["Replace ['user'] with ->user in FILE:LINE."], $this->normalizeCaller($deprecations));
     }
 
     public function testNestedReadChainSignalsOncePerLevel(): void

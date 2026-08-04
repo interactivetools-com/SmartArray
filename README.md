@@ -7,12 +7,12 @@ Reading this on the web instead? Same file:
 https://github.com/interactivetools-com/SmartArray/blob/main/docs/ai-reference.md
 -->
 
-# SmartArray: Chainable Arrays with XSS-Safe Output for PHP
+# SmartArray: Chainable Collections That HTML-Encode Themselves
 
-SmartArray wraps PHP arrays (usually database rows) in chainable collection
-methods, with an HTML mode for templates: fields HTML-encode themselves when
-echoed, so output is XSS-safe by default rather than depending on an encoding
-call on every line.
+SmartArray wraps your database rows so template code gets shorter and safer
+at once: filter, sort, and group with chainable methods, and echo fields
+directly. Fields HTML-encode themselves the moment you output them, so a
+forgotten `htmlspecialchars()` can't become an injection.
 
 Instead of writing code like this:
 

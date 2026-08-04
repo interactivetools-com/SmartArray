@@ -1,7 +1,7 @@
 {
     "name": "itools/smartarray",
-    "description": "Enhanced PHP arrays with built-in HTML encoding and chainable collection methods",
-    "keywords": ["SmartString", "array", "chainable", "collection", "encoding", "escape", "filter", "fluent", "groupBy", "html", "implode", "iterable", "manipulation", "map", "pluck", "sanitize", "sort", "unique", "where", "xss"],
+    "description": "XSS-safe collections for PHP templates: database rows with fields that HTML-encode themselves, plus chainable filtering, sorting, and grouping",
+    "keywords": ["php", "array", "arrays", "collection", "database-rows", "chainable", "fluent", "html", "html-encoding", "escape", "sanitize", "xss", "security", "template", "filter", "where", "sort", "groupby", "indexby", "column", "smartstring"],
     "type": "library",
     "homepage": "https://github.com/interactivetools-com/SmartArray",
     "license": "MIT",

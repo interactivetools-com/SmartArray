@@ -38,6 +38,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private bool $rowsOnly = true;
 
+    /**
+     * True once any child SmartArray has been stored, so toArray() can hand back
+     * internal data as-is (copy-on-write) when there are no children to convert.
+     * Never cleared on unset: a stale true only means the slower, always-correct
+     * element-by-element rebuild.
+     */
+    private bool $hasRows = false;
+
     //endregion
     //region Position Properties
 
@@ -158,6 +166,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $child->isFirst    = $position === 1;
                 $child->isLast     = $position === $count;
                 $this->data[$key]  = $child;
+                $this->hasRows     = true;
                 continue;
             }
 
@@ -273,6 +282,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             else {
                 $this->data[$key] = $value;
             }
+            $this->hasRows = true;
             return;
         }
 
@@ -560,6 +570,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function toArray(): array
     {
+        // Flat arrays (no child rows) hand back internal data as-is: PHP arrays are
+        // copy-on-write, so this is O(1) and callers can't affect internal storage
+        if (!$this->hasRows) {
+            return $this->data;
+        }
+
         // Future options: We could add a default arg $smartStringsToValues = true to allow SmartStrings to be returned as objects
         $array = [];
         foreach ($this->data as $key => $value) {  // $this->data so getIterator doesn't convert to SmartStrings

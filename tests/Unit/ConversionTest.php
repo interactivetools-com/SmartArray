@@ -292,6 +292,20 @@ class ConversionTest extends SmartArrayTestCase
         $this->assertSame([], $class::new([])->toArray());
     }
 
+    #[DataProvider('modeProvider')]
+    public function testToArrayResultIsIndependentOfInternalStorage(string $class): void
+    {
+        // Flat arrays hand back internal data directly (copy-on-write), so a
+        // caller mutating the result must never reach internal storage
+        $sa = $class::new(['name' => 'Amy', 'age' => 30]);
+
+        $array         = $sa->toArray();
+        $array['name'] = 'Changed';
+        unset($array['age']);
+
+        $this->assertSame(['name' => 'Amy', 'age' => 30], $sa->toArray());
+    }
+
     //endregion
     //region getRawValue()
 

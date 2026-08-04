@@ -252,7 +252,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      */
     public function __call($name, array $arguments): mixed
     {
-        if (!method_exists(SmartArrayBase::class, $name) && method_exists(SmartString::class, $name)) {
+        // SmartString methods only delegate in HTML mode: raw values are plain scalars
+        // with no methods, so a miss answers SmartString calls the same way - with the
+        // standard undefined-method Error
+        if ($this->useSmartStrings && !method_exists(SmartArrayBase::class, $name) && method_exists(SmartString::class, $name)) {
             return SmartString::new(null)->$name(...$arguments);
         }
         return $this->useSmartStrings

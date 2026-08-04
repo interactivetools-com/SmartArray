@@ -224,10 +224,9 @@ class SmartNullTest extends SmartArrayTestCase
     //endregion
     //region Method delegation: SmartString methods
 
-    #[DataProvider('modeProvider')]
-    public function testSmartStringOnlyMethodsDelegateToANullSmartString(string $class): void
+    public function testSmartStringOnlyMethodsDelegateToANullSmartStringInHtmlMode(): void
     {
-        $smartNull = $this->smartNullFrom($class);
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
 
         $trimmed = $smartNull->trim();
         $this->assertInstanceOf(SmartString::class, $trimmed);
@@ -238,15 +237,30 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame('n/a', $fallback->value());
     }
 
-    #[DataProvider('modeProvider')]
-    public function testSmartStringTypeCastsReturnEmptyScalars(string $class): void
+    public function testSmartStringTypeCastsReturnEmptyScalarsInHtmlMode(): void
     {
-        $smartNull = $this->smartNullFrom($class);
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
 
         $this->assertSame('', $smartNull->string());
         $this->assertSame(0, $smartNull->int());
         $this->assertSame(0.0, $smartNull->float());
         $this->assertFalse($smartNull->bool());
+    }
+
+    public function testSmartStringMethodsThrowInRawMode(): void
+    {
+        // Raw values are plain scalars with no methods, so a miss answers
+        // SmartString calls with the same Error as any unknown method
+        $smartNull = $this->smartNullFrom(SmartArray::class);
+
+        foreach (['trim', 'or', 'string'] as $method) {
+            try {
+                $smartNull->$method('n/a');
+                $this->fail("expected an Error from ->$method()");
+            } catch (Error $e) {
+                $this->assertStringStartsWith("Call to undefined method SmartArray->$method(), ", $e->getMessage());
+            }
+        }
     }
 
     //endregion

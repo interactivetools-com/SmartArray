@@ -45,49 +45,6 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > Regex: `(new SmartArray\w*|SmartArray\w*::new)\([^)]*(true|false)\)` - also search `useSmartStrings`
 
-### Exception class changed on load() field-name errors
-
-> `load()` with an invalid-character field name now throws
-> `InvalidArgumentException` (was `RuntimeException`), matching the
-> empty-field-name check - both are argument problems. The other `load()`
-> setup errors (no handler, non-callable handler, called on a record set)
-> still throw `RuntimeException`.
->
-> ```php
-> try { $user->load('bad.field'); }
-> catch (RuntimeException $e)         { ... }  // before
-> catch (InvalidArgumentException $e) { ... }  // after
-> ```
->
-> Fix:
->
-> - Search for catch blocks near `->load(` that expect `RuntimeException`
->   for bad field names and catch `InvalidArgumentException` instead
->
-> Search: `catch (RuntimeException`
-
-### Writing to a missing row or field throws
-
-> Writing to a `SmartNull` - the placeholder returned for a missing key or an
-> empty query result - now always throws, including property writes that 2.x
-> silently accepted:
->
-> ```php
-> $row = DB::selectOne('users', 999);   // no such record: $row is a SmartNull
-> $row->_id = 123;                      // 2.x: silently held the value
->                                       // now: RuntimeException "Cannot set values on SmartNull..."
-> ```
->
-> The old behavior looked like it worked but the object still reported
-> `isEmpty()` true and the value never reached any real row. Check the record
-> exists before decorating it:
->
-> ```php
-> if ($row->isNotEmpty()) {
->     $row->_id = 123;
-> }
-> ```
-
 ### Removed methods
 
 > Undocumented methods with no found uses were removed:

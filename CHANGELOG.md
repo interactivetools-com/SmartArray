@@ -1,72 +1,211 @@
 # SmartArray Changelog
 
-> **Upgrading?** Read each version section between your version and the
-> target - tagged releases roll up every change since the previous tag.
+> **Upgrading?** See [UPGRADING.md](UPGRADING.md) for the checks that matter,
+> per version - tagged releases roll up every change since the previous tag.
 > Versions bundled with CMS Builder are marked on their sections.
 
 ## [3.0.0] - [UNRELEASED]
 
 > **Bundled with CMS Builder v3.85**
 
+The headlines: building arrays is about 2.9x faster and `toArray()` about 3x.
+Everything else is hardening and fixes.
+
 ### Security
-- Missing-key warnings and array-syntax deprecation notices HTML-encode the key before echoing it. With a dynamic key (`->get($_GET['sort'])`, `$arr[$_GET['sort']]`), a key containing HTML reached the browser unencoded - a reflected XSS vector. The `trigger_error()` copy carries the same encoded key.
-- `json_encode($smartArray)` also substitutes malformed UTF-8 in keys with � (U+FFFD), not just values - one corrupt byte in a key no longer makes it return false and lose the whole document.
+
+- Missing-key warnings and array-syntax deprecation notices HTML-encode the
+  key before echoing it. With a dynamic key (`->get($_GET['sort'])`,
+  `$arr[$_GET['sort']]`), a key containing HTML reached the browser
+  unencoded - a reflected XSS vector. The `trigger_error()` copy carries the
+  same encoded key.
+- `json_encode($smartArray)` substitutes malformed UTF-8 in keys with �
+  (U+FFFD), not just values - one corrupt byte in a key no longer makes it
+  return false and lose the whole document.
 
 ### Added
-- `where($field)` and `whereNot($field)` with just a field name filter by PHP's `empty()` rule: `where('featured')` keeps rows where the field is non-empty, `whereNot('featured')` keeps the rest, and every row lands in exactly one of the two. Previously a single-argument `where()` silently ran as `where($field, null)` (a loose match against NULL) because the mode subclasses forwarded a default second argument; the forwarding is fixed so the one- and two-argument forms are detected correctly.
-- `at($index)` - new name for `nth()`: get an element by position, zero-based, negative indices count from the end. Matches JavaScript's `Array.at()`. `$row->key` is by key, `at()` is by position.
-- `columnAt($index)` - new name for `pluckNth()`: get the column at a position from each row, ignoring key names. `column()` is by key, `columnAt()` is by position.
 
-### Changed
-- Missing-key warnings now fire only on rows inside a result set, where keys are column names and a miss is almost always a typo. Lookups on top-level and derived collections (`indexBy()`/`column()` maps, standalone arrays) render blank silently - a missing id or category there is a normal no-match, not a mistake - so fallbacks chain cleanly: `$authorById->{$id}->or('Unknown Author')`. Method-argument checks (`where('typo')`) still warn everywhere.
-- `get()` and `at()` now unwrap Smart arguments, so keys read from another array work directly: `$users->get($article->author_id)` no longer needs `->value()` first. Matches how `set()` and `get()` defaults already unwrap. Unwrapped keys follow PHP array-key rules (null reads key `''`, bool/float truncate to int).
-- `$arr[null]` (deprecated `[]` syntax) now reads key `''` like a plain PHP array, instead of printing a misleading `Replace []` suggestion and then throwing a TypeError that named library internals. `unset()` and `isset()` already worked this way.
-- All writes to a `SmartNull` now throw the same "Cannot set values on SmartNull" `RuntimeException`: property writes (previously created a silent dynamic property that shadowed chaining) and `->set()` (previously delegated to a throwaway empty array, silently discarding the value) now match the existing `['key'] =` guard.
-- `SmartArrayRaw::new($data, true)` now throws like `SmartArray::new($data, true)` instead of silently dropping the boolean and returning raw, unencoded values.
-- The string-conversion warning names the actual class (`Can't convert SmartArrayHtml to string` on HTML arrays) and the missing-brace hint ends with a newline so it no longer runs into the "Occurred in" trace.
-- `load()` accepts a column literally named `"0"` (the blank-name check used `empty()`), and a handler returning the wrong shape throws `Load handler must return [rows, mysqliProperties] or false` before destructuring, so no stray "Undefined array key 1" PHP warning leaks from the library.
-- `asRaw()` and `asHtml()` on a row keep its position metadata, so `position()`, `isFirst()`, and `isLast()` answer the same before and after converting. Previously conversion reset them (position 0, both flags false) - the same row, asked the same question, silently changed its answer.
-- Method calls on a `SmartNull` keep the source's mysqli metadata, root pointer, and load handler, matching its `asRaw()`/`asHtml()`. Previously chains through a missing key answered `mysqli()` with `[]` and `root()` with a throwaway empty array.
-- `print_r()` and `var_dump()` now show just the array data, like dumping a plain array. The injected pseudo-properties (the README help pointer and the `useSmartStrings` flag) are gone - the class name PHP prints on every dumped object already identifies the mode, and `var_dump()` rendered the fake entries as broken-looking keys. Use `->debug()` for exact types and metadata. `SmartNull` dumps as `[value] =>` instead of exposing its internal properties. Matches the same change in SmartString 3.0.0.
-- Deprecated method names (`toRaw()`, `toHtml()`, `withSmartStrings()`, `enableSmartStrings()`, `noSmartStrings()`, `disableSmartStrings()`, `isMultipleOf()`, plus `smartMap()` and `chunk()`) are now real declared methods marked `@deprecated`, organized by deprecation stage in one `Deprecations` trait, instead of `__call()` shims. IDEs now show strikethroughs with the replacement, `method_exists()` reports them, and calls skip `__call()` dispatch. Same behavior and deprecation notices as before.
-- `set()`, `->key = $value`, and array assignment now unwrap Smart values (SmartString, SmartArray, SmartNull) instead of throwing, so values can be copied between arrays in any mode without calling `->value()` first. SmartNull stores as null; nested SmartArrays convert to the target array's mode. Matches how `where()`, `contains()`, and `merge()` already treat Smart inputs.
-- `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` now throw like the constructors do, instead of silently ignoring the boolean. Old code that passed `true` expecting auto-encoding was silently getting raw, unencoded values - now it fails at the call site with the class to use instead. Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a deprecation and proceed.
-- `sortBy()` second parameter renamed `$type` → `$flags` - it always held PHP sort flags, and now matches `sort()` and PHP's own sort functions. Affects named-argument calls only: `sortBy('name', flags: SORT_NATURAL)`.
-- `column(null)` and `column(null, null)` now match PHP's `array_column()`: whole rows renumbered from 0, instead of throwing "unexpected arguments"
-- Array-syntax deprecation notices suggest one replacement style across reads, writes, `isset()`, and `unset()`: `->key` and `->key = $value` for property-safe names, `->{0}` for integer keys, `->{'users.id'}` for other keys. Reads used to suggest `->get(0)` while existence checks suggested `->{0}`, so one `empty()` call printed two notices with different advice, and writes suggested the now-deprecated `->set()`. Null and `''` keys are the exception and suggest `->get('')` / `->set('', $value)` - the brace form is a fatal error for an empty property name.
-- `isset($array['key'])` and `empty($array['key'])` now follow `$onOffsetAccess` like reads, writes, and `unset()` - notice by default, exception in `'throw'` mode. Existence checks were the one silent form of the deprecated `[]` syntax; if `[]` support is removed in a future version, `isset()` on the object would silently return false instead of erroring, so these call sites need migrating with the rest. Property-syntax checks (`isset($array->key)`) are unaffected and stay signal-free. Internal existence checks now call `array_key_exists()` directly, removing two method calls from every `get()`.
-- `isset()`, `empty()`, and `??` treat a stored null as missing, matching plain PHP arrays: on a NULL column, `isset($row->field)` is now false and `$row->field ?? 'none'` returns `'none'`. Previously they answered "does the column exist", so in HTML mode `??` fallbacks never fired on NULL columns (the wrapped null echoed as `""`). Bracket syntax (`isset($row['field'])`) matches. Direct access is unchanged: `$row->field` still returns the stored null, wrapped in HTML mode, with no warning. Ask `$row->keys()->contains('field')` when you need "does the key exist, even if NULL". Note `??` substitutes its fallback before the library runs, so the fallback skips HTML encoding - use `->or()` for display fallbacks that carry user data. See UPGRADING.md.
-- Array construction is ~2.9x faster (local benchmark, 25-row record set: 19.0 → 6.6 microseconds). Internal properties assign from a fixed key list instead of `property_exists()` checks per key; all-scalar rows (typical database rows) clone a shared template child and assign their data in one copy-on-write step instead of running the constructor and storing field by field; scalars store directly in the constructor loop instead of dispatching through `setElement()`. The fixed key list also means constructor `$properties` can no longer name arbitrary internal properties like `$data` - unknown keys are ignored, same as before. One visible side effect: deprecated `SmartArrayRaw` logs its constructor deprecation twice per result set (outer array + row template) instead of once per row.
-- `toArray()` is ~3x faster: arrays with no child rows hand back internal data as one copy-on-write assignment instead of rebuilding element by element, and record sets get the same win per row inside the recursion (flat 4-field row: 81 → 26 ns; 25-row set: 2.0 → 0.6 microseconds, local benchmark). Callers can't reach internal storage - PHP copies on first write.
-- `foreach` is 1.2-1.3x faster when nothing needs wrapping: `getIterator()` returns a C-level `ArrayIterator` in raw mode and for record sets where every value is a row, instead of stepping through a generator per element. HTML-mode arrays with scalar values keep the wrapping generator, so foreach yields SmartStrings exactly as before.
-- `help()` and `debug()` print plain text on the command line instead of wrapping output in literal `<xmp>` tags. Terminal detection checks `PHP_SAPI` plus two fallbacks (Windows console `SESSIONNAME`, missing `SCRIPT_NAME`) because some hosts' CGI builds misreport SAPI. Web responses are unchanged. Matches SmartString.
-- `or404()` outputs `<html>` instead of `<html lang>` - an empty `lang` reads as an invalid value to accessibility checkers, and the message language is caller-supplied so it can't be declared. Matches SmartString.
-- `orDie()` and `or404()` now exit with status 1 instead of 0, so shell scripts and cron jobs see the failure. Output is unchanged. Matches SmartString.
-- `load()` with an invalid-character field name throws `InvalidArgumentException` (was `RuntimeException`), matching the empty-field-name check - both are argument problems. The other `load()` setup errors (no handler, non-callable handler, called on a record set) still throw `RuntimeException`.
-- Clearer messages for two exceptions: `load()` with no handler now explains handlers come from the database layer (was "No loadHandler property is defined"), and writing to a `SmartNull` now says the value came from a missing key or empty result (was "Cannot set values on SmartNull"). The unsupported-type message from `set()` no longer prefixes the library's internal method name.
-- Raw-mode arrays no longer answer SmartString methods on missing keys: `$row->missing->or('n/a')` on a raw array throws the standard undefined-method Error instead of returning an HTML-encoding SmartString. Raw stored values never had these methods (chaining `->or()` on a stored string was already a fatal), so a miss was the one path that silently produced encoded output in a raw array. HTML mode is unchanged - SmartNull still delegates SmartString methods so chains through a missing key keep working. Raw fallbacks use `??`.
-- Unknown methods on `SmartNull` now throw the same `Error` as the rest of the library - method name, "did you mean" hint, caller's file and line - instead of `InvalidArgumentException("Method 'x' not found")`. Chains from a missing key now fail with the same message quality as everything else.
+- `where($field)` and `whereNot($field)` with just a field name filter by
+  PHP's `empty()` rule: `where('featured')` keeps rows where the field is
+  non-empty, `whereNot('featured')` keeps the rest, and every row lands in
+  exactly one of the two. The one-argument form previously ran as
+  `where($field, null)`, a loose match against NULL.
+
+### Performance
+
+- Building arrays is ~2.9x faster (25-row record set: 19.0 → 6.6
+  microseconds), `toArray()` is ~3x faster (flat 4-field row: 81 → 26 ns),
+  and `foreach` is 1.2-1.3x faster when no value needs wrapping. Numbers and
+  how the speedups work: [docs/performance.md](docs/performance.md)
+
+### Renamed
+
+Old names keep working - nothing to update. IDEs like PHPStorm show them in
+strikethrough and offer a one-click rename.
+
+| Old          | New          | Notes                                                          |
+|--------------|--------------|----------------------------------------------------------------|
+| `nth()`      | `at()`       | by position, matching JavaScript's `Array.at()`; `$row->key` is by key |
+| `pluckNth()` | `columnAt()` | by position; `column()` is by key                              |
+| `pluck()`    | `column()`   | same arguments; matches PHP's `array_column()`                 |
+
+### Parameter renames (named arguments only)
+
+These only matter if you write parameter names in calls - calls using an old
+name fail with a clear "Unknown named parameter" Error:
+
+- `sortBy(flags:)` was `type:` - it always held PHP sort flags, and now
+  matches `sort()` and PHP's own sort functions
 
 ### Deprecated
-- `nth($index)` - renamed to `at()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
-- `pluckNth($index)` - renamed to `columnAt()`, same behavior. Still works with no runtime notice - IDEs show a strikethrough with the replacement.
-- `pluck($valueField, $keyField)` - use `column()` instead, same arguments and behavior: `->column('name')`, `->column('name', 'id')`. One name per behavior, and `column()` matches PHP's `array_column()`. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from the docs.
-- `each($callback)` - use a `foreach` loop instead, same behavior in plain PHP. Still works with no runtime notice - IDEs show a strikethrough with the replacement; removed from the docs. It had no measured uses and a foreach is clearer and faster.
-- `sprintf($format)` - use `map()` with an inline format string instead: `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, encode explicitly and convert to raw mode first so the finished HTML isn't re-encoded on output: `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`. The method still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from the docs. It was a second formatting syntax that only saw use inside CMS Builder.
-- `get($key, $default)` - use property access instead: `$row->name`, `$row->{'users.id'}` for keys property syntax can't type, and `$row->name ?? 'n/a'` for missing-key defaults. Still works unchanged with no runtime notice, including the default parameter - IDEs show a strikethrough with the replacement; removed from the docs. It was a second documented way to read every element; the docs now teach one form, and property access is 1.1-1.6x faster. `get('')` remains the only way to read an empty-string key - the brace form is a fatal error.
-- `set($key, $value)` - use property assignment instead: `$row->name = $value`, or `$row->{'users.id'} = $value` for keys property syntax can't type. Still works unchanged with no runtime notice - IDEs show a strikethrough with the replacement; removed from the docs. Deprecated together with `get()` - one form for reads, one for writes. `set('', $value)` remains the only way to write an empty-string key.
-- `help()` - read the docs on GitHub instead; the guide pages and method reference replaced the built-in cheat sheet (`src/help.txt` is deleted). Until removed, `help()` prints links to both. Runtime messages no longer suggest it: the can't-convert-to-string warning ends with "See SmartArray docs for more info" and undefined-method errors say "see the SmartArray docs" - and since these can render on private-labeled production sites, they name the library rather than a URL.
+
+These still work with no runtime notice, they're just no longer featured in
+the docs - IDEs show a strikethrough with the replacement.
+
+- `get($key, $default)` and `set($key, $value)` - use property access
+  instead: `$row->name`, `$row->{'users.id'}` for keys property syntax can't
+  type, `$row->name ?? 'n/a'` for missing-key defaults, and
+  `$row->name = $value` to write. `get('')` and `set('', $value)` remain the
+  only way to reach an empty-string key - the brace form is a fatal error.
+- `each($callback)` - use a `foreach` loop instead, same behavior in plain PHP
+- `sprintf($format)` - use `map()` with an inline format string instead:
+  `$list->map(fn($v) => "<li>$v</li>")`. On SmartArrayHtml, convert to raw
+  mode and encode explicitly so the finished HTML isn't re-encoded on output:
+  `$row->asRaw()->map(fn($v) => "<td>" . htmlspecialchars((string)$v) . "</td>")->implode("\n")`
+- `help()` - read the docs on GitHub instead; the guide pages and method
+  reference replaced the built-in cheat sheet (`src/help.txt` is deleted).
+  Until removed, `help()` prints links to both, and runtime messages point at
+  "the SmartArray docs" rather than suggesting it.
 
 ### Removed
-- `usingSmartStrings()` - use `instanceof SmartArrayHtml` to check the mode; the class is the mode. The method was never documented and had no found uses.
-- `setLoadHandler()` - the handler is passed as the `loadHandler` constructor property, which is how the database layer (ZenDB) has always set it. The setter had no known callers, and it couldn't work on record sets anyway: rows are built during construction and snapshot the handler at that moment, so a handler set afterward never reached them.
+
+- `usingSmartStrings()` - use `instanceof SmartArrayHtml` to check the mode;
+  the class is the mode. Never documented, no found uses.
+- `setLoadHandler()` - pass the handler as the `loadHandler` constructor
+  property, which is how the database layer (ZenDB) has always set it. It
+  couldn't work on record sets anyway: rows snapshot the handler during
+  construction, so one set afterward never reached them.
+
+### Behavior changes
+
+- `isset()`, `empty()`, and `??` treat a stored null as missing, matching
+  plain PHP arrays: on a NULL column `isset($row->field)` is now false and
+  `$row->field ?? 'none'` returns `'none'`. Previously they answered "does
+  the column exist", so in HTML mode `??` fallbacks never fired on NULL
+  columns. Bracket syntax matches, and direct access is unchanged. See
+  [UPGRADING.md](UPGRADING.md).
+- Missing-key warnings fire only on rows inside a result set, where keys are
+  column names and a miss is almost always a typo. Top-level and derived
+  collections (`indexBy()`/`column()` maps, standalone arrays) render blank
+  silently, so fallbacks chain cleanly:
+  `$authorById->{$id}->or('Unknown Author')`. Method-argument checks
+  (`where('typo')`) still warn everywhere.
+- `SmartArray::new($data, true)` and `SmartArrayHtml::new($data, false)` throw
+  like the constructors do, instead of silently ignoring the boolean - code
+  passing `true` expecting auto-encoding was getting raw, unencoded values.
+  Redundant booleans (`false` on SmartArray, `true` on SmartArrayHtml) log a
+  deprecation and proceed. `SmartArrayRaw::new()` matches.
+  See [UPGRADING.md](UPGRADING.md).
+- All writes to a `SmartNull` throw "Cannot set values on SmartNull": property
+  writes (previously created a silent dynamic property that shadowed
+  chaining) and `->set()` (previously discarded the value) now match the
+  existing `['key'] =` guard.
+- Raw-mode arrays no longer answer SmartString methods on missing keys:
+  `$row->missing->or('n/a')` on a raw array throws the standard
+  undefined-method Error instead of returning an HTML-encoding SmartString.
+  Raw fallbacks use `??`. HTML mode is unchanged.
+- `isset($array['key'])` and `empty($array['key'])` follow `$onOffsetAccess`
+  like reads, writes, and `unset()` - notice by default, exception in
+  `'throw'` mode. Existence checks were the one silent form of the deprecated
+  `[]` syntax. Property-syntax checks (`isset($array->key)`) stay
+  signal-free.
+- `set()`, `->key = $value`, and array assignment unwrap Smart values
+  (SmartString, SmartArray, SmartNull) instead of throwing, so values copy
+  between arrays in any mode without calling `->value()` first. SmartNull
+  stores as null; nested SmartArrays convert to the target array's mode.
+- `get()` and `at()` unwrap Smart arguments, so keys read from another array
+  work directly: `$users->get($article->author_id)`. Unwrapped keys follow
+  PHP array-key rules (null reads key `''`, bool/float truncate to int).
+- `print_r()` and `var_dump()` show just the array data, like dumping a plain
+  array - the injected pseudo-properties (the README help pointer and the
+  `useSmartStrings` flag) are gone. Use `->debug()` for exact types and
+  metadata. `SmartNull` dumps as `[value] =>`. Matches SmartString 3.0.0.
+- Deprecated method names are real declared methods marked `@deprecated`
+  instead of `__call()` shims, so IDEs show strikethroughs with the
+  replacement and `method_exists()` reports them. Same behavior and
+  deprecation notices as before.
+- `orDie()` and `or404()` exit with status 1 instead of 0, so shell scripts
+  and cron jobs see the failure. Output is unchanged. Matches SmartString.
 
 ### Fixed
-- `SmartNull->help()` wraps its output in `<xmp>` when no Content-Type header is set, same rule as every other `help()` and `debug()` - PHP's default response type is text/html. Previously it only wrapped when text/html was explicitly set via `header()`, so on typical pages (which never call `header()`) it printed as collapsed, unformatted text.
-- `debug(1)` no longer throws `Unsupported type: Closure` on arrays with a load handler - exactly the database results it exists to inspect. Callables and other objects in the properties block print as their type (`Closure,`) instead.
-- `get($key, $default)` defaults now act like stored values: Smart defaults (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's mode. Previously a SmartNull default threw `InvalidArgumentException`, and cross-mode Smart defaults (a SmartString default on SmartArray, a raw SmartArray default on SmartArrayHtml) threw `TypeError` from the return declarations.
-- `sortBy()` no longer throws a bare `ValueError: Array sizes are inconsistent` when a row is missing the sort field. Missing fields sort first (treated as null for ordering, like MySQL ORDER BY); rows are returned unchanged.
-- `indexBy()` no longer gives rows missing the index field a leftover numeric key that looks like a real field value. Null and missing values now both index under `''` (matching how null field values were already handled), duplicates last-wins.
+
+- `column(null)` and `column(null, null)` match PHP's `array_column()`: whole
+  rows renumbered from 0, instead of throwing "unexpected arguments"
+- `sortBy()` no longer throws a bare `ValueError: Array sizes are
+  inconsistent` when a row is missing the sort field. Missing fields sort
+  first (treated as null for ordering, like MySQL ORDER BY); rows are
+  returned unchanged.
+- `indexBy()` no longer gives rows missing the index field a leftover numeric
+  key that looks like a real field value. Null and missing values both index
+  under `''`, duplicates last-wins.
+- `asRaw()` and `asHtml()` on a row keep its position metadata, so
+  `position()`, `isFirst()`, and `isLast()` answer the same before and after
+  converting (conversion used to reset them to position 0 with both flags
+  false).
+- Method calls on a `SmartNull` keep the source's mysqli metadata, root
+  pointer, and load handler, matching its `asRaw()`/`asHtml()`. Previously
+  chains through a missing key answered `mysqli()` with `[]` and `root()`
+  with a throwaway empty array.
+- `$arr[null]` (deprecated `[]` syntax) reads key `''` like a plain PHP array,
+  instead of printing a misleading `Replace []` suggestion and then throwing a
+  TypeError that named library internals. `unset()` and `isset()` already
+  worked this way.
+- Array-syntax deprecation notices suggest one replacement style across reads,
+  writes, `isset()`, and `unset()`: `->key` and `->key = $value` for
+  property-safe names, `->{0}` for integer keys, `->{'users.id'}` for other
+  keys. Reads used to suggest `->get(0)` while existence checks suggested
+  `->{0}`, so one `empty()` call printed two notices with different advice.
+  Null and `''` keys suggest `->get('')` / `->set('', $value)` - the brace
+  form is a fatal error for an empty property name.
+- Unknown methods on `SmartNull` throw the same `Error` as the rest of the
+  library - method name, "did you mean" hint, caller's file and line -
+  instead of `InvalidArgumentException("Method 'x' not found")`.
+- Clearer messages for two exceptions: `load()` with no handler explains
+  handlers come from the database layer (was "No loadHandler property is
+  defined"), and writing to a `SmartNull` says the value came from a missing
+  key or empty result. The unsupported-type message from `set()` no longer
+  prefixes the library's internal method name.
+- The string-conversion warning names the actual class (`Can't convert
+  SmartArrayHtml to string` on HTML arrays) and the missing-brace hint ends
+  with a newline so it no longer runs into the "Occurred in" trace.
+- `load()` accepts a column literally named `"0"` (the blank-name check used
+  `empty()`), and a handler returning the wrong shape throws `Load handler
+  must return [rows, mysqliProperties] or false` before destructuring, so no
+  stray "Undefined array key 1" PHP warning leaks from the library.
+- `load()` with an invalid-character field name throws
+  `InvalidArgumentException` (was `RuntimeException`), matching the
+  empty-field-name check - both are argument problems. The other `load()`
+  setup errors still throw `RuntimeException`.
+- `debug(1)` no longer throws `Unsupported type: Closure` on arrays with a
+  load handler - exactly the database results it exists to inspect. Callables
+  and other objects in the properties block print as their type (`Closure,`)
+  instead.
+- `get($key, $default)` defaults act like stored values: Smart defaults
+  (SmartString, SmartArray, SmartNull) unwrap and re-wrap for the array's
+  mode. Previously a SmartNull default threw `InvalidArgumentException`, and
+  cross-mode Smart defaults threw `TypeError` from the return declarations.
+- `SmartNull->help()` wraps its output in `<xmp>` when no Content-Type header
+  is set, same rule as every other `help()` and `debug()` - PHP's default
+  response type is text/html. Previously it only wrapped when text/html was
+  set explicitly via `header()`, so on typical pages it printed as collapsed,
+  unformatted text.
+- `help()` and `debug()` print plain text on the command line instead of
+  wrapping output in literal `<xmp>` tags. Terminal detection checks
+  `PHP_SAPI` plus two fallbacks (Windows console `SESSIONNAME`, missing
+  `SCRIPT_NAME`) because some hosts' CGI builds misreport SAPI. Web responses
+  are unchanged. Matches SmartString.
+- `or404()` outputs `<html>` instead of `<html lang>` - an empty `lang` reads
+  as an invalid value to accessibility checkers, and the message language is
+  caller-supplied so it can't be declared. Matches SmartString.
 
 ## [2.7.0] - 2026-07-07
 
@@ -85,7 +224,7 @@
   - `'notify'` - Echoes a visible `Deprecated:` notice + `trigger_error()` (default)
   - `'throw'` - Throws `RuntimeException` (strict mode for new installs)
   - Apps running legacy code can downgrade to `'log'` during migration:
-```php
+    ```php
     SmartArrayBase::$onOffsetAccess = 'log';
     ```
 - `whereNot($field, $value)` - Returns elements where a field does NOT match the value. Inverse of `where()`. Uses loose comparison. Rows with a missing field are kept.
@@ -95,13 +234,13 @@
   - Returns SmartArray (not SmartArrayHtml) to prevent double-encoding
   - Supports `{value}` and `{key}` as readable aliases for sprintf formats `%1$s` and `%2$s`
   - Example usage:
-```php
-  // Table cells (auto HTML-encoded)
-  <tr><?= $row->sprintf("<td>{value}</td>")->implode() ?></tr>
+    ```php
+    // Table cells (auto HTML-encoded)
+    <tr><?= $row->sprintf("<td>{value}</td>")->implode() ?></tr>
 
-  // Select options with keys as values
-  <?= $options->sprintf("<option value='{key}'>{value}</option>")->implode("\n") ?>
-  ```
+    // Select options with keys as values
+    <?= $options->sprintf("<option value='{key}'>{value}</option>")->implode("\n") ?>
+    ```
 - **SmartNull improvements**
   - `SmartNull->value()` - Returns null explicitly, for IDE support and consistency with SmartString
   - `SmartNull->asHtml()` - Converts to empty SmartArrayHtml, preserving query metadata (mysqli, loadHandler)

@@ -39,3 +39,29 @@ in signatures, docblocks, the changelog, and tests.
   was rejected: it breaks lookups, ===, and array functions. The docs
   answer is keys() plus explicit encoding when outputting keys from user
   data.
+
+- **`get()`/`set()` deprecated in favor of property syntax (2026-08-04).**
+  They were a second documented way to read and write every element, so
+  the docs had to teach both. One form for reads (`$row->name`), one for
+  writes (`$row->name = $value`), and property access is 1.1-1.6x faster.
+  `get('')`/`set('', $value)` survive as the only way to reach an
+  empty-string key - the brace form is a fatal error for an empty
+  property name.
+
+- **`each()` and `sprintf()` deprecated (2026-08-04).** `each()` had no
+  measured uses and a plain foreach is clearer and faster. `sprintf()`
+  was a second formatting syntax whose only found uses were inside CMS
+  Builder; `map()` with an inline format string covers it.
+
+- **Raw-mode misses don't answer SmartString methods (2026-08-04).** On a
+  raw array, `$row->missing->or('n/a')` throws instead of returning an
+  HTML-encoding SmartString. Chaining `->or()` on a stored raw string was
+  already fatal, so a miss was the one path that silently produced
+  encoded output in a raw array. HTML mode still delegates, so chains
+  through a missing key keep working there; raw fallbacks use `??`.
+
+- **Runtime messages name the library, not a URL (2026-08-04).** The
+  can't-convert-to-string warning and undefined-method errors say "the
+  SmartArray docs" rather than linking. These can render on
+  private-labeled production sites, where a vendor URL in the page is not
+  ours to put there.

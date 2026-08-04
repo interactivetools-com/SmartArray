@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use Iterator, ArrayAccess, Countable;
+use RuntimeException;
 use Itools\SmartString\SmartString;
 use JsonSerializable;
 use stdClass;
@@ -238,7 +239,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     private function throwCannotSet(): never
     {
-        throw new CallerException("Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first");
+        throw new RuntimeException("Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first");
     }
 
     /**

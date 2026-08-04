@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Integration;
 
-use Itools\SmartArray\CallerException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\SmartNull;
@@ -874,9 +873,9 @@ class DocsExamplesTest extends SmartArrayTestCase
         $this->assertSame(['affected_rows' => 1], $orders->mysqli(), 'the handler supplies fresh query metadata');
     }
 
-    public function testHelpTxtLoadWithoutHandlerThrowsCallerException(): void
+    public function testHelpTxtLoadWithoutHandlerThrows(): void
     {
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("load(): no load handler is set. Handlers are normally provided by the database layer (ZenDB); arrays created directly don't have one.");
 
         SmartArray::new(['id' => 1])->load('orders');

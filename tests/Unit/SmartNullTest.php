@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Unit;
 
 use Error;
-use Itools\SmartArray\CallerException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 
 /**
  * SmartNull: the chainable null object returned for missing elements.
@@ -362,28 +362,14 @@ class SmartNullTest extends SmartArrayTestCase
     //region Writes
 
     #[DataProvider('modeProvider')]
-    public function testArrayWriteThrowsCallerException(string $class): void
+    public function testArrayWriteThrowsRuntimeException(string $class): void
     {
         $smartNull = $this->smartNullFrom($class);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
         $smartNull['key'] = 'value';
-    }
-
-    public function testArrayWriteExceptionReportsTheCallersFileAndLine(): void
-    {
-        $smartNull = $this->smartNullFrom(SmartArray::class);
-
-        try {
-            $smartNull['key'] = 'value';
-            $this->fail('expected a CallerException');
-        } catch (CallerException $e) {
-            $line = __LINE__ - 3;
-            $this->assertSame(__FILE__, $e->getFile());
-            $this->assertSame($line, $e->getLine());
-        }
     }
 
     #[DataProvider('modeProvider')]
@@ -392,7 +378,7 @@ class SmartNullTest extends SmartArrayTestCase
         // All writes throw the same guard: property, set(), and array syntax
         $smartNull = $this->smartNullFrom($class);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
         $smartNull->set('key', 'value');
@@ -407,8 +393,8 @@ class SmartNullTest extends SmartArrayTestCase
 
         try {
             $smartNull->color = 'blue';
-            $this->fail('expected CallerException');
-        } catch (CallerException $e) {
+            $this->fail('expected RuntimeException');
+        } catch (RuntimeException $e) {
             $this->assertSame('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first', $e->getMessage());
         }
 

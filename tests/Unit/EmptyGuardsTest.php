@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
 
-use Itools\SmartArray\CallerException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
@@ -250,12 +249,12 @@ class EmptyGuardsTest extends SmartArrayTestCase
         // PHP reports the script's resolved native path, so match separators on Windows
         $scriptPath = str_replace('/', DIRECTORY_SEPARATOR, dirname(__DIR__) . "/Support/bin/$script");
 
-        $expectedStderr = "class=" . CallerException::class . "\n"
+        $expectedStderr = "class=" . RuntimeException::class . "\n"
                         . "message=orRedirect(): headers already sent in $scriptPath on line $outputLine\n"
                         . "output-line=$outputLine\n"
                         . "status=false";
 
-        $this->assertSame($expectedStderr, $stderr, 'throws CallerException naming the caller file and line, sets no status, and does not redirect');
+        $this->assertSame($expectedStderr, $stderr, 'throws RuntimeException naming the file and line output started on, sets no status, and does not redirect');
         $this->assertSame('output-before-redirect', $stdout);
         $this->assertSame(0, $exitCode);
     }

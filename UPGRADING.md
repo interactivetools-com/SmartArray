@@ -45,30 +45,24 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > Regex: `(new SmartArray\w*|SmartArray\w*::new)\([^)]*(true|false)\)` - also search `useSmartStrings`
 
-### Exception class changed on some developer-mistake throws
+### Exception class changed on load() field-name errors
 
-> Errors caused by misusing the library now all throw `CallerException`
-> (extends `InvalidArgumentException`), which reports your file and line
-> instead of the library's internals. Six of those throws previously used
-> `RuntimeException`, so a `catch (RuntimeException)` around them no longer
-> matches: `load()` with no handler, a non-callable handler, an invalid or
-> empty field name, or called on a record set; `orRedirect()` after headers
-> were sent; and writing to a `SmartNull` (a missing key or empty result).
+> `load()` with an invalid-character field name now throws
+> `InvalidArgumentException` (was `RuntimeException`), matching the
+> empty-field-name check - both are argument problems. The other `load()`
+> setup errors (no handler, non-callable handler, called on a record set)
+> still throw `RuntimeException`.
 >
 > ```php
-> try { $user->load('orders'); }
+> try { $user->load('bad.field'); }
 > catch (RuntimeException $e)         { ... }  // before
 > catch (InvalidArgumentException $e) { ... }  // after
 > ```
 >
-> `orThrow()` still throws `RuntimeException` - that one is part of its
-> contract, unchanged.
->
 > Fix:
 >
-> - Search for catch blocks near `->load(`, `->orRedirect(`, or SmartNull
->   writes and catch `InvalidArgumentException` (or `CallerException`)
->   instead
+> - Search for catch blocks near `->load(` that expect `RuntimeException`
+>   for bad field names and catch `InvalidArgumentException` instead
 >
 > Search: `catch (RuntimeException`
 
@@ -81,7 +75,7 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 > ```php
 > $row = DB::selectOne('users', 999);   // no such record: $row is a SmartNull
 > $row->_id = 123;                      // 2.x: silently held the value
->                                       // now: CallerException "Cannot set values on SmartNull..."
+>                                       // now: RuntimeException "Cannot set values on SmartNull..."
 > ```
 >
 > The old behavior looked like it worked but the object still reported

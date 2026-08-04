@@ -21,7 +21,6 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/vendor/autoload.php';
 
-use Itools\SmartArray\CallerException;
 use Itools\SmartArray\SmartArray;
 
 register_shutdown_function(function () {
@@ -40,7 +39,7 @@ echo "output-before-redirect";
 try {
     $array->orRedirect('/login');
     fwrite(STDERR, "NOT-THROWN\n");
-} catch (CallerException $e) {
+} catch (RuntimeException $e) {
     fwrite(STDERR, "class=" . $e::class . "\n");
     fwrite(STDERR, "message=" . $e->getMessage() . "\n");
 }

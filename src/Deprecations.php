@@ -157,7 +157,7 @@ trait Deprecations
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws CallerException If called on a nested array
+     * @throws InvalidArgumentException If called on a nested array
      */
     #[Deprecated(reason: 'retired - use ->map() with an inline format string')]
     public function sprintf(string $format): SmartArray
@@ -221,7 +221,7 @@ trait Deprecations
             return match (true) {
                 is_scalar($default), is_null($default) => $this->useSmartStrings ? new SmartString($default) : $default,
                 is_array($default)                     => new static($default, $this->getInternalProperties()),
-                default                                => throw new CallerException("Unsupported default value type: " . get_debug_type($default)),
+                default                                => throw new InvalidArgumentException("Unsupported default value type: " . get_debug_type($default)),
             };
         }
 

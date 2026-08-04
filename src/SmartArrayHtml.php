@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
+use InvalidArgumentException;
 use Iterator;
 use Itools\SmartString\SmartString;
 
@@ -39,7 +40,7 @@ class SmartArrayHtml extends SmartArrayBase
         // true is redundant (deprecation only)
         if ($properties === false) {
             self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
-            throw new CallerException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
+            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
         }
         if ($properties === true) {
             self::logDeprecation('Passing true to SmartArrayHtml is deprecated. Just use SmartArrayHtml::new($data)');
@@ -49,7 +50,7 @@ class SmartArrayHtml extends SmartArrayBase
         // Handle deprecated useSmartStrings in array
         if (is_array($properties) && ($properties['useSmartStrings'] ?? true) === false) {
             self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
-            throw new CallerException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
+            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
         }
 
         // Force useSmartStrings to true so values are SmartStrings

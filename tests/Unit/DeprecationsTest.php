@@ -8,7 +8,6 @@ use ArgumentCountError;
 use Closure;
 use Error;
 use InvalidArgumentException;
-use Itools\SmartArray\CallerException;
 use Itools\SmartArray\Deprecations;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
@@ -176,7 +175,7 @@ class DeprecationsTest extends SmartArrayTestCase
     public function testPluckOnFlatArrayNamesPluckInTheError(string $class): void
     {
         // The alias asserts before delegating, so the message says pluck(), not column()
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('pluck(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->pluck('x');
@@ -227,7 +226,7 @@ class DeprecationsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testPluckNthOnFlatArrayNamesPluckNthInTheError(string $class): void
     {
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('pluckNth(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->pluckNth(0);
@@ -299,7 +298,7 @@ class DeprecationsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testSprintfOnNestedArrayThrows(string $class): void
     {
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('sprintf(): Expected a flat array, but got a nested array');
 
         $class::new([['id' => 1]])->sprintf('{value}');
@@ -742,12 +741,12 @@ class DeprecationsTest extends SmartArrayTestCase
             try {
                 SmartArrayRaw::new(['name' => 'Bob'], true);
                 return null;
-            } catch (CallerException $e) {
+            } catch (InvalidArgumentException $e) {
                 return $e;
             }
         });
 
-        $this->assertInstanceOf(CallerException::class, $thrown);
+        $this->assertInstanceOf(InvalidArgumentException::class, $thrown);
         $this->assertSame('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.', $thrown->getMessage());
     }
 

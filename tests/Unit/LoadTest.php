@@ -4,12 +4,13 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Unit;
 
 use Error;
-use Itools\SmartArray\CallerException;
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 
 /**
  * load($field): lazy-loading related data through a handler.
@@ -194,39 +195,24 @@ class LoadTest extends SmartArrayTestCase
     }
 
     //endregion
-    //region Error paths: setup mistakes (CallerException)
+    //region Error paths: setup mistakes (RuntimeException / InvalidArgumentException)
 
     #[DataProvider('modeProvider')]
     public function testLoadWithNoHandlerThrows(string $class): void
     {
         $sa = $class::new(['id' => 1]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("load(): no load handler is set. Handlers are normally provided by the database layer (ZenDB); arrays created directly don't have one.");
 
         $sa->load('products');
-    }
-
-    public function testLoadErrorsReportTheCallersFileAndLine(): void
-    {
-        $sa = SmartArray::new(['id' => 1]);
-
-        try {
-            $expectedLine = __LINE__ + 1;
-            $sa->load('products');
-            $this->fail('expected CallerException');
-        } catch (CallerException $e) {
-            $this->assertSame(__FILE__, $e->getFile(), 'the reported file is the caller, not SmartArrayBase.php');
-            $this->assertSame($expectedLine, $e->getLine());
-            $this->assertStringEndsWith('src/SmartArrayBase.php', str_replace('\\', '/', $e->thrownInFile), 'the real throw site is kept for library debugging');
-        }
     }
 
     public function testLoadWithNonCallableHandlerThrows(): void
     {
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => 'not a function']);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Load handler is not callable');
 
         $sa->load('products');
@@ -236,7 +222,7 @@ class LoadTest extends SmartArrayTestCase
     {
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => [[], []]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Field name is required for load() method.');
 
         $sa->load('');
@@ -264,7 +250,7 @@ class LoadTest extends SmartArrayTestCase
             ['id' => 2, 'name' => 'Row 2'],
         ], ['loadHandler' => fn($row, $field) => [[], []]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot call load() on record set, only on a single row.');
 
         $sa->load('products');
@@ -278,7 +264,7 @@ class LoadTest extends SmartArrayTestCase
         // can only look up scalars. Revisit if a real mixed-row case appears.
         $sa = SmartArray::new(['id' => 1, 'tags' => ['red', 'blue']], ['loadHandler' => fn($row, $field) => [[], []]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot call load() on record set, only on a single row.');
 
         $sa->load('products');
@@ -289,7 +275,7 @@ class LoadTest extends SmartArrayTestCase
         // Validation order: no handler is the root cause worth naming first
         $sa = SmartArray::new([['id' => 1], ['id' => 2]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('load(): no load handler is set.');
 
         $sa->load('bad.field');
@@ -299,7 +285,7 @@ class LoadTest extends SmartArrayTestCase
     {
         $sa = SmartArray::new([['id' => 1], ['id' => 2]], ['loadHandler' => fn($row, $field) => [[], []]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Field name contains invalid characters: bad.field');
 
         $sa->load('bad.field');
@@ -424,7 +410,7 @@ class LoadTest extends SmartArrayTestCase
     {
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $f) => [[], []]]);
 
-        $this->expectException(CallerException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Field name contains invalid characters: $field");
 
         $sa->load($field);

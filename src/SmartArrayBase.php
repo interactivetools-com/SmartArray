@@ -99,22 +99,42 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function __construct(array $array = [], array $properties = [])
     {
-        // Set internal properties from properties array
-        foreach ($properties as $property => $value) {
-            if (property_exists($this, $property)) {
-                $this->{$property} = $value;
-            }
-        }
-        $this->root ??= $this;  // Set root property to self if not already set
+        // Set internal properties from the known keys (a fixed list is faster than
+        // property_exists() per key, and internal storage like $data stays private)
+        $this->useSmartStrings = $properties['useSmartStrings'] ?? $this->useSmartStrings;
+        $this->loadHandler     = $properties['loadHandler']     ?? null;
+        $this->mysqli          = $properties['mysqli']          ?? [];
+        $this->root            = $properties['root']            ?? $this;
+        $this->position        = $properties['position']        ?? 0;
+        $this->isFirst         = $properties['isFirst']         ?? false;
+        $this->isLast          = $properties['isLast']          ?? false;
 
         // Add elements and set position metadata on child SmartArrays
-        $count    = count($array);
-        $position = 0;
+        $count      = count($array);
+        $position   = 0;
+        $childProps = null;
         foreach ($array as $key => $value) {
             $position++;
-            $this->setElement($key, $value);
 
-            // Set position properties on child SmartArrays (rows)
+            // Fast path: scalars and nulls, the bulk of real data (encoded on access by getElement)
+            if (is_scalar($value) || $value === null) {
+                $this->data[$key] = $value;
+                continue;
+            }
+
+            // Nested arrays become child rows; every child gets the same properties, so build the array once
+            if (is_array($value)) {
+                $childProps      ??= $this->getInternalProperties();
+                $child             = new static($value, $childProps);
+                $child->position   = $position;
+                $child->isFirst    = $position === 1;
+                $child->isLast     = $position === $count;
+                $this->data[$key]  = $child;
+                continue;
+            }
+
+            // Rare: Smart values unwrap, unsupported types throw
+            $this->setElement($key, $value);
             $element = $this->data[$key];
             if ($element instanceof self) {
                 $element->position = $position;
@@ -198,8 +218,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private function setElement(int|string|null $key, mixed $value): void
     {
         // Unwrap Smart values (SmartString, SmartArray, SmartNull) to their raw
-        // equivalents; nested arrays then convert to this array's mode below
-        if ($value instanceof SmartBase || $value instanceof SmartString) {
+        // equivalents; nested arrays then convert to this array's mode below.
+        // The is_object() gate keeps the common scalar case to one cheap check.
+        if (is_object($value) && ($value instanceof SmartBase || $value instanceof SmartString)) {
             $value = self::getRawValue($value);
         }
 

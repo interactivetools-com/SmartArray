@@ -42,8 +42,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * metadata like mysqli() on a potentially empty result. Returns raw PHP values
      * on property access (strings, ints, etc.).
      *
-     *     $record = DB::get('users', ['num' => $id])->first()->asRaw();
-     *     $record->name;      // Returns string or null (via SmartNull chaining)
+     *     $record = DB::select('users', ['num' => $id])->first()->asRaw();
+     *     $record->name;      // Returns a string, or SmartNull when no record was found
      *     $record->mysqli();  // Access query metadata even if no results
      *
      * @return SmartArray An empty SmartArray with preserved internal properties
@@ -60,7 +60,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * metadata like mysqli() on a potentially empty result. Returns HTML-safe SmartString
      * objects on property access.
      *
-     *     $record = DB::get('users', ['num' => $id])->first()->asHtml();
+     *     $record = DB::select('users', ['num' => $id])->first()->asHtml();
      *     $record->name;      // Returns SmartString or SmartNull (safe for output)
      *     $record->mysqli();  // Access query metadata even if no results
      *

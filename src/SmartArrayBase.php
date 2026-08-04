@@ -227,7 +227,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns SmartNull if out of bounds. Use $array->key for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
-     *     $max    = $result->first()->at(0)->value(); // Get unaliased column by position
+     *     $max    = $result->first()->at(0); // Get unaliased column by position
      */
     public function at(int|SmartString $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
@@ -644,31 +644,30 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Rows with a null or missing field value index under '' (PHP's array-key
      * form of null). Duplicate values: last row wins.
      *
-     * @param string $field The field name to index the rows by.
+     *     $users = new SmartArray([
+     *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
+     *         ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
+     *         ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
+     *     ]);
      *
+     *     // Single row per key, no duplicates
+     *     $emailToUser = $users->indexBy('email'); // Result:
+     *     [
+     *         'john@example.com' => ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
+     *         'jane@example.com' => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
+     *         'mike@example.com' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
+     *     ]
+     *
+     *     // Single row per key, duplicates overwrite
+     *     $emailToUser = $users->indexBy('city'); // Result:
+     *     [
+     *         'New York'  => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
+     *         'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
+     *     ]
+     *
+     * @param string $field The field name to index the rows by.
      * @return static A new SmartArray indexed by the specified field.
      * @throws InvalidArgumentException If the SmartArray is not nested.
-     *
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]);
-     *
-     * // Single row per key (default), no duplicates
-     * $emailToUser = $users->indexBy('email'); // Result:
-     * [
-     *     'john@example.com' => ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     'jane@example.com' => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     'mike@example.com' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]
-     *
-     * // Single row per key (default), duplicates overwrite
-     * $emailToUser = $users->indexBy('city'); // Result:
-     * [
-     *     'New York'  => ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     'Vancouver' => ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver']
-     * ]
      */
     public function indexBy(string $field): static
     {
@@ -696,28 +695,27 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Rows with a null or missing field value group under '' (PHP's array-key
      * form of null), like SQL GROUP BY keeps a NULL group. No rows are dropped.
      *
-     * @param string $field The field name to group the rows by.
-     *
-     * @return static A new SmartArray grouped by the specified field.
-     * @throws InvalidArgumentException If the SmartArray is not nested.
-     *
-     * $users = new SmartArray([
-     *     ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
-     *     ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     * ]);
-     *
-     * // Multiple rows per key
-     * $cityToUsers = $users->groupBy('city'); // Result:
-     * [
-     *     'New York' => [
+     *     $users = new SmartArray([
      *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
      *         ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
-     *     ],
-     *     'Vancouver' => [
      *         ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
-     *     ],
-     * ]
+     *     ]);
+     *
+     *     // Multiple rows per key
+     *     $cityToUsers = $users->groupBy('city'); // Result:
+     *     [
+     *         'New York' => [
+     *             ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
+     *             ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com', 'city' => 'New York'],
+     *         ],
+     *         'Vancouver' => [
+     *             ['id' => 3, 'name' => 'Mike', 'email' => 'mike@example.com', 'city' => 'Vancouver'],
+     *         ],
+     *     ]
+     *
+     * @param string $field The field name to group the rows by.
+     * @return static A new SmartArray grouped by the specified field.
+     * @throws InvalidArgumentException If the SmartArray is not nested.
      */
     public function groupBy(string $field): static
     {
@@ -738,18 +736,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
      * Use column() for extraction by key; columnAt() is by position.
      *
-     * @param int $index Zero-based position (supports negative indices: -1=last)
-     * @return static A new SmartArray containing the extracted values.
-     *
      * MySQL `SHOW TABLES LIKE 'cms_%'` returns:
      *
-     * [
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_accounts'],
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_settings']
-     *   ['Tables_in_yourDbName (cms_%)' => 'cms_pages'],
-     * ]
+     *     [
+     *         ['Tables_in_yourDbName (cms_%)' => 'cms_accounts'],
+     *         ['Tables_in_yourDbName (cms_%)' => 'cms_settings'],
+     *         ['Tables_in_yourDbName (cms_%)' => 'cms_pages'],
+     *     ]
      *
-     * $tables = $resultSet->columnAt(0);   // Position 0 (first column): Returns ["cms_accounts", "cms_settings", "cms_pages"]
+     *     $tables = $resultSet->columnAt(0);   // Position 0 (first column): Returns ["cms_accounts", "cms_settings", "cms_pages"]
+     *
+     * @param int $index Zero-based position (supports negative indices: -1=last)
+     * @return static A new SmartArray containing the extracted values.
      */
     public function columnAt(int $index): static
     {
@@ -804,16 +802,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * This method works on flat SmartArrays only. For SmartString elements,
      * their original values are used in the resulting string.
      *
-     * @param string $separator The string to use as a separator between elements.
-     *
-     * @return SmartString|string Returns string for SmartArray, SmartString for SmartArrayHtml.
-     * @throws InvalidArgumentException If the SmartArray is nested.
-     *
      *     $arr = SmartArray::new(['apple', 'banana', 'cherry']);
      *     $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
      *
      *     $arr = SmartArrayHtml::new(['apple', 'banana', 'cherry']);
      *     $result = $arr->implode(', '); // Returns SmartString: "apple, banana, cherry"
+     *
+     * @param string $separator The string to use as a separator between elements.
+     * @return SmartString|string Returns string for SmartArray, SmartString for SmartArrayHtml.
+     * @throws InvalidArgumentException If the SmartArray is nested.
      */
     public function implode(string $separator = ''): SmartString|string
     {
@@ -839,12 +836,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Preserves array keys in the returned SmartArray.
      *
-     * @param callable $callback A function/callable to transform each element.
-     *                           Signature if Closure: fn($value, $key) => mixed
-     *                           Signature if non-Closure: fn($value) => mixed
-     *
-     * @return static A new SmartArray containing the transformed elements.
-     *
      *     $arr   = new SmartArray(['apple', 'banana', 'cherry']);
      *     $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
      *     // $upper is now a SmartArray: ['APPLE', 'BANANA', 'CHERRY']
@@ -852,6 +843,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     $nested = new SmartArray([['a' => 1], ['a' => 2]]);
      *     $values = $nested->map(fn(array $item) => $item['a']);
      *     // $values is now a SmartArray: [1, 2]
+     *
+     * @param callable $callback A function/callable to transform each element.
+     *                           Signature if Closure: fn($value, $key) => mixed
+     *                           Signature if non-Closure: fn($value) => mixed
+     * @return static A new SmartArray containing the transformed elements.
      */
     public function map(callable $callback): static
     {
@@ -869,15 +865,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Merges the SmartArray with one or more arrays or SmartArrays.
      * Numeric keys are renumbered, string keys are overwritten by later values.
      *
+     *     $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
+     *     $arr2 = ['b' => 3, 'c' => 4];
+     *     $arr3 = SmartArray::new(['d' => 5]);
+     *
+     *     $result = $arr1->merge($arr2, $arr3);
+     *     // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
+     *
      * @param array|SmartArrayBase ...$arrays Arrays to merge with
      * @return static Returns a new SmartArray with the merged results
-     *
-     * $arr1 = SmartArray::new(['a' => 1, 'b' => 2]);
-     * $arr2 = ['b' => 3, 'c' => 4];
-     * $arr3 = SmartArray::new(['d' => 5]);
-     *
-     * $result = $arr1->merge($arr2, $arr3);
-     * // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
      */
     public function merge(array|SmartArrayBase ...$arrays): static
     {

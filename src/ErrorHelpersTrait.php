@@ -18,8 +18,10 @@ trait ErrorHelpersTrait
     /**
      * Logs a deprecation notice via trigger_error() with the calling file and line number.
      *
-     * The @ suppressor prevents direct output while still allowing custom error handlers
-     * and PHP's built-in error logging to capture the notice.
+     * The @ suppressor mutes PHP's default display and logging. Only a custom error
+     * handler (set_error_handler) receives these notices; without one, nothing is
+     * shown or logged. This is deliberate: deprecation notices are meant for error
+     * handlers that collect them, never for page output.
      */
     protected static function logDeprecation(string $message): void
     {
@@ -34,7 +36,7 @@ trait ErrorHelpersTrait
      * Walks the debug backtrace to find the first frame that isn't in the same
      * directory as the current file, giving us the actual calling code location.
      *
-     * @return array{file: string, line: string, function: string}
+     * @return array{file: string, line: int|string, function: string}
      */
     private static function getExternalCaller(): array
     {

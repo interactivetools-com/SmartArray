@@ -247,7 +247,8 @@ class EmptyGuardsTest extends SmartArrayTestCase
         // The script reports the line it echoed on; the message should name that same line
         $this->assertSame(1, preg_match('/^output-line=(\d+)$/m', $stderr, $matches), "stderr should report the output line: $stderr");
         $outputLine = $matches[1];
-        $scriptPath = dirname(__DIR__) . "/Support/bin/$script";
+        // PHP reports the script's resolved native path, so match separators on Windows
+        $scriptPath = str_replace('/', DIRECTORY_SEPARATOR, dirname(__DIR__) . "/Support/bin/$script");
 
         $expectedStderr = "class=" . CallerException::class . "\n"
                         . "message=orRedirect(): headers already sent in $scriptPath on line $outputLine\n"

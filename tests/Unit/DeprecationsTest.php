@@ -9,7 +9,7 @@ use Closure;
 use Error;
 use InvalidArgumentException;
 use Itools\SmartArray\CallerException;
-use Itools\SmartArray\DeprecatedAliases;
+use Itools\SmartArray\Deprecations;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
@@ -20,11 +20,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 
 /**
- * The DeprecatedAliases trait: old method names, retired methods, and the
+ * The Deprecations trait: old method names, retired methods, and the
  * unknown-method errors.
  *
  * Every alias is a real declared method (method_exists() sees it, IDEs show a
- * strikethrough), sorted into the stage regions of src/DeprecatedAliases.php:
+ * strikethrough), sorted into the stage regions of src/Deprecations.php:
  *
  *     Silent  pluck, nth, pluckNth, each, sprintf, get, set - work, no runtime
  *             signal (get/set behavior is pinned in ReadAccessTest/WriteAccessTest)
@@ -45,7 +45,7 @@ class DeprecationsTest extends SmartArrayTestCase
     {
         // Adding or removing an alias must touch this file
         $methods = [];
-        foreach ((new ReflectionClass(DeprecatedAliases::class))->getMethods() as $method) {
+        foreach ((new ReflectionClass(Deprecations::class))->getMethods() as $method) {
             if ($method->isPublic()) {
                 $methods[] = $method->getName();
             }

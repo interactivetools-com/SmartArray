@@ -23,7 +23,7 @@ use stdClass;
  * Pins storage conversion (arrays and Smart values become mode-correct
  * children, scalars store raw), the deprecation contract for array syntax,
  * and the rule that late writes don't recalculate sibling position metadata.
- * set() is a Silent alias (DeprecatedAliases trait) but keeps full behavior,
+ * set() is a Silent alias (Deprecations trait) but keeps full behavior,
  * so its storage contract stays pinned here alongside __set.
  */
 class WriteAccessTest extends SmartArrayTestCase

@@ -39,7 +39,7 @@ use JetBrains\PhpStorm\Deprecated;
  * Logged, Visible, and Fatal. The default is 'notify', which is why the
  * offsetGet/offsetSet/offsetUnset/offsetExists methods are in the Visible region.
  */
-trait DeprecatedAliases
+trait Deprecations
 {
 
     //region Global Settings

@@ -21,7 +21,7 @@ use stdClass;
  * Pins exact return types per mode (raw scalar vs SmartString, SmartNull vs
  * null) and the warning contract (missing keys warn with the caller's
  * file:line; happy paths and empty arrays stay silent). get() is a Silent
- * alias (DeprecatedAliases trait) but keeps full behavior - including the
+ * alias (Deprecations trait) but keeps full behavior - including the
  * default parameter and Smart-key unwrapping nothing else replicates - so
  * its contract stays pinned here alongside __get.
  */

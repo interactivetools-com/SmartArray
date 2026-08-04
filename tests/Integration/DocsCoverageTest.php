@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Integration;
 
-use Itools\SmartArray\DeprecatedAliases;
+use Itools\SmartArray\Deprecations;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
@@ -19,7 +19,7 @@ use ReflectionMethod;
  *
  * Forward: every public method of SmartArrayBase, SmartArray, and SmartArrayHtml
  * must appear in README.md and src/help.txt. The exempt set is read off the code
- * itself (DeprecatedAliases membership, #[Deprecated], @deprecated, @internal,
+ * itself (Deprecations membership, #[Deprecated], @deprecated, @internal,
  * interface methods, magic methods), so a new public method fails this test until
  * it is documented, and a newly deprecated one stops being required with no test
  * edit. There is no hand-maintained skip list.
@@ -99,13 +99,13 @@ final class DocsCoverageTest extends SmartArrayTestCase
     public function testDeprecatedMethodsAreNotRequired(): void
     {
         $traitMethods = [];
-        foreach ((new ReflectionClass(DeprecatedAliases::class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+        foreach ((new ReflectionClass(Deprecations::class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             $traitMethods[] = $method->getName();
         }
 
         $stillRequired = array_values(array_intersect(self::requiredMethodNames(), $traitMethods));
 
-        $this->assertSame([], $stillRequired, 'Methods declared in DeprecatedAliases should not be required in the docs');
+        $this->assertSame([], $stillRequired, 'Methods declared in Deprecations should not be required in the docs');
     }
 
     public function testInternalMethodsAreNotRequired(): void
@@ -219,17 +219,17 @@ final class DocsCoverageTest extends SmartArrayTestCase
     private static function isExemptFromDocs(ReflectionMethod $method): bool
     {
         return str_starts_with($method->getName(), '__')
-            || self::isDeclaredInDeprecatedAliases($method)
+            || self::isDeclaredInDeprecations($method)
             || $method->getAttributes(Deprecated::class) !== []
             || self::hasDocTag($method, 'deprecated')
             || self::hasDocTag($method, 'internal')
             || self::isInterfacePlumbing($method->getName());
     }
 
-    private static function isDeclaredInDeprecatedAliases(ReflectionMethod $method): bool
+    private static function isDeclaredInDeprecations(ReflectionMethod $method): bool
     {
         static $trait = null;
-        $trait ??= new ReflectionClass(DeprecatedAliases::class);
+        $trait ??= new ReflectionClass(Deprecations::class);
 
         $name = $method->getName();
         if (!$trait->hasMethod($name)) {

@@ -20,7 +20,7 @@ use Itools\SmartString\SmartString;
 abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess, IteratorAggregate, Countable, JsonSerializable
 {
     use ErrorHelpersTrait;
-    use DeprecatedAliases;
+    use Deprecations;
 
     //region Internal Storage
 

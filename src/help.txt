@@ -1,118 +1,116 @@
-SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods
+SmartArray: Chainable Arrays with XSS-Safe Output
 ==========================================================================================
-SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
-It adds powerful features for filtering, mapping, and data manipulation - making common
-array operations simpler, safer, and more expressive.
+SmartArray wraps PHP arrays (usually database rows) in chainable collection methods, with
+an HTML mode where fields encode themselves on output.
 
-Core Concepts
+Access Cheat Sheet
 -------------------
-$obj              = Itools\SmartArray\SmartArray      // Arrays become SmartArray objects (even nested arrays)
-$obj->fieldName   = raw PHP value                    // SmartArray returns raw values (string, int, null, etc.)
-$obj->fieldName   = Itools\SmartString\SmartString   // SmartArrayHtml returns SmartString objects with HTML-encoded output
+$row->name                  Read a field (interpolates in strings: "Hi $row->name")
+$row->{'users.id'}          Braces for keys property syntax can't type (dots, dashes, numeric)
+$row->name = 'Jean'         Write a field (same brace rule)
+$row->phone ?? '(none)'     Fallback for missing keys and stored NULLs (never warns)
+"{$user->bio->textOnly()}"  Chain any SmartString method on fields in HTML mode
+                            (curly braces required for method calls inside strings)
 
-Accessing Elements
--------------------
-foreach ($users as $user) {          // Foreach over a SmartArray just like a regular array
-    echo "Name: $user->name\n";      // SmartString output is automatically HTML-encoded, no need for htmlspecialchars()
+Modes: SmartArrayHtml fields return self-encoding SmartStrings (for web pages); SmartArray
+fields return plain PHP values (for JSON, CSV, email, CLI). Same methods in both; type-hint
+SmartArrayBase to accept either. Missing data renders blank: empty results chain silently,
+and a missing column on a result-set row warns with the key and your file:line.
 
-    // For more complex expressions, curly braces are still required
-    echo "Bio: {$user->bio->textOnly()->maxChars(120, '...')}\n";  // Chain SmartString methods on field values
-}
+Creation & Conversion
+----------------------
+Move between modes and plain arrays. The original values are always preserved.
 
-Original Values
--------------------
-$obj->toArray()                      // Get original array with raw values
-$obj->fieldName->value()             // Get original unencoded field value
-"Bio: {$user->wysiwyg->rawHtml()}"   // Alias for value(), clearer when handling trusted WYSIWYG/HTML content
+SmartArrayHtml::new($array)      Create an HTML-mode collection; nested arrays become rows
+SmartArray::new($array)          Create a raw-mode collection
+->asHtml()                       This collection in HTML mode (same object if already HTML)
+->asRaw()                        This collection in raw mode (same object if already raw)
+->toArray()                      Plain nested PHP array with the original values
+SmartArray::getRawValue($value)  Original value from any Smart object; plain values pass through unchanged
 
-Creating SmartArrays
--------------------
-$data  = SmartArray::new([1, 2, 3]);                        // Raw PHP values for data processing
-$users = SmartArray::new(DB::select('users'));              // Always start with raw data
+Single Elements
+----------------
+Return one element: a row as a collection, a value as a field. Silently blank when
+there's nothing there (empty collection, out-of-range position).
 
-Converting Between Types:
-$array = $data->toArray();                                  // Converts back to regular PHP array with original values
-$html  = $data->asHtml();                                   // Return values as HTML-safe SmartStrings when needed
-$raw   = $html->asRaw();                                    // Return values as raw PHP types
-$html  = SmartArrayHtml::new($data);                        // Create HTML-safe SmartArray directly (same result)
+->first()                Get the first element
+->last()                 Get the last element
+->at(index)              Get element by position, ignoring keys (0 is first, -1 is last)
 
-Example Workflow:
-$users = SmartArray::new($records)                           // Raw data for processing
-    ->filter(fn($u) => $u['active'])                         // Work with raw values
-    ->sortBy('name');                                        // Chain operations efficiently
+Collection Checks
+------------------
+Return plain values, typically used in if statements.
 
-// Convert to HTML-safe only when outputting to templates
-foreach ($users->asHtml() as $user) {
-    echo "Name: $user->name\n";                              // Automatically HTML-encoded
-}
+->count()                Number of elements
+->isEmpty()              True if there are no elements
+->isNotEmpty()           True if there are any elements
+->contains(value)        True if any element matches value (loose ==, "5" matches 5)
 
-Value Access
+Row Position
 -------------
-$obj->key               Get a value using property syntax
-$obj->{'users.id'}      Get keys property syntax can't type (dots, dashes, numeric)
-$obj->key = value       Set a value using property syntax
-$obj->key ?? 'default'  Fallback for missing keys and NULL values, same as plain PHP
-->first()               Get the first element
-->last()                Get the last element
-->at(index)             Get element by position, ignoring keys (0 is first, -1 is last)
-SmartArray::getRawValue($value)  Convert Smart* objects to original values, leave other types unchanged
+Rows inside a result set know where they sit; use for separators and loop layout.
 
-Array Information
-------------------
-->count()               Get the number of elements
-->isEmpty()             Returns true if array has no elements
-->isNotEmpty()          Returns true if array has any elements
-->contains(value)       Check if array contains a specific value (loose == comparison)
+->isFirst()              True for the first row
+->isLast()               True for the last row
+->position()             The row's position, counting from 1
 
-Position & Layout
-------------------
-->isFirst()             Check if first in parent array
-->isLast()              Check if last in parent array
-->position()            Get position in parent array (starting at 1)
-
-Sorting & Filtering
+Filtering & Sorting
 --------------------
-->sort()                      Sort elements by value, reindexing keys
-->sortBy(field)               Sort nested array by field value (numeric keys reindexed, string keys preserved)
-->sortBy(field, flags)        Sort with flags: SORT_STRING, SORT_NUMERIC, SORT_REGULAR (default)
-->unique()                    Remove duplicate values, keeping first occurrence
-->filter(callback)            Keep elements where callback returns true, using raw values
-->where(field, value)         Keep elements where field matches value (uses == for type-tolerant matching)
-->whereNot(field, value)      Exclude elements where field matches value (inverse of where)
-->whereInList(field, value)   Keep elements where tab-delimited field contains value
+Return a new collection; the original is never modified.
 
-Array Transformation
----------------------
-->toArray()                 Convert SmartArray/SmartString structure back to array/values
-->keys()                    Get array of just the keys
-->values()                  Get array of just the values
-->indexBy(field)            Get array using field as keys to single rows (duplicates overwrite)
-->groupBy(field)            Get array using field as keys to arrays of rows (duplicates group)
-->column(column)            Get values of one column from rows, like array_column($rows, 'name')
-->column(column, indexKey)  Get column values keyed by another column, like array_column($rows, 'name', 'id')
-->column(null, indexKey)    Get whole rows keyed by a column, like array_column($rows, null, 'id')
-->columnAt(index)           Get the column at a position from each row, ignoring key names (0 is first, -1 is last)
-->implode(separator)        Join elements with separator into string (default: '')
-->map(callback)             Transform each element using callback (callback receives raw values)
-->merge(...$arrays)         Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.
+->where(field, value)         Keep rows where field matches value (loose ==, '1' matches 1)
+->where(field)                Keep rows where field has a truthy value, i.e. not PHP empty()
+->whereNot(field, value)      Drop rows where field matches value (inverse of where)
+->whereNot(field)             Keep rows where field is PHP empty(): NULL, false, 0, "0", "", or missing
+->whereInList(field, value)   Keep rows where tab-delimited field contains value (CMS Builder checkboxes)
+->filter(callback)            Keep elements where callback returns true (callback gets raw values);
+                              with no callback, removes falsy values ("", 0, NULL, false)
+->sort(flags)                 Sort a flat list by value, renumbering keys
+->sortBy(field, flags)        Sort rows by field; SORT_NATURAL sorts numbers the way people read them
+->unique()                    Remove duplicate values from a flat list, keeping the first of each
 
-Database Operations
---------------------
-->mysqli()              Get an array of all mysqli result metadata (set when creating array from DB result)
-->mysqli(key)           Get specific mysqli result metadata (affected_rows, insert_id, etc)
-->load(field)           Loads related record(s) for field using load handler
+Transforming & Grouping
+------------------------
+Return a new collection, except implode(), which returns a string (a SmartString in
+HTML mode, so it still encodes on output).
 
-Error Handling
----------------
-->or404(text)           Returns 404 with message if array is empty (default: "The requested URL was not found...")
-->orDie(text)           Exits with message if array is empty
-->orThrow(text)         Throws exception with message if array is empty
-->orRedirect(url)       Redirects to URL if array is empty (HTTP 302 redirect)
+->column(column)            One field from every row, like array_column($rows, 'name')
+->column(column, indexKey)  Field values keyed by another field, like array_column($rows, 'name', 'id')
+->column(null, indexKey)    Whole rows keyed by a field, like array_column($rows, null, 'id')
+->columnAt(index)           The column at a position from each row, ignoring names (0 first, -1 last)
+->indexBy(field)            Whole rows keyed by field (duplicate keys keep the last row)
+->groupBy(field)            Rows grouped by field: one collection of rows per distinct value
+->keys()                    The keys as a collection
+->values()                  The values, with keys renumbered from 0
+->map(callback)             Rebuild each element from what callback returns (callback gets raw values)
+->merge(...$arrays)         Append arrays: numeric keys renumber, string keys overwrite
+->implode(separator)        Join values into one string with separator between them
+
+Requiring Results
+------------------
+Stop the page when the collection is empty (no matching record); otherwise return it
+unchanged, so they chain inline. Text is HTML-encoded automatically.
+
+->or404(text)            Send a 404 page and stop (default: "The requested URL was not found...")
+->orDie(text)            Print text and stop
+->orThrow(text)          Throw a RuntimeException with text
+->orRedirect(url)        Send a 302 redirect and stop
+
+Database Metadata
+------------------
+For collections created from query results; ZenDB and CMS Builder set these up automatically.
+
+->mysqli()               All query metadata as an array
+->mysqli(key)            One value by name (affected_rows, insert_id, query, ...)
+->load(field)            Load related records for field using the configured load handler
 
 Debugging
 ----------
-print_r($obj)           Show array values
-$obj->debug()           Show array values, mysqli metadata, and available load() handlers
-$obj->help()            Display this help information
+->debug()                Show contents, current mode, and query metadata
+->help()                 Display this help text
+print_r($obj)            Shows just the element data; the class name tells you the mode
 
-For more details see SmartArray readme.md, and SmartString docs for chainable string methods.
+Working with single values? Fields in HTML mode are SmartStrings with their own methods
+(or(), dateFormat(), numberFormat(), textOnly(), ...) and their own help: SmartString::help()
+
+Full documentation: https://github.com/interactivetools-com/SmartArray

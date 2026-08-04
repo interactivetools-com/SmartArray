@@ -18,7 +18,7 @@ use ReflectionMethod;
  * Keeps the public API and the docs in sync in both directions.
  *
  * Forward: every public method of SmartArrayBase, SmartArray, and SmartArrayHtml
- * must appear in README.md and src/help.txt. The exempt set is read off the code
+ * must appear in docs/method-reference.md and src/help.txt. The exempt set is read off the code
  * itself (Deprecations membership, #[Deprecated], @deprecated, @internal,
  * interface methods, magic methods), so a new public method fails this test until
  * it is documented, and a newly deprecated one stops being required with no test
@@ -32,8 +32,8 @@ final class DocsCoverageTest extends SmartArrayTestCase
 {
     //region Configuration
 
-    private const README_PATH = __DIR__ . '/../../README.md';
-    private const HELP_PATH   = __DIR__ . '/../../src/help.txt';
+    private const METHOD_REFERENCE_PATH = __DIR__ . '/../../docs/method-reference.md';
+    private const HELP_PATH             = __DIR__ . '/../../src/help.txt';
 
     /** Classes whose own public methods make up the documented surface. */
     private const API_CLASSES = [SmartArrayBase::class, SmartArray::class, SmartArrayHtml::class];
@@ -57,9 +57,9 @@ final class DocsCoverageTest extends SmartArrayTestCase
     //endregion
     //region Forward Coverage
 
-    public function testReadmeDocumentsEveryPublicMethod(): void
+    public function testMethodReferenceDocumentsEveryPublicMethod(): void
     {
-        $this->assertDocumentsEveryPublicMethod(self::README_PATH, 'README.md');
+        $this->assertDocumentsEveryPublicMethod(self::METHOD_REFERENCE_PATH, 'docs/method-reference.md');
     }
 
     public function testHelpTextDocumentsEveryPublicMethod(): void
@@ -156,13 +156,13 @@ final class DocsCoverageTest extends SmartArrayTestCase
      */
     public function testUndocumentedTodayPinsAreStillAccurate(): void
     {
-        $readme = self::readDoc(self::README_PATH);
-        $help   = self::readDoc(self::HELP_PATH);
+        $reference = self::readDoc(self::METHOD_REFERENCE_PATH);
+        $help      = self::readDoc(self::HELP_PATH);
 
         $nowDocumented = [];
         foreach (self::UNDOCUMENTED_TODAY as $name) {
             $pattern = self::mentionPattern($name);
-            if (preg_match($pattern, $readme) === 1 && preg_match($pattern, $help) === 1) {
+            if (preg_match($pattern, $reference) === 1 && preg_match($pattern, $help) === 1) {
                 $nowDocumented[] = "$name()";
             }
         }

@@ -1,521 +1,92 @@
-# SmartArray: Enhanced Arrays with Chainable Methods and Automatic HTML Encoding
+<!--
+ATTENTION AI ASSISTANTS: We made a reference doc just for you!
+Read docs/ai-reference.md (in this package, right next to this README) for a
+consolidated single-file reference covering every method, both output modes,
+and the gotchas. It has everything you need to write correct SmartArray code.
+Reading this on the web instead? Same file:
+https://github.com/interactivetools-com/SmartArray/blob/main/docs/ai-reference.md
+-->
 
-SmartArray extends PHP arrays with automatic HTML encoding and chainable utility methods.
-It adds powerful features for filtering, mapping, and data manipulation - making common
-array operations simpler, safer, and more expressive.
+# SmartArray: Chainable Arrays with XSS-Safe Output for PHP
 
-## Table of Contents
+SmartArray wraps PHP arrays (usually database rows) in chainable collection
+methods, with an HTML mode for templates: fields HTML-encode themselves when
+echoed, so output is XSS-safe by default rather than depending on an encoding
+call on every line.
 
-<!-- TOC -->
-
-* [SmartArray: Enhanced Arrays with Chainable Methods and Automatic HTML Encoding](#smartarray-enhanced-arrays-with-chainable-methods-and-automatic-html-encoding)
-    * [Table of Contents](#table-of-contents)
-    * [Quick Start](#quick-start)
-    * [Usage Examples](#usage-examples)
-        * [Highlighting Recent Articles with position()](#highlighting-recent-articles-with-position)
-        * [Accessing Elements by Position with at()](#accessing-elements-by-position-with-at)
-        * [Looking Up Authors by ID with indexBy()](#looking-up-authors-by-id-with-indexby)
-        * [Organizing Books by Genre with groupBy()](#organizing-books-by-genre-with-groupby)
-        * [Extracting Unique Tags with column(), unique(), and implode()](#extracting-unique-tags-with-column-unique-and-implode)
-        * [Building Dynamic HTML Tables](#building-dynamic-html-tables)
-        * [Creating Grid Layouts with isFirst() and isLast()](#creating-grid-layouts-with-isfirst-and-islast)
-        * [Debugging and Help](#debugging-and-help)
-    * [Method Reference](#method-reference)
-    * [Questions?](#questions)
-
-<!-- TOC -->
-
-## Quick Start
-
-Install via Composer:
-
-```bash
-composer require itools/smartarray
-```
-
-Include the Composer autoloader and SmartArray class:
+Instead of writing code like this:
 
 ```php
-<?php
-require 'vendor/autoload.php';
-use Itools\SmartArray\SmartArray;
-```
-
-Convert an array to a SmartArray and use the recommended workflow:
-
-```php
-$records = [
-    ['id' => 10, 'name' => "John O'Connor",  'city' => 'New York'],
-    ['id' => 15, 'name' => 'Xena "X" Smith', 'city' => 'Los Angeles'],
-    ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
-];
-
-// Always start with raw data for processing
-$users = SmartArray::new($records)
-    ->asHtml()          // Make values HTML-safe (or use SmartArrayHtml::new() directly)
-    ->sortBy('name');   // Sort alphabetically by name
-
-
-// Now $users contains SmartStrings for safe output
-foreach ($users as $user) {
-    echo "Name: $user->name, ";   // Automatically HTML-encoded for safety
-    echo "City: $user->city\n";
-}
-
-// Values are automatically HTML-encoded in string contexts to prevent XSS (see SmartString docs for more details)
-echo $users->first()->name; // Output: John O&apos;Connor
-
-// Use chainable methods to transform data
-$userIdAsCSV = $users->column('id')->implode(', '); // Output: "10, 20, 15"
-
-// Easily convert back to arrays and original values
-$usersArray = $users->toArray(); // Convert back to a regular PHP array and values
-
-// Convert SmartStrings back to original values
-// Note: The `value()` method returns the raw value from a `SmartString` object.
-$userId = $users->first()->id->value(); // Returns 10 as an integer
-
-// Note: If the key doesn't exist, a SmartNull object is returned instead of throwing an error, so you can chain
-// safely without checking for isset() first.
-
-```    
-
-See the [Method Reference](#method-reference) for more information on available methods.
-
-## Usage Examples
-
-### Highlighting Recent Articles with position()
-
-The `position()` method returns an element's position within its parent array (starting from 1), making it easy to give
-special treatment to important items like featured articles based on their position:
-
-```php
-$articles = [
-    ['title' => 'Astronomers Photograph Distant Galaxy for First Time'],
-    ['title' => 'New Species of Butterfly Found in Amazon Rainforest'],
-    ['title' => 'Ocean Expedition Maps Unexplored Deep Sea Valleys'],
-    ['title' => 'Ancient Star Charts Discovered in Mountain Cave'],
-    ['title' => 'Rare Rainbow Clouds Spotted in Nordic Skies'],
-    ['title' => 'Desert Expedition Reveals Hidden Oasis Ecosystem'],
-    ['title' => 'Mountain Observatory Captures Meteor Shower Images']
-];
-
-$news = SmartArray::new($articles)->asHtml();
-
-// Create a news listing with featured articles
-echo "<div class='news-list'>\n";
-foreach ($news as $article) {
-    // First 3 articles get heading treatment
-    if ($article->position() <= 3) {
-        echo "<h1>$article->title</h1>\n";
-    } else {
-        // Remaining articles as regular text
-        echo "$article->title<br>\n";
-    }
-}
-echo "</div>\n";
-```
-
-### Accessing Elements by Position with at()
-
-The `at()` method provides a convenient way to access elements by their position, supporting both positive and negative
-indices. This is particularly useful for accessing specific items in ordered lists like search results, leaderboards, or
-recent activity feeds.
-
-```php
-$topSellers = [
-    ['rank' => 1, 'title' => 'The Great Gatsby', 'sales' => 25000000],
-    ['rank' => 2, 'title' => '1984', 'sales' => 20000000],
-    ['rank' => 3, 'title' => 'To Kill a Mockingbird', 'sales' => 18000000],
-    ['rank' => 4, 'title' => 'The Catcher in the Rye', 'sales' => 15000000],
-    ['rank' => 5, 'title' => 'The Hobbit', 'sales' => 14000000]
-];
-
-$books = SmartArray::new($topSellers)->asHtml();
-
-// Get specific positions (0-based indexing)
-echo $books->at(0)->title;  // "The Great Gatsby" (first book)
-echo $books->at(2)->title;  // "To Kill a Mockingbird" (third book)
-
-// Use negative indices to count from the end
-echo $books->at(-1)->title; // "The Hobbit" (last book)
-echo $books->at(-2)->title; // "The Catcher in the Rye" (second-to-last)
-
-// Common use cases:
-
-// Get podium finishers in a competition
-$goldMedalist   = $results->at(0);
-$silverMedalist = $results->at(1);
-$bronzeMedalist = $results->at(2);
-
-// Display recent activity with the newest first
-$mostRecent       = $activities->at(0);
-$secondMostRecent = $activities->at(1);
-
-// Show last few items in a feed
-$latestLogEntry    = $log->at(-1);
-$secondLatestEntry = $log->at(-2);
-```
-
-**Key Features:**
-
-- Zero-based indexing: `at(0)` returns the first element
-- Negative indices: `at(-1)` returns the last element
-- Works with both indexed and associative arrays
-
-### Looking Up Authors by ID with indexBy()
-
-When working with collections of records, you often need to look up specific records by their ID or another unique
-field. The `indexBy()` method makes this easy by creating an associative array using a specified field as the key:
-
-```php
-$authors = [
-    ['author_id' => 101, 'name' => 'Jane Austen',    'genre' => 'Literary Fiction'],
-    ['author_id' => 102, 'name' => 'George Orwell',  'genre' => 'Political Fiction'],
-    ['author_id' => 103, 'name' => 'Isaac Asimov',   'genre' => 'Science Fiction'],
-    ['author_id' => 104, 'name' => 'Agatha Christie','genre' => 'Mystery'],
-];
-
-// Create a lookup array indexed by author_id
-$authorById = SmartArray::new($authors)->indexBy('author_id')->asHtml();
-
-// Now you can quickly look up authors by their ID (braces for numeric keys)
-echo $authorById->{101}->name;  // Output: Jane Austen
-echo $authorById->{103}->genre; // Output: Science Fiction
-
-// Particularly useful when joining data from multiple sources
-$articles = [
-    ['article_id' => 1, 'title' => 'Pride and Programming', 'author_id' => 101],
-    ['article_id' => 2, 'title' => 'Digital Dystopia',      'author_id' => 102],
-    ['article_id' => 3, 'title' => 'Robot Psychology',      'author_id' => 103],
-];
-
-// Display articles with author information
-foreach (SmartArray::new($articles)->asHtml() as $article) {
-    $author = $authorById->{$article->author_id};
-    echo "Title: $article->title\n";
-    echo "By: $author->name ($author->genre)\n\n";
-}
-```
-
-Output:
-
-```
-Title: Pride and Programming
-By: Jane Austen (Literary Fiction)
-
-Title: Digital Dystopia
-By: George Orwell (Political Fiction)
-
-Title: Robot Psychology
-By: Isaac Asimov (Science Fiction)
-```
-
-> **Important Notes:**
-> - If multiple records have the same key value, later records will overwrite earlier ones
-> - For collections with duplicate keys, use `groupBy()` instead to preserve all records
-> - Keys are automatically converted to strings (as per PHP array key behavior)
-> - Rows with a null or missing key value are indexed under `''` (PHP's array-key form of null)
-
-Need to preserve duplicate keys? Consider using `groupBy()` instead.
-
-### Organizing Books by Genre with groupBy()
-
-When working with data that has multiple items sharing the same key (like books by genre, products by category, or
-employees by department), `groupBy()` helps organize them into logical groups while preserving all records:
-
-```php
-$books = [
-    ['title' => 'Pride and Prejudice', 'author' => 'Jane Austen',   'genre' => 'Literary Fiction', 'year' => 1813],
-    ['title' => '1984',                'author' => 'George Orwell', 'genre' => 'Science Fiction',  'year' => 1949],
-    ['title' => 'Foundation',          'author' => 'Isaac Asimov',  'genre' => 'Science Fiction',  'year' => 1951],
-    ['title' => 'Emma',                'author' => 'Jane Austen',   'genre' => 'Literary Fiction', 'year' => 1815],
-    ['title' => 'I, Robot',            'author' => 'Isaac Asimov',  'genre' => 'Science Fiction',  'year' => 1950],
-    ['title' => 'Persuasion',          'author' => 'Jane Austen',   'genre' => 'Literary Fiction', 'year' => 1818],
-];
-
-// Group books by genre
-$booksByGenre = SmartArray::new($books)->groupBy('genre')->asHtml();
-
-// Now you can work with each genre's books separately
-foreach ($booksByGenre as $genre => $relatedBooks) {
-    echo "\n$genre Books:\n";
-    echo str_repeat('-', strlen($genre) + 7) . "\n";
-
-    foreach ($relatedBooks as $book) {
-        echo "- $book->title ($book->year)\n";
-    }
-}
-
-// Group by author to analyze their work
-$booksByAuthor = SmartArray::new($books)->groupBy('author')->asHtml();
-
-foreach ($booksByAuthor as $author => $authorBooks) {
-    $years = $authorBooks->column('year')->values()->sort();
-    echo "\n$author published {$authorBooks->count()} books ({$years->first()}-{$years->last()}):\n";
-
-    foreach ($authorBooks->sortBy('year') as $book) {
-        echo "- $book->title ($book->year)\n";
+foreach ($articles as $article) {
+    if (!empty($article['featured'])) {
+        $summary = substr(strip_tags($article['summary']), 0, 120);
+        echo "<h2>" . htmlspecialchars($article['title'], ENT_QUOTES, 'UTF-8') . "</h2>\n";
+        echo "<p>"  . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . "...</p>\n";
     }
 }
 ```
 
-Output:
-
-```
-Literary Fiction Books:
------------------------
-- Pride and Prejudice (1813)
-- Emma (1815)
-- Persuasion (1818)
-
-Science Fiction Books:
-----------------------
-- 1984 (1949)
-- Foundation (1951)
-- I, Robot (1950)
-
-Jane Austen published 3 books (1813-1818):
-- Pride and Prejudice (1813)
-- Emma (1815)
-- Persuasion (1818)
-
-George Orwell published 1 books (1949-1949):
-- 1984 (1949)
-
-Isaac Asimov published 2 books (1950-1951):
-- I, Robot (1950)
-- Foundation (1951)
-```
-
-**Common Use Cases for groupBy():**
-
-- Products by category or manufacturer
-- Employees by department or location
-- Sales by region or time period
-- Students by grade level or class
-- Events by date or venue
-- Comments by post or user
-- Tasks by status or priority
-
-**Important Notes:**
-
-- Each group contains a new SmartArray of all matching records
-- Original record order is preserved within groups
-- Groups are created in order of first appearance
-- Rows with a null or missing group value are grouped under `''`, like SQL GROUP BY keeps a NULL group - no rows are dropped
-- Use `indexBy()` instead if you only need one record per key
-
-### Extracting Unique Tags with column(), unique(), and implode()
-
-When working with collections, you often need to extract a single field, remove duplicates, and produce a display
-string.
-Here's how `SmartArray` chains these operations into a single expressive pipeline.
+You can write code like this:
 
 ```php
-$articles = [
-    ['title' => 'Getting Started with PHP',  'tag' => 'PHP'],
-    ['title' => 'Understanding Unit Tests',   'tag' => 'Testing'],
-    ['title' => 'Data Handling Techniques',   'tag' => 'PHP'],
-    ['title' => 'MySQL Best Practices',       'tag' => 'Databases'],
-    ['title' => 'Advanced PHP Techniques',    'tag' => 'PHP'],
-];
-
-// Extract unique, sorted tags as a comma-separated display string
-$tagList = SmartArray::new($articles)->column('tag')->unique()->sort()->implode(', ');
-
-// Or for better readability, the same operation can be split across multiple lines:
-$tagList = SmartArray::new($articles)
-                ->column('tag')              // Extract tag field: ["PHP", "Testing", "PHP", "Databases", "PHP"]
-                ->unique()                   // Remove duplicates: ["PHP", "Testing", "Databases"]
-                ->sort()                     // Sort alphabetically: ["Databases", "PHP", "Testing"]
-                ->implode(', ');             // Join as string: "Databases, PHP, Testing"
-
-echo "Topics: $tagList"; // Output: "Topics: Databases, PHP, Testing"
-```
-
-### Building Dynamic HTML Tables
-
-With SmartArrayHtml, every value HTML-encodes itself when echoed, so you can build tables
-with plain foreach loops - no manual `htmlspecialchars()` calls. The header row comes from
-the first row's keys, which encode the same way.
-
-```php
-$rows = SmartArray::new([
-    ['name' => "John O'Connor",  'city' => 'New York',    'status' => 'Active'],
-    ['name' => 'Jane <script>',  'city' => 'Los Angeles', 'status' => 'Pending'],
-    ['name' => 'Tom & Jerry',    'city' => 'Vancouver',   'status' => 'Active'],
-])->asHtml();
-?>
-
-<table class='data-table'>
-    <?php if ($rows->isNotEmpty()): ?>
-        <thead>
-            <tr><?php foreach ($rows->first()->keys() as $field): ?><th><?= $field ?></th><?php endforeach ?></tr>
-        </thead>
-    <?php endif ?>
-
-    <tbody>
-        <?php foreach ($rows as $row): ?>
-            <tr><?php foreach ($row as $value): ?><td><?= $value ?></td><?php endforeach ?></tr>
-        <?php endforeach ?>
-
-        <?php if ($rows->isEmpty()): ?>
-            <tr><td colspan="3">No records found</td></tr>
-        <?php endif ?>
-    </tbody>
-</table>
-```
-
-Output:
-
-```html
-
-<table class='data-table'>
-    <thead>
-        <tr><th>name</th><th>city</th><th>status</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>John O&apos;Connor</td><td>New York</td><td>Active</td></tr>
-        <tr><td>Jane &lt;script&gt;</td><td>Los Angeles</td><td>Pending</td></tr>
-        <tr><td>Tom &amp; Jerry</td><td>Vancouver</td><td>Active</td></tr>
-    </tbody>
-</table>
-```
-
-Note how `O'Connor`, `<script>`, and `&` are safely HTML-encoded in the output.
-
-### Creating Grid Layouts with isFirst() and isLast()
-
-SmartArray provides `isFirst()` and `isLast()` methods for position-based operations, making it easy to add
-opening and closing markup around iterated elements:
-
-```php
-$records = [
-    ['id' => 10, 'name' => "John O'Connor",  'city' => 'New York'],
-    ['id' => 15, 'name' => 'Xena "X" Smith', 'city' => 'Los Angeles'],
-    ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
-];
-$users = SmartArray::new($records)->asHtml();
-
-foreach ($users as $user) {
-    if ($user->isFirst()) { echo "<table border='1' cellpadding='10' style='text-align: center'>\n<tr>\n"; }
-    echo "<td><h1>$user->name</h1>$user->city</td>\n"; // values are automatically HTML-encoded by SmartString
-    if ($user->isLast())  { echo "</tr>\n</table>\n"; }
+foreach ($articles->where('featured') as $article) {
+    echo "<h2>$article->title</h2>\n";
+    echo "<p>{$article->summary->textOnly()->maxChars(120, '...')}</p>\n";
 }
 ```
 
-### Debugging and Help
+Query results from ZenDB and CMS Builder already arrive as SmartArrays; for
+anything else, wrap once with `SmartArrayHtml::new($rows)`.
 
-SmartArray provides helpful debugging tools to inspect your data structures and explore available methods.
+- **Two modes, one API.** `SmartArray` returns plain PHP values for logic and
+  data processing; `SmartArrayHtml` returns
+  [SmartStrings](https://github.com/interactivetools-com/SmartString) that
+  HTML-encode themselves when echoed and chain formatting methods like
+  `textOnly()` and `maxChars()`.
+- **Nested data comes along.** Wrap a set of database rows once and every row
+  is a SmartArray too: `$users->first()->name` just works.
 
-**Debug View**
-Call `print_r()` on any `SmartArray` to see a detailed view of its structure:
+## Documentation
 
-```php
-$users = SmartArrayHtml::new([
-    ['id' => 10, 'name' => "John O'Connor",  'city' => 'New York'],
-    ['id' => 20, 'name' => 'Tom & Jerry',    'city' => 'Vancouver'],
-]);
-print_r($users);
-```
+Full guides and references ([browse on GitHub](https://github.com/interactivetools-com/SmartArray)):
 
-The output shows the nested structure:
+- **The Basics** (read in order)
+    - [Getting Started](docs/getting-started.md) - install, your first collection, loops, and formatting fields
+    - [Displaying Fields](docs/displaying-fields.md) - reading fields, fallbacks for blank values, "no results" messages, and required records
+    - [Outputting HTML](docs/outputting-html.md) - how auto-encoding works, trusted HTML with `rawHtml()`, and loop position helpers
+    - [Filtering and Sorting](docs/filtering-and-sorting.md) - `where()`, `filter()`, `sort()`, `sortBy()`, and `unique()`
+    - [Transforming and Grouping](docs/transforming-and-grouping.md) - `column()`, `indexBy()`, `groupBy()`, `map()`, and friends
+    - [Using SmartArray Without SmartStrings](docs/without-smartstrings.md) - plain-value collections for JSON, CSV, email, and CLI output
+- **Everyday Use**
+    - [Common Patterns](docs/common-patterns.md) - copy-paste recipes taken from production templates
+- **Lookup**
+    - [Method Reference](docs/method-reference.md) - every method, grouped by what it returns
+    - [Troubleshooting](docs/troubleshooting.md) - common error messages and gotchas, with fixes
+    - [AI Reference](docs/ai-reference.md) - the complete API in one dense file, written for AI coding assistants
 
-```
-Itools\SmartArray\SmartArrayHtml Object
-(
-    [0] => Itools\SmartArray\SmartArrayHtml Object
-        (
-            [id] => 10
-            [name] => John O'Connor
-            [city] => New York
-        )
+## You're Never Locked In
 
-    [1] => Itools\SmartArray\SmartArrayHtml Object
-        (
-            [id] => 20
-            [name] => Tom & Jerry
-            [city] => Vancouver
-        )
-
-)
-```
-
-**Interactive Help**
-
-Need a quick reference? Call `help()` on any `SmartArray` object to see available methods
-and usage examples:
+Use SmartArray where it makes your code simpler, and plain PHP where you
+prefer it. The original values are always one call away:
 
 ```php
-$users->help();  // Displays comprehensive documentation and examples
+// SmartArray: ->toArray() returns a plain nested PHP array with original values
+$rows = $orders->toArray();
+
+// SmartString fields: ->value() returns the original value, in its original type
+$total = $order->total->value();
 ```
 
-## Method Reference
+## Related Libraries
 
-Note: All methods return a new `SmartArray` object unless otherwise specified.
-
-| Category              |                          Method | Description                                                                                                                  |
-|-----------------------|--------------------------------:|------------------------------------------------------------------------------------------------------------------------------|
-| Creation & Conversion |         SmartArray::new($array) | Create a SmartArray with raw PHP values for data processing. Arrays become SmartArrays, missing keys become SmartNulls       |
-|                       |               $array->toArray() | Converts back to regular PHP array with original values                                                                      |
-|                       |                $array->asHtml() | Return values as HTML-safe SmartString objects (lazy conversion - returns same object if already HTML-safe)                  |
-|                       |                 $array->asRaw() | Return values as raw PHP types (lazy conversion - returns same object if already using raw values)                           |
-|                       |     SmartArrayHtml::new($array) | Create a SmartArray with HTML-safe SmartString values directly (equivalent to SmartArray::new()->asHtml())                   |
-| Value Access          |                       $obj->key | Get a value using property syntax                                                                                            |
-|                       |              $obj->{'users.id'} | Get keys property syntax can't type (dots, dashes, numeric keys)                                                             |
-|                       |              $obj->key = $value | Set a value using property syntax                                                                                            |
-|                       |          $obj->key ?? 'default' | Fallback for missing keys and NULL values, same as plain PHP                                                                 |
-|                       |                         first() | Get the first element                                                                                                        |
-|                       |                          last() | Get the last element                                                                                                         |
-|                       |                       at(index) | Get element by position, ignoring keys (0=first, -1=last)                                                                    |
-|                       | SmartArray::getRawValue($value) | Converts SmartArray and SmartString objects to their original values while leaving other types unchanged                     |
-| Array Information     |                         count() | Get the number of elements                                                                                                   |
-|                       |                       isEmpty() | Returns true if array has no elements                                                                                        |
-|                       |                    isNotEmpty() | Returns true if array has any elements                                                                                       |
-|                       |                 contains(value) | Returns true if array contains value (loose == comparison)                                                                   |
-| Position & Layout     |                       isFirst() | Returns true if first element in parent array                                                                                |
-|                       |                        isLast() | Returns true if last element in parent array                                                                                 |
-|                       |                      position() | Gets position in parent array (starting from 1)                                                                              |
-| Sorting & Filtering   |                          sort() | Sorts elements by value (flat arrays only)                                                                                   |
-|                       |                   sortBy(field) | Sorts rows by field value (nested arrays only; numeric keys reindexed, string keys preserved)                                |
-|                       |                        unique() | Removes duplicate values (flat arrays only)                                                                                  |
-|                       |                        filter() | Removes falsey values ("", 0, empty array, etc)                                                                              |
-|                       |                filter(callback) | Removes elements where callback returns false (callback receives raw values)                                                 |
-|                       |             where(field, value) | Keeps rows where field matches value (uses loose comparison: '1' matches 1, false matches 0). Chain for multiple conditions. |
-|                       |          whereNot(field, value) | Excludes rows where field matches value (inverse of where)                                                                   |
-|                       |       whereInList(field, value) | Filters rows where tab-delimited field contains value                                                                        |
-| Array Transformation  |                       toArray() | Converts back to regular PHP array with original values                                                                      |
-|                       |                          keys() | Gets array of keys, discarding the values                                                                                    |
-|                       |                        values() | Gets array of values, discarding the keys                                                                                    |
-|                       |                  indexBy(field) | Indexes rows by field value, latest is kept if duplicates                                                                    |
-|                       |                  groupBy(field) | Groups rows by field value, preserving duplicates                                                                            |
-|                       |                  column(column) | Gets values of one column from rows, like PHP's `array_column($rows, 'name')`                                                |
-|                       |        column(column, indexKey) | Gets column values keyed by another column, like `array_column($rows, 'name', 'id')`                                         |
-|                       |          column(null, indexKey) | Gets whole rows keyed by a column, like `array_column($rows, null, 'id')`                                                    |
-|                       |                 columnAt(index) | Gets the column at a position from rows, ignoring key names (0=first, -1=last)                                                                                   |
-|                       |              implode(separator) | Joins elements with separator into string                                                                                    |
-|                       |                   map(callback) | Transforms each element using callback (callback receives raw values)                                                        |
-|                       |                  each(callback) | Call callback on each element as Smart objects. Used for side effects, doesn't modify array.                                 |
-|                       |               merge(...$arrays) | Merges with one or more arrays. Numeric keys are renumbered, string keys are overwritten by later values.                    |
-| Database Operations   |                                 | The following optional methods may be available when using SmartArray with database results                                  |
-|                       |                        mysqli() | Get an array of all mysqli result metadata (set when creating array from DB result)                                          |
-|                       |                     mysqli(key) | Get specific mysqli result metadata (errno, error, affected_rows, insert_id, etc)                                            |
-|                       |                     load(field) | Loads related record(s) for field using load handler                                                                         |
-| Error Handling        |                     or404(text) | Exits with 404 header and message if array is empty, default: "The requested URL was not found on this server."              |
-|                       |                     orDie(text) | Exits with message if array is empty                                                                                         |
-|                       |                   orThrow(text) | Throws exception with message if array is empty                                                                              |
-|                       |                 orRedirect(url) | Redirects to URL if array is empty (HTTP 302)                                                                                |
-| Debugging and Help    |                          help() | Displays help information about available methods                                                                            |
-|                       |                         debug() | Show content of object as well as properties                                                                                 |
-|                       |                   print_r($obj) | Show array contents of object (useful for debugging)                                                                         |     
-
-**See Also:** For working with `SmartArrayHtml` values, check out the included companion
-library `SmartString`. `SmartArrayHtml` values are `SmartString` objects with
-automatic HTML encoding and chainable methods:
-https://github.com/interactivetools-com/SmartString?tab=readme-ov-file#method-reference
+- [SmartString](https://github.com/interactivetools-com/SmartString) - the XSS-safe strings SmartArrayHtml returns, with chainable methods for formatting, dates, and numbers.
+- [ZenDB](https://github.com/interactivetools-com/ZenDB) - database library that returns query results as SmartArrays of SmartStrings, so fields arrive HTML-safe.
 
 ## Questions?
 
 This library was developed for CMS Builder, post a message in our "CMS Builder" forum here:
 [https://www.interactivetools.com/forum/](https://www.interactivetools.com/forum/)
+
+## License
+
+MIT

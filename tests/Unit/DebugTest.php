@@ -390,17 +390,19 @@ class DebugTest extends SmartArrayTestCase
         [, $output] = $this->captureOutput(fn() => $sa->help());
 
         $anchors = [
-            'SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods',
-            'Value Access',
-            'Array Information',
-            'Position & Layout',
-            'Sorting & Filtering',
-            'Array Transformation',
-            'Database Operations',
-            'Error Handling',
+            'SmartArray: Chainable Arrays with XSS-Safe Output',
+            'Access Cheat Sheet',
+            'Creation & Conversion',
+            'Single Elements',
+            'Collection Checks',
+            'Row Position',
+            'Filtering & Sorting',
+            'Transforming & Grouping',
+            'Requiring Results',
+            'Database Metadata',
             'Debugging',
-            '$obj->debug()           Show array values, mysqli metadata, and available load() handlers',
-            '$obj->help()            Display this help information',
+            '->debug()                Show contents, current mode, and query metadata',
+            '->help()                 Display this help text',
         ];
         foreach ($anchors as $anchor) {
             $this->assertStringContainsString($anchor, $output);

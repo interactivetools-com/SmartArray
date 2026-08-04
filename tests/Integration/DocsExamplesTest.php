@@ -556,9 +556,9 @@ class DocsExamplesTest extends SmartArrayTestCase
         });
 
         $this->assertStringNotContainsString('<xmp>', $output);
-        $this->assertStringContainsString('SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods', $output);
-        $this->assertStringContainsString('Sorting & Filtering', $output);
-        $this->assertStringContainsString('For more details see SmartArray readme.md', $output);
+        $this->assertStringContainsString('SmartArray: Chainable Arrays with XSS-Safe Output', $output);
+        $this->assertStringContainsString('Filtering & Sorting', $output);
+        $this->assertStringContainsString('Full documentation: https://github.com/interactivetools-com/SmartArray', $output);
     }
 
     //endregion

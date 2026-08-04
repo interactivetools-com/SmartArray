@@ -89,4 +89,35 @@ class IterationTest extends SmartArrayTestCase
     {
         $this->assertSame(0, iterator_count($class::new([])->getIterator()));
     }
+
+    #[DataProvider('modeProvider')]
+    public function testRecordSetYieldsTheStoredRowObjects(string $class): void
+    {
+        // Rows come back by identity, not as copies - metadata like position()
+        // answers the same whether a row came from foreach or first()
+        $sa = $class::new([['id' => 1], ['id' => 2]]);
+
+        $yielded = [];
+        foreach ($sa as $row) {
+            $yielded[] = $row;
+        }
+
+        $this->assertSame($sa->first(), $yielded[0]);
+        $this->assertSame($sa->last(), $yielded[1]);
+    }
+
+    public function testHtmlModeWrapsScalarAddedAfterConstruction(): void
+    {
+        // A record set iterates unwrapped (all rows), but adding a scalar later
+        // must bring back SmartString wrapping for it
+        $sa = SmartArrayHtml::new([['id' => 1]]);
+        $sa->note = '<b>';
+
+        $types = [];
+        foreach ($sa as $key => $value) {
+            $types[$key] = get_debug_type($value);
+        }
+
+        $this->assertSame([0 => SmartArrayHtml::class, 'note' => SmartString::class], $types);
+    }
 }

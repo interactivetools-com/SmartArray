@@ -37,6 +37,39 @@ class CreationTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testRowsAreIndependentAndKeepParentMetadata(string $class): void
+    {
+        // All-scalar rows are built from a shared template internally; each row must
+        // still have its own data and the parent's root/mysqli/loadHandler
+        $sa = $class::new([['name' => 'Amy'], ['name' => 'Bob']], ['mysqli' => ['insert_id' => 42]]);
+
+        $first = $sa->first();
+        $last  = $sa->last();
+        $first->name = 'Changed';
+
+        $this->assertModeValue('Bob', $last->name, $class, 'writing one row does not leak into another');
+        $this->assertSame($sa, $first->root());
+        $this->assertSame($sa, $last->root());
+        $this->assertSame(['insert_id' => 42], $last->mysqli());
+        $this->assertSame(1, $first->position());
+        $this->assertTrue($last->isLast());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowContainingNestedArrayConvertsRecursively(string $class): void
+    {
+        // Mixed rows (scalar fields plus a nested array) take the full conversion
+        // path; the nested array still becomes a child of the same class
+        $sa = $class::new([['name' => 'Amy', 'tags' => ['a', 'b']], ['name' => 'Bob', 'tags' => []]]);
+
+        $firstTags = $sa->first()->tags;
+        $this->assertInstanceOf($class, $firstTags);
+        $this->assertSame(['a', 'b'], $firstTags->toArray());
+        $this->assertSame($sa, $firstTags->root(), 'grandchildren still point at the real root');
+        $this->assertSame(2, $sa->last()->position());
+    }
+
+    #[DataProvider('modeProvider')]
     public function testNewMatchesConstructor(string $class): void
     {
         $fromNew         = $class::new(Fixtures::records());

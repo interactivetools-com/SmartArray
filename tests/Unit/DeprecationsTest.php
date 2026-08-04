@@ -753,11 +753,12 @@ class DeprecationsTest extends SmartArrayTestCase
 
     public function testSmartArrayRawRowsAreAlsoSmartArrayRaw(): void
     {
-        // Every row is built by the deprecated constructor, so a 2-row result
-        // logs three times: the outer array plus one per row
+        // The outer array and the internal row template each run the deprecated
+        // constructor once; cloned rows don't, so the count stays at two
+        // regardless of how many rows the result has
         [$sa, $deprecations] = $this->captureDeprecations(fn() => new SmartArrayRaw([['id' => 1], ['id' => 2]]));
 
-        $this->assertCount(3, $deprecations);
+        $this->assertCount(2, $deprecations);
         $this->assertInstanceOf(SmartArrayRaw::class, $sa->first());
         $this->assertSame(['id' => 1], $sa->first()->toArray());
     }

@@ -5,7 +5,7 @@ namespace Itools\SmartArray;
 
 use stdClass;
 use Throwable, Error, RuntimeException;
-use ArrayAccess, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure;
+use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure;
 use Itools\SmartString\SmartString;
 
 /**
@@ -28,6 +28,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Internal array storage (replaces ArrayObject's internal storage)
      */
     private array $data = [];
+
+    /**
+     * True while every value is a child SmartArray (or the array is empty), so
+     * getIterator() can skip SmartString wrapping and iterate the fast way.
+     * Storing a scalar or null sets this false, and nothing sets it back (an
+     * unset can leave it stale-false, which only means the slower,
+     * always-correct wrapping path).
+     */
+    private bool $rowsOnly = true;
 
     //endregion
     //region Position Properties
@@ -110,22 +119,41 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $this->isLast          = $properties['isLast']          ?? false;
 
         // Add elements and set position metadata on child SmartArrays
-        $count      = count($array);
-        $position   = 0;
-        $childProps = null;
+        $count         = count($array);
+        $position      = 0;
+        $childTemplate = null;
         foreach ($array as $key => $value) {
             $position++;
 
             // Fast path: scalars and nulls, the bulk of real data (encoded on access by getElement)
             if (is_scalar($value) || $value === null) {
                 $this->data[$key] = $value;
+                $this->rowsOnly   = false;
                 continue;
             }
 
-            // Nested arrays become child rows; every child gets the same properties, so build the array once
+            // Nested arrays become child rows. The template child is built once and cloned
+            // per row (cheaper than running the constructor), and all-scalar rows - typical
+            // database rows - assign their data wholesale: a copy-on-write array assignment
+            // instead of a per-field loop.
             if (is_array($value)) {
-                $childProps      ??= $this->getInternalProperties();
-                $child             = new static($value, $childProps);
+                $childTemplate ??= new static([], $this->getInternalProperties());
+
+                $allScalar = true;
+                foreach ($value as $fieldValue) {
+                    if (!is_scalar($fieldValue) && $fieldValue !== null) {
+                        $allScalar = false;
+                        break;
+                    }
+                }
+                if ($allScalar) {
+                    $child           = clone $childTemplate;
+                    $child->data     = $value;
+                    $child->rowsOnly = $value === [];
+                }
+                else {
+                    $child = new static($value, $this->getInternalProperties());
+                }
                 $child->position   = $position;
                 $child->isFirst    = $position === 1;
                 $child->isLast     = $position === $count;
@@ -232,6 +260,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             else {
                 $this->data[$key] = $value;
             }
+            $this->rowsOnly = false;
             return;
         }
 
@@ -1394,16 +1423,26 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Returns a generator that yields elements, wrapping scalars in SmartString when enabled.
+     * Returns an iterator over the elements, wrapping scalars in SmartString when enabled.
      * Nested SmartArrays are yielded as-is (not wrapped).
      */
     public function getIterator(): Iterator
     {
-        // Return an iterator that yields encoded values for each element
+        // ArrayIterator iterates 1.2-1.3x faster than the wrapping generator below,
+        // and nothing needs wrapping in raw mode or when every value is a row
+        if (!$this->useSmartStrings || $this->rowsOnly) {
+            return new ArrayIterator($this->data);
+        }
+        return $this->wrappingIterator();
+    }
+
+    /**
+     * Yields elements with scalars and nulls wrapped in SmartString (HTML mode only).
+     */
+    private function wrappingIterator(): Iterator
+    {
         foreach ($this->data as $key => $value) {
-            yield $key => $this->useSmartStrings && !$value instanceof self
-                ? new SmartString($value)
-                : $value;
+            yield $key => $value instanceof self ? $value : new SmartString($value);
         }
     }
 

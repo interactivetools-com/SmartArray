@@ -18,6 +18,26 @@ in signatures, docblocks, the changelog, and tests.
   the value side, `foreach`/`count()`/`keys()` on the array side. An empty
   SmartArray from `first()` would fatal on `->value()`.
 
+- **SmartNull propagates through SmartString transforms (2026-08-04).** In
+  HTML mode, `__call` tries public SmartString methods first and classifies
+  by result: a still-null result means nothing was produced, so the
+  SmartNull itself returns and the chain stays open for a value or a
+  collection ending. `map()` returns the SmartNull without running its
+  callback, since a missing key has no value to pass (a NULL value in an
+  existing key still runs it). Rejected alternatives: renaming `map()` back
+  to `apply()` (dodges one collision but keeps the name-based routing that
+  broke `map`/`htmlEncode`/`set`, and the next shared name re-breaks it);
+  routing shared names to SmartString by class ("string wins" fixes the
+  three methods but breaks `first()->map()` collection chains the same
+  way); running map's callback with null, the v2 `apply()` behavior (typed
+  callbacks throw TypeError, side effects fire for rows that don't exist,
+  and a value-returning callback turns a collection-shaped SmartNull into
+  a SmartString mid-chain). The classifier is `isNull()`, not
+  `isMissing()`: `isMissing()` counts `""`, which would discard a produced
+  empty string and wrongly re-fire `ifNull()` later in the chain. The
+  `isPublic()` reflection check exists because `method_exists()` reports
+  private methods - that false positive is how `htmlEncode()` broke.
+
 - **Missing-key warnings are rows-only (2026-08-04).** Key access warns
   only on rows inside a result set, where keys are column names and a miss
   is almost always a typo; top-level, derived (indexBy()/column() maps),

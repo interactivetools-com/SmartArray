@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use Iterator, ArrayAccess, Countable;
+use ReflectionMethod;
 use RuntimeException;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
@@ -220,15 +221,23 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     /**
      * All writes throw: a SmartNull marks a missing key or empty result, so
      * there is nothing real to write to and the value would be silently lost.
-     * Same guard for property, set(), and array syntax.
+     * Same guard for property syntax, array syntax, and two-argument set().
      */
     public function __set(string $name, mixed $value): void
     {
         $this->throwCannotSet();
     }
 
-    public function set(int|string $key, mixed $value): never
+    /**
+     * One argument is SmartString's set($value): produce that value and end the
+     * chain, like or(). Two arguments is SmartArray's set($key, $value), a
+     * write, and all writes throw (see __set above).
+     */
+    public function set(mixed ...$args): mixed
     {
+        if (count($args) === 1 && $this->useSmartStrings) {
+            return $this->__call('set', $args);
+        }
         $this->throwCannotSet();
     }
 
@@ -240,24 +249,42 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     /**
      * Emulate response methods for SmartArray and SmartString.
      *
-     * Since when we access a non-existent element we don't know if we were expecting a SmartArray or SmartString,
-     * we return this object that can handle both.
+     * A missing key doesn't tell us whether the caller expected a value or a
+     * collection, so this object answers for both. SmartString methods (HTML mode
+     * only) are tried first, and the result decides what comes back: a still-null
+     * result means nothing was produced, so the SmartNull itself returns and the
+     * chain stays open for either ending, ->or('n/a') for a value or ->implode()
+     * for a collection. Produced results (or() fallbacks, int() and other scalars)
+     * return as usual. map() propagates without running its callback: a missing
+     * key has no value to pass it, while a NULL value in an existing key still
+     * runs the callback.
      *
-     * Unknown methods are forwarded too, so they throw the same undefined-method
+     * Everything else delegates to an empty SmartArray/SmartArrayHtml of the same
+     * mode. Unknown methods are forwarded too, so they throw the same undefined-method
      * Error as the rest of the library ("did you mean" hint + caller's file:line).
      *
      * @param $name
      * @param mixed ...$arguments
-     * @return array|false|float|int|SmartString|string|null
+     * @return array|false|float|int|SmartNull|SmartString|string|null
      */
     public function __call($name, array $arguments): mixed
     {
         // SmartString methods only delegate in HTML mode: raw values are plain scalars
         // with no methods, so a miss answers SmartString calls the same way - with the
-        // standard undefined-method Error
-        if ($this->useSmartStrings && !method_exists(SmartArrayBase::class, $name) && method_exists(SmartString::class, $name)) {
-            return SmartString::new(null)->$name(...$arguments);
+        // standard undefined-method Error. The isPublic() check keeps private helpers
+        // out: method_exists() reports them, but they aren't part of the API
+        $isSmartStringMethod = $this->useSmartStrings
+            && method_exists(SmartString::class, $name)
+            && (new ReflectionMethod(SmartString::class, $name))->isPublic();
+
+        if ($isSmartStringMethod) {
+            if ($name === 'map') {
+                return $this;
+            }
+            $result = SmartString::new(null)->$name(...$arguments);
+            return $result instanceof SmartString && $result->isNull() ? $this : $result;
         }
+
         return $this->useSmartStrings
             ? (new SmartArrayHtml([], $this->getInternalProperties()))->$name(...$arguments)
             : (new SmartArray([], $this->getInternalProperties()))->$name(...$arguments);

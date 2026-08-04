@@ -151,8 +151,11 @@ depends on WHERE you read (changed in 3.0):
 SmartNull behavior: `echo` → `""`; `value()` → null; `count()` → 0;
 `foreach` iterates zero times; `toArray()` → `[]`; `json_encode()` → null;
 SmartArray methods return empty results; SmartString methods (HTML mode)
-behave as on null; guards (`or404()` etc.) FIRE (empty = missing); any
-write to it throws `RuntimeException` ("Cannot set values on SmartNull").
+behave as on null, except transforms return the same SmartNull (chain stays
+missing, accepts value or collection endings) and `map()` skips its callback
+(a NULL value in an existing key still runs it); guards (`or404()` etc.)
+FIRE (empty = missing); one-argument `set($value)` produces that value; all
+other writes throw `RuntimeException` ("Cannot set values on SmartNull").
 It carries the source's mysqli metadata and load handler.
 
 ## Iteration and Keys

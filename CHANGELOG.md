@@ -87,6 +87,12 @@ the docs - IDEs show a strikethrough with the replacement.
 
 ### Behavior changes
 
+- A missing field stays a SmartNull through the whole chain instead of
+  becoming an empty SmartString at the first method call. Same output as
+  before (echoes `""`, `or()` still fires), but chains no longer dead-end:
+  `$row->missing->trim()->implode(', ')` works where it previously threw.
+  `map()` skips its callback on a missing key; NULL values in existing
+  keys still run it.
 - `isset()`, `empty()`, and `??` treat a stored null as missing, matching
   plain PHP arrays: on a NULL column `isset($row->field)` is now false and
   `$row->field ?? 'none'` returns `'none'`. Previously they answered "does
@@ -107,8 +113,10 @@ the docs - IDEs show a strikethrough with the replacement.
   See [UPGRADING.md](UPGRADING.md).
 - All writes to a `SmartNull` throw "Cannot set values on SmartNull": property
   writes (previously created a silent dynamic property that shadowed
-  chaining) and `->set()` (previously discarded the value) now match the
-  existing `['key'] =` guard.
+  chaining) and two-argument `->set($key, $value)` (previously discarded the
+  value) now match the existing `['key'] =` guard. One-argument
+  `->set($value)` is SmartString's set: not a write, it produces that value
+  and ends the chain, like `or()`.
 - Raw-mode arrays no longer answer SmartString methods on missing keys:
   `$row->missing->or('n/a')` on a raw array throws the standard
   undefined-method Error instead of returning an HTML-encoding SmartString.

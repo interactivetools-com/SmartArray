@@ -20,10 +20,14 @@ use RuntimeException;
  * access, and method calls all keep working, and the chain resolves to an
  * empty/null value of the right type for the mode it was born in.
  *
- * Method calls are handled by __call, which routes three ways:
- * - names on SmartArrayBase  -> an empty SmartArray/SmartArrayHtml (mode inherited)
- * - names only on SmartString -> SmartString::new(null)
- * - names on neither          -> the library's undefined-method Error
+ * Method calls are handled by __call. In HTML mode, public SmartString methods
+ * are tried first and the result decides what comes back: value producers like
+ * or() return their fallback, terminals like int() return their scalar, and
+ * transforms like trim() propagate the same SmartNull so the chain stays open
+ * for either a value or a collection ending. map() propagates without running
+ * its callback (a missing key has no value to pass). Everything else delegates
+ * to an empty SmartArray/SmartArrayHtml of the same mode, and unknown names
+ * throw the library's undefined-method Error.
  */
 class SmartNullTest extends SmartArrayTestCase
 {
@@ -224,17 +228,93 @@ class SmartNullTest extends SmartArrayTestCase
     //endregion
     //region Method delegation: SmartString methods
 
-    public function testSmartStringOnlyMethodsDelegateToANullSmartStringInHtmlMode(): void
+    public function testTransformsPropagateTheSameSmartNullInHtmlMode(): void
     {
+        // A missing key stays missing through a chain: there is nothing to
+        // transform, so the SmartNull itself comes back and the chain stays
+        // open for either ending, ->or() for a value or ->implode() for a collection
         $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
 
-        $trimmed = $smartNull->trim();
-        $this->assertInstanceOf(SmartString::class, $trimmed);
-        $this->assertNull($trimmed->value(), 'delegation target is SmartString::new(null)');
+        $transforms = ['trim' => [], 'maxChars' => [5], 'dateFormat' => ['Y-m-d'], 'numberFormat' => [], 'add' => [5]];
+        foreach ($transforms as $method => $args) {
+            $this->assertSame($smartNull, $smartNull->$method(...$args), "->$method() propagates");
+        }
+
+        $this->assertSame('n/a', $smartNull->trim()->maxChars(5)->or('n/a')->value(), 'chain resolves at the end');
+        $this->assertSame('', $smartNull->trim()->implode(', ')->value(), 'collection ending still works after a transform');
+    }
+
+    public function testValueProducersEndTheChainInHtmlMode(): void
+    {
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
 
         $fallback = $smartNull->or('n/a');
         $this->assertInstanceOf(SmartString::class, $fallback);
         $this->assertSame('n/a', $fallback->value());
+        $this->assertSame('n/a', $smartNull->ifNull('n/a')->value());
+    }
+
+    public function testOrThrowThrowsInHtmlMode(): void
+    {
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no user found');
+
+        $smartNull->orThrow('no user found');
+    }
+
+    public function testMapPropagatesWithoutRunningTheCallbackInHtmlMode(): void
+    {
+        // map() takes a user callback, and a missing key has no value to pass it
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+        $calls     = 0;
+
+        $result = $smartNull->map(function ($value) use (&$calls) {
+            $calls++;
+            return 'computed';
+        });
+
+        $this->assertSame($smartNull, $result);
+        $this->assertSame(0, $calls, 'the callback never runs on a missing key');
+        $this->assertSame('n/a', $smartNull->map('strtoupper')->or('n/a')->value(), 'chain stays open after map');
+    }
+
+    public function testMapStillRunsOnAKeyThatExistsWithANullValue(): void
+    {
+        // The boundary map() propagation must not cross: NULL is a present value
+        // (SmartString(null), the ordinary path), only an absent key is a SmartNull
+        $row    = SmartArrayHtml::new(['bio' => null]);
+        $result = $row->bio->map(fn($value) => $value ?? 'default');
+
+        $this->assertInstanceOf(SmartString::class, $result);
+        $this->assertSame('default', $result->value());
+    }
+
+    public function testMapOnACollectionShapedSmartNullKeepsCollectionChainsWorking(): void
+    {
+        // first() on an empty result, then a per-element map: the SmartNull
+        // propagates, so collection endings and iteration still degrade gracefully
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+
+        $result = $smartNull->map(fn($value) => strtoupper((string)$value))->implode(', ');
+        $this->assertInstanceOf(SmartString::class, $result);
+        $this->assertSame('', $result->value());
+    }
+
+    public function testMapDelegatesToAnEmptyArrayInRawMode(): void
+    {
+        // Raw mode has no SmartString delegation: map is SmartArray's per-element
+        // map, which returns an empty array of the same mode
+        $result = $this->smartNullFrom(SmartArray::class)->map(fn($value) => $value);
+
+        $this->assertSame(SmartArray::class, get_class($result));
+        $this->assertSame([], $result->toArray());
+    }
+
+    public function testHtmlEncodeReturnsEmptyStringInHtmlMode(): void
+    {
+        $this->assertSame('', $this->smartNullFrom(SmartArrayHtml::class)->htmlEncode());
     }
 
     public function testSmartStringTypeCastsReturnEmptyScalarsInHtmlMode(): void
@@ -373,15 +453,38 @@ class SmartNullTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testSetThrowsTheSameGuardAsArraySyntax(string $class): void
+    public function testTwoArgumentSetThrowsTheSameGuardAsArraySyntax(string $class): void
     {
-        // All writes throw the same guard: property, set(), and array syntax
+        // Two arguments is SmartArray's set($key, $value), a write, and all
+        // writes throw the same guard: property, set(), and array syntax
         $smartNull = $this->smartNullFrom($class);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
         $smartNull->set('key', 'value');
+    }
+
+    public function testOneArgumentSetProducesTheValueInHtmlMode(): void
+    {
+        // One argument is SmartString's set($value): not a write, it produces
+        // a new value and ends the chain, like or()
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+
+        $result = $smartNull->set('fallback');
+        $this->assertInstanceOf(SmartString::class, $result);
+        $this->assertSame('fallback', $result->value());
+
+        $this->assertSame($smartNull, $smartNull->set(null), 'set(null) produces nothing, so the chain stays missing');
+    }
+
+    public function testOneArgumentSetThrowsInRawMode(): void
+    {
+        // Raw mode has no SmartString delegation, so the write guard answers
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
+
+        $this->smartNullFrom(SmartArray::class)->set('value');
     }
 
     #[DataProvider('modeProvider')]

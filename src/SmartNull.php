@@ -6,6 +6,7 @@ namespace Itools\SmartArray;
 use Iterator, ArrayAccess, Countable;
 use RuntimeException;
 use Itools\SmartString\SmartString;
+use JetBrains\PhpStorm\Deprecated;
 use JsonSerializable;
 use stdClass;
 
@@ -83,23 +84,17 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     //region Debugging and Help
 
     /**
-     * Displays help information about this object
+     * Prints links to the online documentation.
      *
-     * @return void
+     * @deprecated Read the docs on GitHub instead - same content, easier to read:
+     *             https://github.com/interactivetools-com/SmartArray#readme
      */
+    #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
     public function help(): void
     {
         $output = <<<'__TEXT__'
-            SmartNull - Chainable Null Object for Missing Elements
-            ===================================================
-            SmartNull is returned when accessing non-existent elements where the type
-            (SmartArray or SmartString) is ambiguous.
-            
-            It implements both SmartArray and SmartString interfaces. When methods
-            are called, it delegates to either a new empty SmartArray or a null
-            SmartString as appropriate. This allows unlimited method chaining
-            without null checks, returning appropriate empty/null values when
-            the final result is accessed.
+            SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
+            Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
             __TEXT__;
 
         // Wrap in <xmp> for readability when output is (or will default to) HTML - same rule

@@ -130,16 +130,14 @@ $plain = $users->toArray();
 On single fields in HTML mode, `value()` returns the original value in its
 original type: `$user->name->value()`.
 
-## Debugging and Help
+## Debugging
 
 Call `debug()` on any SmartArray to see its contents, which mode it's in,
-and (for query results) the mysqli metadata. Call `help()` for a quick
-reference of every method. Both print readable output in the browser and
-plain text on the command line:
+and (for query results) the mysqli metadata. It prints readable output in
+the browser and plain text on the command line:
 
 ```php
 $users->debug();  // contents, current mode, and query metadata
-$users->help();   // quick reference of every method
 ```
 
 Plain `print_r($users)` works too and shows just the element data; the class

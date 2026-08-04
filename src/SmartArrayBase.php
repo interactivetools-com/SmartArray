@@ -983,23 +983,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Debugging and Help
 
     /**
-     * Displays help information about available methods and properties.
-     * Loads content from help.txt file.
-     */
-    public function help(): void
-    {
-        $helpPath = __DIR__ . '/help.txt';
-
-        if (is_file($helpPath)) {
-            $docs = file_get_contents($helpPath);
-        } else {
-            $docs = "SmartArray help documentation not found.\nExpected location: $helpPath";
-        }
-
-        echo self::xmpWrap("\n$docs\n\n");
-    }
-
-    /**
      * Displays diagnostic output: array contents, mysqli metadata, and object properties.
      *
      * If a load handler is set, calls it for every key to annotate loadable
@@ -1397,7 +1380,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $className = self::stripNamespace(static::class);
         $warning   = "Can't convert $className to string $inFileOnLine.\n\n";
         $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n\n";
-        $warning .= 'For more info: $var->help()';
+        $warning .= 'See SmartArray docs for more info';
 
         // output warning
         echo "\nWarning: $warning\n\n";           // Output with echo so PHP doesn't add the filename and line number of this function on the end

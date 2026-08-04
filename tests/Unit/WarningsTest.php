@@ -364,7 +364,7 @@ class WarningsTest extends SmartArrayTestCase
 
         $expected = "\nWarning: Can't convert $shortClass to string in TEST_FILE on line LINE.\n"
             . "\n" . self::BRACES_HINT . "\n"
-            . "\nFor more info: \$var->help()\n"
+            . "\nSee SmartArray docs for more info\n"
             . "\n";
         $this->assertSame($expected, self::maskLocations($output));
         $this->assertSame('', $result, 'returns an empty string so the conversion is not fatal');
@@ -407,7 +407,7 @@ class WarningsTest extends SmartArrayTestCase
         // No leading newline, no "Warning:" prefix, and no trailing blank lines
         $expected = "Can't convert $shortClass to string in TEST_FILE on line LINE.\n"
             . "\n" . self::BRACES_HINT . "\n"
-            . "\nFor more info: \$var->help()";
+            . "\nSee SmartArray docs for more info";
         $this->assertSame($expected, self::maskLocations($messages[0]));
     }
 

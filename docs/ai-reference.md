@@ -27,7 +27,7 @@ Contents:
 - Transforming and Grouping - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
 - Guards - or404(), orDie(), orThrow(), orRedirect()
 - Database Metadata - mysqli(), load()
-- Debugging - debug(), help()
+- Debugging - debug()
 - Errors and Exceptions
 - Deprecated Names
 - Gotchas Quick Reference
@@ -288,7 +288,6 @@ this automatically.
 
 ```php
 $collection->debug();   // contents, current mode, mysqli metadata; debug(1) adds types and internals
-$collection->help();    // prints the method cheat sheet (src/help.txt)
 print_r($collection);   // element data only; the class name identifies the mode
 ```
 

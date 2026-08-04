@@ -279,7 +279,7 @@ class SmartNullTest extends SmartArrayTestCase
             $smartNull->bogusMethod();
             $this->fail('expected an Error');
         } catch (Error $e) {
-            $this->assertStringStartsWith('Call to undefined method ' . $delegateClass . "->bogusMethod(), call ->help() for available methods.\n", $e->getMessage());
+            $this->assertStringStartsWith('Call to undefined method ' . $delegateClass . "->bogusMethod(), see the SmartArray docs for available methods.\n", $e->getMessage());
         }
     }
 

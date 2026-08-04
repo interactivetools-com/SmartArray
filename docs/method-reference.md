@@ -14,7 +14,6 @@ $data  = SmartArray::new($records);      // raw mode: fields are plain PHP value
 
 echo $users->first()->name;                                   // read fields with the arrow operator
 $active = $users->where('status', 'Active')->sortBy('name');  // methods chain left to right
-$users->help();                                               // print a quick reference of all methods
 ```
 
 Both classes share every method below. "Field" means a
@@ -130,7 +129,6 @@ these up automatically.*
 | Method       | Description                                                                             |
 |--------------|-----------------------------------------------------------------------------------------|
 | `->debug()`  | Prints contents, current mode, and query metadata; readable in browser and command line |
-| `->help()`   | Prints a quick reference of every method                                                |
 
 **Working with single values?** Fields in HTML mode are
 [SmartString](https://github.com/interactivetools-com/SmartString) objects,

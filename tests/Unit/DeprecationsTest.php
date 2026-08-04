@@ -25,8 +25,9 @@ use ReflectionClass;
  * Every alias is a real declared method (method_exists() sees it, IDEs show a
  * strikethrough), sorted into the stage regions of src/Deprecations.php:
  *
- *     Silent  pluck, nth, pluckNth, each, sprintf, get, set - work, no runtime
- *             signal (get/set behavior is pinned in ReadAccessTest/WriteAccessTest)
+ *     Silent  help, pluck, nth, pluckNth, each, sprintf, get, set - work, no
+ *             runtime signal (get/set behavior is pinned in
+ *             ReadAccessTest/WriteAccessTest; help() prints doc links, DebugTest)
  *     Logged  toRaw, toHtml, withSmartStrings, enableSmartStrings,
  *             noSmartStrings, disableSmartStrings, isMultipleOf, smartMap,
  *             chunk - work, one E_USER_DEPRECATED with the caller's file:line
@@ -59,6 +60,7 @@ class DeprecationsTest extends SmartArrayTestCase
             'each',
             'enableSmartStrings',
             'get',
+            'help',
             'isMultipleOf',
             'noSmartStrings',
             'nth',
@@ -580,7 +582,7 @@ class DeprecationsTest extends SmartArrayTestCase
             $this->fail('expected an Error for an undefined method');
         } catch (Error $e) {
             $this->assertSame(
-                "Call to undefined method SmartArray->totallyUnknown(), call ->help() for available methods.\n"
+                "Call to undefined method SmartArray->totallyUnknown(), see the SmartArray docs for available methods.\n"
                 . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownMethodThrowsWithTheCallersFileAndLine()\nReported",
                 $e->getMessage(),
             );
@@ -634,7 +636,7 @@ class DeprecationsTest extends SmartArrayTestCase
         $sa = SmartArray::new(['a']);
 
         $this->assertSame(
-            'Call to undefined method SmartArray->isMultipleOff(), call ->help() for available methods.',
+            'Call to undefined method SmartArray->isMultipleOff(), see the SmartArray docs for available methods.',
             $this->firstLineOfError(fn() => $sa->isMultipleOff()),
             'a near-miss on a real method name is not in the alias list',
         );
@@ -669,7 +671,7 @@ class DeprecationsTest extends SmartArrayTestCase
         $sa = SmartArray::new(['a']);
 
         $this->assertSame(
-            "Call to undefined method SmartArray->$method(), call ->help() for available methods.",
+            "Call to undefined method SmartArray->$method(), see the SmartArray docs for available methods.",
             $this->firstLineOfError(fn() => $sa->$method()),
         );
     }
@@ -682,7 +684,7 @@ class DeprecationsTest extends SmartArrayTestCase
             $this->fail('expected an Error for an undefined static method');
         } catch (Error $e) {
             $this->assertSame(
-                "Call to undefined method SmartArray::bogus(), call ->help() for available methods.\n"
+                "Call to undefined method SmartArray::bogus(), see the SmartArray docs for available methods.\n"
                 . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownStaticCallThrowsWithTheStaticSeparator()\nReported",
                 $e->getMessage(),
             );
@@ -694,7 +696,7 @@ class DeprecationsTest extends SmartArrayTestCase
         // __callStatic() skips didYouMean(): a static call is the wrong shape
         // for every method on the list
         $this->assertSame(
-            'Call to undefined method SmartArrayHtml::join(), call ->help() for available methods.',
+            'Call to undefined method SmartArrayHtml::join(), see the SmartArray docs for available methods.',
             $this->firstLineOfError(fn() => SmartArrayHtml::join()),
         );
     }

@@ -372,60 +372,17 @@ class DebugTest extends SmartArrayTestCase
     //endregion
     //region help()
 
-    public function testHelpEchoesHelpTxtPlainOnCli(): void
+    /** help() is deprecated; until removed, it prints links to the online docs */
+    public function testHelpPrintsDocLinksPlainOnCli(): void
     {
         $sa = SmartArray::new(['a' => 1]);
 
         [$result, $output] = $this->captureOutput(fn() => $sa->help());
 
-        $helpText = file_get_contents(dirname(__DIR__, 2) . '/src/help.txt');
         $this->assertNull($result, 'help() is void');
-        $this->assertSame("\n" . trim($helpText, "\n") . "\n", $output);
-    }
-
-    public function testHelpListsTheSectionsItPromises(): void
-    {
-        $sa = SmartArray::new(['a' => 1]);
-
-        [, $output] = $this->captureOutput(fn() => $sa->help());
-
-        $anchors = [
-            'SmartArray: Chainable Arrays with XSS-Safe Output',
-            'Access Cheat Sheet',
-            'Creation & Conversion',
-            'Single Elements',
-            'Collection Checks',
-            'Row Position',
-            'Filtering & Sorting',
-            'Transforming & Grouping',
-            'Requiring Results',
-            'Database Metadata',
-            'Debugging',
-            '->debug()                Show contents, current mode, and query metadata',
-            '->help()                 Display this help text',
-        ];
-        foreach ($anchors as $anchor) {
-            $this->assertStringContainsString($anchor, $output);
-        }
-    }
-
-    /**
-     * Light-touch coverage check: every ->method() help() lists must exist.
-     * The other direction (every public method is documented) is DocsCoverageTest's.
-     */
-    public function testHelpOnlyListsMethodsThatExist(): void
-    {
-        $sa = SmartArray::new(['a' => 1]);
-
-        [, $output] = $this->captureOutput(fn() => $sa->help());
-
-        preg_match_all('/^->(\w+)\(/m', $output, $matches);
-        $listed = array_values(array_unique($matches[1]));
-
-        $this->assertContains('column', $listed, 'sanity check: the method list was parsed');
-        foreach ($listed as $method) {
-            $this->assertTrue(method_exists(SmartArrayBase::class, $method), "help() lists ->$method() but SmartArrayBase has no such method");
-        }
+        $this->assertStringContainsString('https://github.com/interactivetools-com/SmartArray#readme', $output);
+        $this->assertStringContainsString('https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md', $output);
+        $this->assertStringNotContainsString('<xmp>', $output, 'plain output on CLI');
     }
 
     //endregion
@@ -550,26 +507,18 @@ class DebugTest extends SmartArrayTestCase
     }
 
     /**
-     * SmartNull::help() uses the same wrapping rule as SmartArray::help():
-     * plain output on CLI, <xmp>-wrapped only for text/html web responses.
+     * SmartNull::help() prints the same doc links as SmartArray::help(),
+     * with the same wrapping rule: plain on CLI, <xmp> only for text/html.
      */
-    public function testSmartNullHelpPrintsPlainOnCli(): void
+    public function testSmartNullHelpPrintsDocLinksPlainOnCli(): void
     {
         $smartNull = SmartArray::new([])->first();
 
         [$result, $output] = $this->captureOutput(fn() => $smartNull->help());
 
         $expected = <<<'__TEXT__'
-            SmartNull - Chainable Null Object for Missing Elements
-            ===================================================
-            SmartNull is returned when accessing non-existent elements where the type
-            (SmartArray or SmartString) is ambiguous.
-
-            It implements both SmartArray and SmartString interfaces. When methods
-            are called, it delegates to either a new empty SmartArray or a null
-            SmartString as appropriate. This allows unlimited method chaining
-            without null checks, returning appropriate empty/null values when
-            the final result is accessed.
+            SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
+            Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
             __TEXT__;
 
         $this->assertNull($result, 'help() is void');

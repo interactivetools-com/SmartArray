@@ -71,6 +71,23 @@ trait Deprecations
     //region Silent Aliases
 
     /**
+     * Prints links to the online documentation.
+     *
+     * @deprecated Read the docs on GitHub instead - same content, easier to read:
+     *             https://github.com/interactivetools-com/SmartArray#readme
+     */
+    #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
+    public function help(): void
+    {
+        $docs = <<<'__TEXT__'
+            SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
+            Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
+            __TEXT__;
+
+        echo self::xmpWrap("\n$docs\n\n");
+    }
+
+    /**
      * Extracts a single field from each row, optionally keyed by another field.
      *
      * @deprecated Use ->column() - same arguments and behavior, matches PHP's array_column()
@@ -512,7 +529,7 @@ trait Deprecations
         }
 
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
-        $suggestion = self::didYouMean($method) ?? "call ->help() for available methods.";
+        $suggestion = self::didYouMean($method) ?? "see the SmartArray docs for available methods.";
         $className  = self::stripNamespace(static::class);
         throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
     }
@@ -521,7 +538,7 @@ trait Deprecations
     {
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $className = self::stripNamespace(static::class);
-        throw new Error("Call to undefined method $className::$method(), call ->help() for available methods.\n" . self::occurredInFile());
+        throw new Error("Call to undefined method $className::$method(), see the SmartArray docs for available methods.\n" . self::occurredInFile());
     }
 
     /**
@@ -571,7 +588,6 @@ trait Deprecations
             'asRaw'       => ['decode'],
 
             // utilities
-            'help'        => ['docs'],
             'debug'       => ['dump', 'inspect', 'dd'],
         ];
 

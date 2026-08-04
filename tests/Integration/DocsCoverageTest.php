@@ -18,22 +18,21 @@ use ReflectionMethod;
  * Keeps the public API and the docs in sync in both directions.
  *
  * Forward: every public method of SmartArrayBase, SmartArray, and SmartArrayHtml
- * must appear in docs/method-reference.md and src/help.txt. The exempt set is read off the code
+ * must appear in docs/method-reference.md. The exempt set is read off the code
  * itself (Deprecations membership, #[Deprecated], @deprecated, @internal,
  * interface methods, magic methods), so a new public method fails this test until
  * it is documented, and a newly deprecated one stops being required with no test
  * edit. There is no hand-maintained skip list.
  *
- * Reverse: every ->method() named in help.txt must exist as a callable method on
- * SmartArray, SmartArrayHtml, SmartNull, or SmartString, which catches typos and
- * references left behind after a rename.
+ * Reverse: every ->method() named in method-reference.md must exist as a callable
+ * method on SmartArray, SmartArrayHtml, SmartNull, or SmartString, which catches
+ * typos and references left behind after a rename.
  */
 final class DocsCoverageTest extends SmartArrayTestCase
 {
     //region Configuration
 
     private const METHOD_REFERENCE_PATH = __DIR__ . '/../../docs/method-reference.md';
-    private const HELP_PATH             = __DIR__ . '/../../src/help.txt';
 
     /** Classes whose own public methods make up the documented surface. */
     private const API_CLASSES = [SmartArrayBase::class, SmartArray::class, SmartArrayHtml::class];
@@ -60,11 +59,6 @@ final class DocsCoverageTest extends SmartArrayTestCase
     public function testMethodReferenceDocumentsEveryPublicMethod(): void
     {
         $this->assertDocumentsEveryPublicMethod(self::METHOD_REFERENCE_PATH, 'docs/method-reference.md');
-    }
-
-    public function testHelpTextDocumentsEveryPublicMethod(): void
-    {
-        $this->assertDocumentsEveryPublicMethod(self::HELP_PATH, 'src/help.txt');
     }
 
     /**
@@ -130,9 +124,9 @@ final class DocsCoverageTest extends SmartArrayTestCase
     /**
      * Catches doc typos and references to renamed or removed methods.
      */
-    public function testHelpTextMethodReferencesAreCallable(): void
+    public function testMethodReferenceMethodMentionsAreCallable(): void
     {
-        $text = self::readDoc(self::HELP_PATH);
+        $text = self::readDoc(self::METHOD_REFERENCE_PATH);
         preg_match_all('/->([a-zA-Z_][a-zA-Z0-9_]*)\(/', $text, $matches);
 
         $callable = self::callableMethodNames();
@@ -144,25 +138,24 @@ final class DocsCoverageTest extends SmartArrayTestCase
         }
         sort($unknown);
 
-        $this->assertSame([], $unknown, 'src/help.txt names methods that do not exist on SmartArray, SmartArrayHtml, SmartNull, or SmartString');
+        $this->assertSame([], $unknown, 'docs/method-reference.md names methods that do not exist on SmartArray, SmartArrayHtml, SmartNull, or SmartString');
     }
 
     //endregion
     //region Pinned Gaps
 
     /**
-     * Once a pinned method gets documented in both files it must leave the list, otherwise
+     * Once a pinned method gets documented it must leave the list, otherwise
      * the pin quietly turns into a permanent skip.
      */
     public function testUndocumentedTodayPinsAreStillAccurate(): void
     {
         $reference = self::readDoc(self::METHOD_REFERENCE_PATH);
-        $help      = self::readDoc(self::HELP_PATH);
 
         $nowDocumented = [];
         foreach (self::UNDOCUMENTED_TODAY as $name) {
             $pattern = self::mentionPattern($name);
-            if (preg_match($pattern, $reference) === 1 && preg_match($pattern, $help) === 1) {
+            if (preg_match($pattern, $reference) === 1) {
                 $nowDocumented[] = "$name()";
             }
         }

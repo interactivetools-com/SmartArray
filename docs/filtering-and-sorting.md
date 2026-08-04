@@ -27,7 +27,8 @@ $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Je
 ```
 
 Databases and forms often hand numbers back as strings, so `where()`
-compares loosely: `'1'` matches `1`.
+compares loosely: `'1'` matches `1`. When you need a strict match,
+`filter()` (below) takes a callback where you can compare with `===`.
 
 With just a field name, `where()` keeps the rows where that field has a
 truthy value, following PHP's `empty()` rules (NULL, false, 0, `"0"`, and
@@ -88,8 +89,10 @@ $ours = $tables->filter(fn($name) => str_starts_with($name, 'cms_'));  // cms_ac
 ```
 
 Called with no callback, `filter()` removes empty values (`""`, `0`, NULL,
-false). Like PHP's `array_filter()`, kept rows keep their original keys;
-chain `values()` when you want them renumbered.
+false). Keep in mind that `0` is removed even when it's real data (a $0
+price, a sort order of 0); pass a callback when zeros should stay. Like
+PHP's `array_filter()`, kept rows keep their original keys; chain
+`values()` when you want them renumbered.
 
 ## Sorting: sortBy() and sort()
 

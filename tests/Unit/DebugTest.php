@@ -29,9 +29,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *   (testDebugPadsShortValuesSoLoadAnnotationsLineUp) pins the raw bytes,
  *   padding included, using quoted strings the editor cannot touch.
  *
- * CLI limits: headers_list() is always empty under CLI, so xmpWrap() sees no
- * Content-Type, assumes HTML, and wraps. The unwrapped path is only reachable
- * from a global showme() function, which is covered in a subprocess.
+ * CLI limits: xmpWrap() short-circuits to plain output under CLI (PHP_SAPI),
+ * so every expectation here pins the unwrapped format. The <xmp>-wrapped web
+ * path can't be simulated in-process.
  */
 class DebugTest extends SmartArrayTestCase
 {
@@ -52,7 +52,6 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<__TEXT__
 
-            <xmp>
             $header
 
             [
@@ -64,7 +63,6 @@ class DebugTest extends SmartArrayTestCase
                 'null'    => null
                 'isFirst' => Q
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -79,7 +77,6 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             [
@@ -102,7 +99,6 @@ class DebugTest extends SmartArrayTestCase
                     'isFirst' => Q
                 ]
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -117,12 +113,10 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             [
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -140,14 +134,13 @@ class DebugTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => $sa->debug());
 
-        $expected = "\n<xmp>\n"
+        $expected = "\n"
                   . "Itools\\SmartArray\\SmartArray - Values are returned **as-is** on access (no extra encoding)\n"
                   . "\n"
                   . "[\n"
                   . "    'id'   => 7           \n"
                   . "    'name' => Amy         \n"
-                  . "]\n"
-                  . "</xmp>\n";
+                  . "]\n";
 
         $this->assertSame($expected, $output);
     }
@@ -160,14 +153,12 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             [
                 'title'     => Post
                 'author_id' => 7            // ->load('author_id') for more
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -198,7 +189,6 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             [                                                                                 // SmartArray #{id}, Root #{id} (self)
@@ -217,7 +207,6 @@ class DebugTest extends SmartArrayTestCase
                 ],
                 'root'        => SmartArray #{id}
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -237,7 +226,6 @@ class DebugTest extends SmartArrayTestCase
 
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             [                                                                                 // SmartArray #{id}, Root #{rootId}
@@ -250,7 +238,6 @@ class DebugTest extends SmartArrayTestCase
                 ],
                 'root'        => SmartArray #{rootId}
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -301,7 +288,6 @@ class DebugTest extends SmartArrayTestCase
         // The query prints twice: indented as written above the data, whitespace-collapsed in the metadata block
         $expected = <<<'__TEXT__'
 
-            <xmp>
             Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
 
             MySQL Query:
@@ -320,7 +306,6 @@ class DebugTest extends SmartArrayTestCase
                 'insert_id'     => 0
                 'baseTable'     => users
             ]
-            </xmp>
 
             __TEXT__;
 
@@ -347,15 +332,14 @@ class DebugTest extends SmartArrayTestCase
         [$result, $output] = $this->captureOutput(fn() => $sa->debug());
 
         $this->assertNull($result, 'debug() is void: it echoes, it does not chain');
-        $this->assertStringStartsWith("\n<xmp>\n", $output);
-        $this->assertStringEndsWith("\n</xmp>\n", $output);
+        $this->assertStringNotContainsString('<xmp>', $output, 'CLI output is plain - terminals show the tags literally');
     }
 
     /**
-     * xmpWrap() skips the tags when a global showme() is on the call stack, on
-     * the assumption that showme() already wrapped the output. Only a global
-     * function counts (the backtrace holds namespaced names), so this runs in a
-     * subprocess: a test file in a namespace cannot declare one.
+     * A global showme() wrapper is the common CMSB debug idiom; this pins that
+     * debug() inside it produces clean plain output in a subprocess. (The
+     * showme() skip inside xmpWrap() is web-only and unreachable from CLI
+     * tests, so the wrapped path stays audited rather than asserted.)
      */
     public function testDebugSkipsXmpWrapWhenCalledFromGlobalShowmeFunction(): void
     {
@@ -388,7 +372,7 @@ class DebugTest extends SmartArrayTestCase
     //endregion
     //region help()
 
-    public function testHelpEchoesHelpTxtWrappedInXmp(): void
+    public function testHelpEchoesHelpTxtPlainOnCli(): void
     {
         $sa = SmartArray::new(['a' => 1]);
 
@@ -396,7 +380,7 @@ class DebugTest extends SmartArrayTestCase
 
         $helpText = file_get_contents(dirname(__DIR__, 2) . '/src/help.txt');
         $this->assertNull($result, 'help() is void');
-        $this->assertSame("\n<xmp>\n" . trim($helpText, "\n") . "\n</xmp>\n", $output);
+        $this->assertSame("\n" . trim($helpText, "\n") . "\n", $output);
     }
 
     public function testHelpListsTheSectionsItPromises(): void
@@ -564,18 +548,17 @@ class DebugTest extends SmartArrayTestCase
     }
 
     /**
-     * SmartNull::help() uses the same wrapping rule as SmartArray::help(): no
-     * Content-Type header means PHP sends its default text/html, so wrap. Under
-     * CLI headers_list() is empty, so the wrapped path is what this pins.
+     * SmartNull::help() uses the same wrapping rule as SmartArray::help():
+     * plain output on CLI, <xmp>-wrapped only for text/html web responses.
      */
-    public function testSmartNullHelpWrapsInXmpWhenNoContentTypeIsSet(): void
+    public function testSmartNullHelpPrintsPlainOnCli(): void
     {
         $smartNull = SmartArray::new([])->first();
 
         [$result, $output] = $this->captureOutput(fn() => $smartNull->help());
 
         $expected = <<<'__TEXT__'
-            <xmp>SmartNull - Chainable Null Object for Missing Elements
+            SmartNull - Chainable Null Object for Missing Elements
             ===================================================
             SmartNull is returned when accessing non-existent elements where the type
             (SmartArray or SmartString) is ambiguous.
@@ -584,7 +567,7 @@ class DebugTest extends SmartArrayTestCase
             are called, it delegates to either a new empty SmartArray or a null
             SmartString as appropriate. This allows unlimited method chaining
             without null checks, returning appropriate empty/null values when
-            the final result is accessed.</xmp>
+            the final result is accessed.
             __TEXT__;
 
         $this->assertNull($result, 'help() is void');

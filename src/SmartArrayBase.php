@@ -1017,15 +1017,34 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Wrap output in <xmp> tag if text/html and not called from a function that already added <xmp>
      */
-    private static function xmpWrap($output): string
+    private static function xmpWrap(string $output): string
     {
-        $output             = trim($output, "\n");
-        $headersList        = implode("\n", headers_list());
-        $hasContentType     = (bool)preg_match('|^\s*Content-Type:\s*|im', $headersList);                          // assume no content type will default to HTML
-        $isTextHtml         = !$hasContentType || preg_match('|^\s*Content-Type:\s*text/html\b|im', $headersList); // match: text/html or ...;charset=utf-8
+        $output = trim($output, "\n");
+        $plain  = "\n$output\n";
+
+        // terminals show <xmp> literally; CGI builds misreport SAPI on some hosts, so check more than PHP_SAPI
+        $inCli = PHP_SAPI === 'cli'
+                 || ($_SERVER['SESSIONNAME'] ?? '') === 'Console' // Windows console
+                 || empty($_SERVER['SCRIPT_NAME']);               // only web servers set SCRIPT_NAME
+        if ($inCli) {
+            return $plain;
+        }
+
+        // non-HTML responses (json, plain text, etc.) stay unwrapped
+        $headersList    = implode("\n", headers_list());
+        $hasContentType = (bool)preg_match('|^\s*Content-Type:\s*|im', $headersList);                          // assume no content type will default to html
+        $isTextHtml     = !$hasContentType || preg_match('|^\s*Content-Type:\s*text/html\b|im', $headersList); // match: text/html or ...;charset=utf-8
+        if (!$isTextHtml) {
+            return $plain;
+        }
+
+        // showme() debug helper adds its own <xmp>
         $backtraceFunctions = array_map('strtolower', array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'));
-        $wrapInXmp          = $isTextHtml && !in_array('showme', $backtraceFunctions, true);
-        return $wrapInXmp ? "\n<xmp>\n$output\n</xmp>\n" : "\n$output\n";
+        if (in_array('showme', $backtraceFunctions, true)) {
+            return $plain;
+        }
+
+        return "\n<xmp>\n$output\n</xmp>\n";
     }
 
     /**

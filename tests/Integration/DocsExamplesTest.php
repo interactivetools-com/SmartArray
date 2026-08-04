@@ -546,7 +546,8 @@ class DocsExamplesTest extends SmartArrayTestCase
     }
 
     // help() prints the whole of src/help.txt, so the assertions are stable anchors
-    // (wrapper, first heading, one section, last line) instead of the full text
+    // (first heading, one section, last line) instead of the full text. Output is
+    // plain under CLI; the <xmp> web wrap can't be simulated in-process
     public function testReadmeHelpPrintsTheMethodReference(): void
     {
         $users = SmartArrayHtml::new([['id' => 10]]);
@@ -555,11 +556,10 @@ class DocsExamplesTest extends SmartArrayTestCase
             $users->help();
         });
 
-        $this->assertStringStartsWith("\n<xmp>\n", $output);
+        $this->assertStringNotContainsString('<xmp>', $output);
         $this->assertStringContainsString('SmartArray: Enhanced Arrays with Automatic HTML Encoding and Chainable Methods', $output);
         $this->assertStringContainsString('Sorting & Filtering', $output);
         $this->assertStringContainsString('For more details see SmartArray readme.md', $output);
-        $this->assertStringEndsWith("</xmp>\n", $output);
     }
 
     //endregion
@@ -918,12 +918,11 @@ class DocsExamplesTest extends SmartArrayTestCase
             $rows->debug();
         });
 
-        $this->assertStringStartsWith("\n<xmp>\n", $output);
+        $this->assertStringNotContainsString('<xmp>', $output, 'plain output under CLI');
         $this->assertStringContainsString('Values are returned **as-is** on access', $output);
         $this->assertStringContainsString("'id' => 1", $output);
         $this->assertStringContainsString('MySQLi Metadata [', $output);
         $this->assertStringContainsString("'affected_rows' => 3", $output);
-        $this->assertStringEndsWith("</xmp>\n", $output);
     }
 
     public function testHelpTxtDebugOnHtmlModeNamesTheMode(): void

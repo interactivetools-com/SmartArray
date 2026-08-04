@@ -11,18 +11,20 @@ on:
         description: 'PHP version (blank = all)'
         required: false
         type: choice
-        options: ['', '8.1', '8.2', '8.3', '8.4', '8.5']
+        options: ['', '8.1', '8.2', '8.3', '8.4', '8.5', '8.6']
 
 jobs:
   test:
     name: PHP ${{ matrix.php }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    # 8.6 is prerelease: report its result but never fail the build; drop this when 8.6 ships
+    continue-on-error: ${{ matrix.php == '8.6' }}
 
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php: ${{ inputs.php && fromJSON(format('["{0}"]', inputs.php)) || fromJSON('["8.1","8.2","8.3","8.4","8.5"]') }}
+        php: ${{ inputs.php && fromJSON(format('["{0}"]', inputs.php)) || fromJSON('["8.1","8.2","8.3","8.4","8.5","8.6"]') }}
         include:
           # OS/arch bugs (paths, case-insensitive filenames, char signedness in
           # extensions) don't vary by PHP version, so one job per platform at the

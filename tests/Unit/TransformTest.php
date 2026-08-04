@@ -156,5 +156,17 @@ class TransformTest extends SmartArrayTestCase
         $this->assertSame(['a' => 1], $class::new([])->merge(['a' => 1])->toArray());
     }
 
+    #[DataProvider('modeProvider')]
+    public function testMergeSmartNullMergesAsEmpty(string $class): void
+    {
+        // Merging an optional relation that's absent: the missing key returns
+        // SmartNull, which merges as nothing
+        $sa = $class::new(['a' => 1]);
+
+        $result = $sa->merge($sa->missing, ['b' => 2]);
+
+        $this->assertSame(['a' => 1, 'b' => 2], $result->toArray());
+    }
+
     //endregion
 }

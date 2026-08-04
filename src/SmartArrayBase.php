@@ -877,12 +877,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     $result = $arr1->merge($arr2, $arr3);
      *     // ['a' => 1, 'b' => 3, 'c' => 4, 'd' => 5]
      *
-     * @param array|SmartArrayBase ...$arrays Arrays to merge with
+     * @param array|SmartArrayBase|SmartNull ...$arrays Arrays to merge with (SmartNull merges as empty)
      * @return static Returns a new SmartArray with the merged results
      */
-    public function merge(array|SmartArrayBase ...$arrays): static
+    public function merge(array|SmartArrayBase|SmartNull ...$arrays): static
     {
-        $arrays = array_map([self::class, 'getRawValue'], $arrays); // convert SmartArrays to arrays
+        // Convert SmartArrays to arrays; SmartNull (missing key) merges as empty
+        $arrays = array_map(static fn($array) => self::getRawValue($array) ?? [], $arrays);
         $merged = array_merge($this->toArray(), ...$arrays);
         return new static($merged, $this->getInternalProperties());
     }

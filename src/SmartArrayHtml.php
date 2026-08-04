@@ -216,7 +216,7 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function merge(array|SmartArrayBase ...$arrays): static
+    public function merge(array|SmartArrayBase|SmartNull ...$arrays): static
     {
         return parent::merge(...$arrays);
     }

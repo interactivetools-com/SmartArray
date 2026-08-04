@@ -1,7 +1,9 @@
-<!-- WORK IN PROGRESS: numbers below are single-machine direction checks
-     (WSL2, PHP 8.1, opcache on, xdebug off), all produced by the one command
-     in "Reproducing the Numbers". Before this page ships: decide whether to
-     re-run on the CI matrix for citable numbers (like SmartString's page). -->
+<!-- FUTURE: numbers below are single-machine direction checks (WSL2, PHP
+     8.1, opcache on, xdebug off), all produced by the one command in
+     "Reproducing the Numbers". SmartArray's per-operation numbers and the
+     encoding claims already run on SmartString's CI speed matrix; only the
+     whole-page numbers here are local. We may add a CI workflow to re-run
+     them across a platform matrix, like SmartString's page. -->
 
 # Performance: What SmartArray Costs vs Plain Arrays
 

@@ -315,8 +315,9 @@ Output is `<xmp>`-wrapped in the browser and plain text on the command line.
 
 ## Deprecated Names
 
-Old names still work but log deprecation notices naming the replacement.
-When reading old code, translate:
+Old names still work. Some log deprecation notices naming the replacement;
+the rest are flagged only by IDEs and static analysis, with no runtime
+signal. When reading old code, translate:
 
 | Deprecated                                               | Use instead                                            |
 |----------------------------------------------------------|--------------------------------------------------------|
@@ -333,6 +334,11 @@ When reading old code, translate:
 | `sprintf($format)`                                       | `map()` with an inline format string                   |
 | `where(['field' => $value, ...])` (array arg)            | chained `where('field', $value)` calls                 |
 | `isMultipleOf($n)`, `chunk($size)`                       | retired, no replacement                                |
+
+How the deprecated array syntax is reported is configurable via
+`SmartArrayBase::$onOffsetAccess`: `'notify'` (default) echoes a notice into
+the page and logs it, `'log'` logs only (for legacy sites mid-migration),
+`'throw'` throws a RuntimeException (strict mode for new installs).
 
 ## Gotchas Quick Reference
 

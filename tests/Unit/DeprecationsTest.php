@@ -603,7 +603,8 @@ class DeprecationsTest extends SmartArrayTestCase
             'keyby'     => ['keyby', 'did you mean ->indexBy()?'],
             'not_empty' => ['not_empty', 'did you mean ->isNotEmpty()?'],
             'raw'       => ['raw', 'did you mean ->toArray()?'],
-            'walk'      => ['walk', 'did you mean ->each()?'],
+            'walk'      => ['walk', 'did you mean a foreach loop?'],
+            'fetch'     => ['fetch', "did you mean property access, ->key or ->{'key'}?"],
             'empty'     => ['empty', 'did you mean ->isEmpty()?'],
             'HEAD'      => ['HEAD', 'did you mean ->first()?'],
         ];

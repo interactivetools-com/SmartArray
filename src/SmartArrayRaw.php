@@ -8,6 +8,9 @@ namespace Itools\SmartArray;
  */
 class SmartArrayRaw extends SmartArray
 {
+    /**
+     * @deprecated Use new SmartArray() instead.
+     */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {
         @trigger_error('SmartArrayRaw is deprecated. Use SmartArray instead.', E_USER_DEPRECATED);

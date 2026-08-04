@@ -184,7 +184,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Return values as raw PHP types for data processing.
      *
-     * Returns the same object if already SmartArray (lazy conversion), otherwise creates a new one.
+     * Returns the same object if already SmartArray, otherwise creates a new one.
      *
      * @return SmartArray This object if already raw, or a new SmartArray instance
      */
@@ -193,7 +193,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Return values as HTML-safe SmartString objects.
      *
-     * Returns the same object if already SmartArrayHtml (lazy conversion), otherwise creates a new one.
+     * Returns the same object if already SmartArrayHtml, otherwise creates a new one.
      *
      * @return SmartArrayHtml This object if already HTML-safe, or a new SmartArrayHtml instance
      */
@@ -596,7 +596,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Recursively converts SmartArray back to a standard PHP array with original values.
      *
      * Nested SmartArrays convert to arrays; scalars and nulls return as-is.
-     * Those are the only types setElement() stores, so no other type can appear.
+     * No other type can appear.
      *
      * @return array An array representation of the object's elements with original values.
      */
@@ -805,8 +805,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Joins the elements of the SmartArray into a single string with a specified separator.
      *
-     * This method works on flat SmartArrays only. For SmartString elements,
-     * their original values are used in the resulting string.
+     * This method works on flat SmartArrays only.
      *
      *     $arr = SmartArray::new(['apple', 'banana', 'cherry']);
      *     $result = $arr->implode(', '); // Returns string: "apple, banana, cherry"
@@ -1370,7 +1369,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Note: A suppressed E_USER_WARNING error is triggered to activate any set_error_handler() logging handlers.
      *
-     * @return string An empty string to prevent fatal errors.
+     * @return string Always an empty string.
      */
     public function __toString(): string
     {
@@ -1403,9 +1402,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * the flag to pick the right SmartArray class when `__call` delegates a method.
      * Without it, a SmartNull born from a SmartArrayHtml would silently fall back to a
      * plain SmartArray, dropping the HTML-encoded return type.
-     *
-     * The spread (`...`) is intentional: if `getInternalProperties()` ever starts
-     * including `useSmartStrings`, the explicit value here will still override it.
      */
     protected function newSmartNull(): SmartNull
     {

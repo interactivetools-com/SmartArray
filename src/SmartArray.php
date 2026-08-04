@@ -30,11 +30,9 @@ class SmartArray extends SmartArrayBase
     //region Creation and Conversion
 
     /**
-     * Create new SmartArray with useSmartStrings=false
-     *
-     * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
-     * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the root array.
+     * Create a SmartArray from an array, recursively converting nested arrays into
+     * child SmartArrays. Scalars and nulls are returned as raw PHP types on access.
+     * Sets position metadata on child rows.
      *
      * @param array $array The input array to convert into a SmartArray.
      * @param bool|array|null $properties An associative array of custom internal properties (legacy boolean accepted but deprecated).

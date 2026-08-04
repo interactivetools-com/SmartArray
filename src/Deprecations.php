@@ -532,6 +532,9 @@ trait Deprecations
         throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
     }
 
+    /**
+     * Static calls to undefined methods get the same styled error as instance calls.
+     */
     public static function __callStatic(string $method, array $args): mixed
     {
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
@@ -547,10 +550,20 @@ trait Deprecations
      */
     private static function didYouMean(string $method): ?string
     {
-        $methodLc      = strtolower($method);
+        $methodLc = strtolower($method);
+
+        // Names whose replacement isn't a method: point at the current syntax, not a deprecated method
+        $syntaxHint = match ($methodLc) {
+            'fetch', 'value', 'item'     => "did you mean property access, ->key or ->{'key'}?",
+            'foreach', 'iterate', 'walk' => "did you mean a foreach loop?",
+            default                      => null,
+        };
+        if ($syntaxHint) {
+            return $syntaxHint;
+        }
+
         $methodAliases = [
             // value access
-            'get'         => ['fetch', 'value', 'item'],
             'first'       => ['head', 'find', 'firstrow', 'getfirst'],
             'last'        => ['tail', 'end'],
             'at'          => ['index'],
@@ -578,7 +591,6 @@ trait Deprecations
             'columnAt'    => ['columnnth', 'nthcolumn'],
             'implode'     => ['concat', 'join'],
             'map'         => ['transform', 'apply', 'collect'],
-            'each'        => ['foreach', 'iterate', 'walk'],
             'merge'       => ['append', 'union', 'combine', 'extend'],
 
             // conversion

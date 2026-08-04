@@ -25,13 +25,11 @@ class SmartArrayHtml extends SmartArrayBase
     //region Creation and Conversion
 
     /**
-     * Create new SmartArray with useSmartStrings=true
+     * Create a SmartArrayHtml from an array, recursively converting nested arrays into
+     * child SmartArrayHtml instances. Scalars and nulls are wrapped in SmartString on
+     * access so they HTML-encode on output. Sets position metadata on child rows.
      *
-     * Constructs a new SmartArray object from an array, recursively converting each element to either a SmartString
-     * or a nested SmartArray. It also sets special properties for nested SmartArrays to indicate their position
-     * within the root array.
-     *
-     * @param array $array The input array to convert into a SmartArray.
+     * @param array $array The input array to convert into a SmartArrayHtml.
      * @param bool|array|null $properties An associative array of custom internal properties (legacy boolean accepted but deprecated).
      */
     public function __construct(array $array = [], bool|array|null $properties = [])

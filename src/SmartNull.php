@@ -25,6 +25,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 {
     //region Creation and Conversion
 
+    /**
+     * @param array $properties Internal properties carried over from the SmartArray
+     *                          that produced this SmartNull (mode, mysqli metadata, root).
+     */
     public function __construct(array $properties = [])
     {
         // Set properties
@@ -167,24 +171,33 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     //endregion
     //region ArrayAccess Methods
 
-    public function offsetGet($offset): SmartNull
+    /**
+     * Array reads on a missing value stay missing: returns $this so chains keep working.
+     */
+    public function offsetGet(mixed $offset): SmartNull
     {
         return $this;
     }
 
-    public function offsetSet($offset, $value): void
+    /**
+     * All writes throw (see __set).
+     */
+    public function offsetSet(mixed $offset, mixed $value): void
     {
         $this->throwCannotSet();
     }
 
-    public function offsetExists($offset): bool
+    /**
+     * No keys exist on a missing value.
+     */
+    public function offsetExists(mixed $offset): bool
     {
         return false;
     }
 
-    public function offsetUnset($offset): void
+    public function offsetUnset(mixed $offset): void
     {
-        // Needed for Iterator interface, but never called
+        // ArrayAccess requires this; a SmartNull has nothing to unset
     }
 
     //endregion
@@ -263,9 +276,9 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * mode. Unknown methods are forwarded too, so they throw the same undefined-method
      * Error as the rest of the library ("did you mean" hint + caller's file:line).
      *
-     * @param $name
-     * @param mixed ...$arguments
-     * @return array|false|float|int|SmartNull|SmartString|string|null
+     * @param string $name
+     * @param array $arguments
+     * @return mixed This SmartNull to keep the chain open, or whatever the delegated method returns
      */
     public function __call($name, array $arguments): mixed
     {
@@ -290,6 +303,9 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
             : (new SmartArray([], $this->getInternalProperties()))->$name(...$arguments);
     }
 
+    /**
+     * Outputs the same as a null SmartString.
+     */
     public function __toString(): string
     {
         return SmartString::new(null)->__toString();

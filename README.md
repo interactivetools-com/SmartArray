@@ -62,6 +62,7 @@ Full guides and references ([browse on GitHub](https://github.com/interactivetoo
 - **Lookup**
     - [Method Reference](docs/method-reference.md) - every method, grouped by what it returns
     - [Troubleshooting](docs/troubleshooting.md) - common error messages and gotchas, with fixes
+    - [Performance](docs/performance.md) - what SmartArray costs vs plain arrays: about 0.003 ms and 270 bytes per row on a typical page
     - [AI Reference](docs/ai-reference.md) - the complete API in one dense file, written for AI coding assistants
 
 ## You're Never Locked In

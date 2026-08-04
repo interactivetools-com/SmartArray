@@ -185,6 +185,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Return values as raw PHP types for data processing.
      *
      * Returns the same object if already SmartArray, otherwise creates a new one.
+     * Builds a new object and modifies nothing else: the original keeps working
+     * unchanged, and root() on the new object still returns the result set it
+     * came from, in that result set's original class.
      *
      * @return SmartArray This object if already raw, or a new SmartArray instance
      */
@@ -194,6 +197,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Return values as HTML-safe SmartString objects.
      *
      * Returns the same object if already SmartArrayHtml, otherwise creates a new one.
+     * Builds a new object and modifies nothing else: the original keeps working
+     * unchanged, and root() on the new object still returns the result set it
+     * came from, in that result set's original class.
      *
      * @return SmartArrayHtml This object if already HTML-safe, or a new SmartArrayHtml instance
      */
@@ -973,6 +979,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Exists for load handlers, which use it to batch-cache values across sibling
      * rows (e.g., $row->root()->column($field) to collect every row's foreign keys
      * in one query). Not needed in templates.
+     *
+     * Mode conversions never change the root: asRaw() and asHtml() build a new
+     * object and modify nothing else, so root() always returns the result set in
+     * the class it was created as. Convert an HTML row to raw and root() is still
+     * the SmartArrayHtml result set it came from.
      *
      * @internal
      */

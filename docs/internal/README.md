@@ -1,6 +1,7 @@
 # Internal Docs
 
 Docs for people working on SmartArray itself, not for people using it in their apps.
-Library users want the [README](../../README.md) instead.
+Library users want the [documentation index](../README.md) instead.
 
+- [style.md](style.md) - SmartArray-specific writing conventions on top of the shared docs standards.
 - [design-decisions.md](design-decisions.md) - Why the API is shaped the way it is.

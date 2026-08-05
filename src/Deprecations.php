@@ -54,7 +54,8 @@ trait Deprecations
      * reads, writes, and unset(); existence checks (offsetExists) are signal-free
      * because PHP also calls offsetGet() for `??` and empty(), which carries the
      * one notice. Property forms (`$array->key`, `isset($array->key)`) are always
-     * signal-free.
+     * signal-free, and so are bracket reads on SmartNull: missing-data chains like
+     * $row->missing['a']['b'] would signal once per level for one call site.
      *
      *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
      *                by PHP's error handling. Use for legacy codebases mid-migration.

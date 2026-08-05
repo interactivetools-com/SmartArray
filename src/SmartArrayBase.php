@@ -389,12 +389,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Sorting & Filtering
 
     /**
-     * Returns a new SmartArray sorted by values, using PHP sort() function.
+     * Returns a new SmartArray sorted ascending by values, using PHP sort() function.
      * Only works on flat arrays (throws on nested).
+     *
+     * $flags sets how values compare, not the direction - sorting is always ascending:
+     * - SORT_REGULAR       - default, PHP's normal comparison rules (numbers before strings)
+     * - SORT_NUMERIC       - compare as numbers
+     * - SORT_STRING        - compare as strings
+     * - SORT_NATURAL       - natural order for embedded numbers: "item10" sorts after "item9"
+     * - SORT_LOCALE_STRING - compare as strings using the current locale
+     * - SORT_FLAG_CASE     - case-insensitive, combined with a string flag: SORT_NATURAL|SORT_FLAG_CASE
+     * - SORT_ASC/SORT_DESC - throws: direction constants, not comparison flags
      */
     public function sort(int $flags = SORT_REGULAR): static
     {
         $this->assertFlatArray();
+        if ($flags === SORT_ASC || $flags === SORT_DESC) {
+            throw new InvalidArgumentException("sort(): sorting is always ascending, SORT_ASC/SORT_DESC are directions, not comparison flags. For descending, sort in SQL with ORDER BY ... DESC");
+        }
 
         $sorted = $this->toArray();
         sort($sorted, $flags);
@@ -410,10 +422,22 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Numeric row keys are re-indexed; string keys are preserved
      * (array_multisort() default behavior).
+     *
+     * $flags sets how field values compare, not the direction - sorting is always ascending:
+     * - SORT_REGULAR       - default, PHP's normal comparison rules (numbers before strings)
+     * - SORT_NUMERIC       - compare as numbers
+     * - SORT_STRING        - compare as strings
+     * - SORT_NATURAL       - natural order for embedded numbers: "item10" sorts after "item9"
+     * - SORT_LOCALE_STRING - compare as strings using the current locale
+     * - SORT_FLAG_CASE     - case-insensitive, combined with a string flag: SORT_NATURAL|SORT_FLAG_CASE
+     * - SORT_ASC/SORT_DESC - throws: direction constants, not comparison flags
      */
     public function sortBy(string $field, int $flags = SORT_REGULAR): static
     {
         $this->assertNestedArray();
+        if ($flags === SORT_ASC || $flags === SORT_DESC) {
+            throw new InvalidArgumentException("sortBy(): sorting is always ascending, SORT_ASC/SORT_DESC are directions, not comparison flags. For descending, sort in SQL with ORDER BY ... DESC");
+        }
         $this->warnIfMissing($field);
 
         // sort by field value, treating missing fields as null (?? also covers non-array rows in mixed data)

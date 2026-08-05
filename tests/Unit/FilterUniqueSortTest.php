@@ -134,6 +134,17 @@ class FilterUniqueSortTest extends SmartArrayTestCase
         $class::new([['a' => 1]])->sort();
     }
 
+    #[DataProvider('modeProvider')]
+    public function testSortRejectsDirectionConstants(string $class): void
+    {
+        // The obvious wrong guess for descending gets a clear error, not
+        // undefined flag behavior
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('sort(): sorting is always ascending');
+
+        $class::new(['b', 'a'])->sort(SORT_DESC);
+    }
+
     //endregion
     //region sortBy()
 
@@ -208,6 +219,17 @@ class FilterUniqueSortTest extends SmartArrayTestCase
         $this->expectExceptionMessage('sortBy(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->sortBy('name');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSortByRejectsDirectionConstants(string $class): void
+    {
+        // Previously fataled with a confusing array_multisort() TypeError
+        // naming library internals
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('sortBy(): sorting is always ascending');
+
+        $class::new([['n' => 2], ['n' => 1]])->sortBy('n', SORT_DESC);
     }
 
     //endregion

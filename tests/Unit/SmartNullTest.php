@@ -183,6 +183,16 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame([], $seen);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testGetIteratorReturnsEmptyCollectionIterator(string $class): void
+    {
+        // getIterator exists on SmartString too, but a missing value iterates like
+        // an empty collection instead of throwing SmartString's can't-foreach error
+        $smartNull = $this->smartNullFrom($class);
+
+        $this->assertSame([], iterator_to_array($smartNull->getIterator()));
+    }
+
     //endregion
     //region Method delegation: SmartArray methods and mode inheritance
 

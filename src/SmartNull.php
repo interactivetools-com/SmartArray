@@ -285,8 +285,11 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
         // SmartString methods only delegate in HTML mode: raw values are plain scalars
         // with no methods, so a miss answers SmartString calls the same way - with the
         // standard undefined-method Error. The isPublic() check keeps private helpers
-        // out: method_exists() reports them, but they aren't part of the API
+        // out: method_exists() reports them, but they aren't part of the API.
+        // getIterator is defined by both classes and skips SmartString: a missing value
+        // iterates like an empty collection, it doesn't throw SmartString's can't-foreach error
         $isSmartStringMethod = $this->useSmartStrings
+            && $name !== 'getIterator'
             && method_exists(SmartString::class, $name)
             && (new ReflectionMethod(SmartString::class, $name))->isPublic();
 

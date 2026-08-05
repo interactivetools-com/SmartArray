@@ -800,6 +800,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Mirrors PHP's array_column() - extract a column of values, optionally indexed by another column.
      *
+     * The whole-rows shape column(null, $indexKey) follows indexBy() key rules, not
+     * array_column()'s: rows missing the index field key under '' (last wins) instead
+     * of getting auto-numbered keys that look like real field values, and float
+     * values keep full precision as string keys ('19.99') instead of truncating.
+     *
      *     $users = new SmartArray([
      *         ['id' => 10, 'name' => 'John', 'email' => 'john@example.com'],
      *         ['id' => 20, 'name' => 'Jane', 'email' => 'jane@example.com'],

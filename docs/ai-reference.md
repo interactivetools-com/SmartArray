@@ -242,7 +242,7 @@ All return a new collection; nested-only methods throw
 
 | Method                                                                             | Behavior                                                                                                                     |
 |------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Like `array_column()`: one field per row; `$indexKey` keys results by another field; `column(null, $indexKey)` keys whole rows |
+| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Like `array_column()`: one field per row; `$indexKey` keys results by another field; `column(null, $indexKey)` keys whole rows with `indexBy()` rules (missing field keys under `''`, last wins) |
 | `columnAt(int $index): static`                                                     | The column at a position from each row, ignoring key names (0 first, -1 last)                                                |
 | `indexBy(string $field): static`                                                   | Whole rows keyed by `$field`; duplicate keys keep the LAST row                                                               |
 | `groupBy(string $field): static`                                                   | Rows grouped by `$field`: one child collection per distinct value                                                            |

@@ -820,11 +820,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
+        $this->assertNestedArray(); // assert here so the error names column(), not indexBy()
+
         if ($columnKey === null && $indexKey !== null) {
             return $this->indexBy((string)$indexKey);
         }
 
-        $this->assertNestedArray();
+
         if ($columnKey !== null) {
             $this->warnIfMissing($columnKey);
         }

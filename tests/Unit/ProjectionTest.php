@@ -150,6 +150,17 @@ class ProjectionTest extends SmartArrayTestCase
         $this->assertSame([['id' => 1], ['id' => 2]], $result->toArray());
     }
 
+    #[DataProvider('modeProvider')]
+    public function testColumnOnFlatThrowsNamingColumn(string $class): void
+    {
+        // Covers the indexBy() delegation shape: the error names the method the
+        // caller actually wrote, not the internal delegate
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('column(): Expected a nested array, but got a flat array');
+
+        $class::new(['a', 'b'])->column(null, 'x');
+    }
+
     //endregion
     //region indexBy()
 

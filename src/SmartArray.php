@@ -119,7 +119,7 @@ class SmartArray extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function at(int|SmartString $index): static|SmartNull|string|int|float|bool|null
+    public function at(int|SmartString|SmartNull $index): static|SmartNull|string|int|float|bool|null
     {
         return parent::at($index);
     }

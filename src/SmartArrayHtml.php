@@ -114,7 +114,7 @@ class SmartArrayHtml extends SmartArrayBase
     }
 
     /** {@inheritDoc} */
-    public function at(int|SmartString $index): static|SmartNull|SmartString
+    public function at(int|SmartString|SmartNull $index): static|SmartNull|SmartString
     {
         return parent::at($index);
     }

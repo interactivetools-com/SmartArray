@@ -230,15 +230,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Get an element by its position in the array, ignoring keys.
      *
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
-     * Returns SmartNull if out of bounds. Use $array->key for access by key; at() is by position.
+     * Returns SmartNull if out of bounds, or if the index is a missing key (SmartNull) or a
+     * non-numeric value - a bad position in means a missing value out, so chains survive.
+     * Use $array->key for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
      *     $max    = $result->first()->at(0); // Get unaliased column by position
      */
-    public function at(int|SmartString $index): static|SmartNull|SmartString|string|int|float|bool|null
+    public function at(int|SmartString|SmartNull $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // Unwrap Smart indexes so positions read from another array work directly (MySQL returns numeric strings)
+        // Unwrap Smart indexes so positions read from another array work directly (MySQL returns
+        // numeric strings). Missing keys (SmartNull) and non-numeric values stay missing.
+        if ($index instanceof SmartNull) {
+            return $this->newSmartNull();
+        }
         if ($index instanceof SmartString) {
+            if (!is_numeric($index->value())) {
+                return $this->newSmartNull();
+            }
             $index = (int) $index->value();
         }
 

@@ -279,6 +279,19 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertModeValue('c', $sa->at(new SmartString(-1)), $class);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testAtBadIndexesReturnSmartNull(string $class): void
+    {
+        // A missing key (SmartNull) or non-numeric index gives a missing value
+        // out, not the first element or a TypeError
+        $sa = $class::new(['a', 'b', 'c']);
+
+        $this->assertSmartNull($sa->at($sa->missing));
+        $this->assertSmartNull($sa->at(new SmartString('abc')));
+        $this->assertSmartNull($sa->at(new SmartString('')));
+        $this->assertSmartNull($sa->at(new SmartString(null)));
+    }
+
     //endregion
     //region __get (property access)
 

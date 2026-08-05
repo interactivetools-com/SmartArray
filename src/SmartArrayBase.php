@@ -893,6 +893,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * because extra arguments break them: strtoupper() throws ArgumentCountError,
      * intval() would read $key as its $base parameter.
      *
+     * Built-ins that require a string throw TypeError on null or numeric elements;
+     * chain ->map('strval') first to convert.
+     *
      *     $rows->map(strtoupper(...));           // ($value) only - internal function
      *     $rows->map('strtoupper');              // ($value) only - internal function
      *     $rows->map(fn($v) => ucfirst($v));     // ($value, $key) - unused args are ignored

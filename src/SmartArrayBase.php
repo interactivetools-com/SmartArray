@@ -5,7 +5,7 @@ namespace Itools\SmartArray;
 
 use stdClass;
 use Throwable, Error, InvalidArgumentException, RuntimeException;
-use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure;
+use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure, ReflectionFunction;
 use Itools\SmartString\SmartString;
 
 /**
@@ -846,17 +846,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Applies a callback to each element *as raw PHP values* (i.e., unwrapped scalars/arrays)
-     * and returns a new SmartArray with the results.
+     * and returns a new SmartArray with the results. Preserves array keys.
      *
-     * The callback receives two parameters if it is a Closure:
-     *   - $value (the raw element from ->toArray())
-     *   - $key   (integer or string)
+     * Callback arguments: Closures receive ($value, $key) unless they wrap a PHP
+     * built-in; every other form receives just ($value). Built-ins get one argument
+     * because extra arguments break them: strtoupper() throws ArgumentCountError,
+     * intval() would read $key as its $base parameter.
      *
-     * If it's a built-in function or a non-closure callable, only the $value is passed to avoid
-     * accidental interpretation of $key as an extra parameter. For example, calling `intval($value, $key)`
-     * might parse the key as the base argument, leading to unexpected results.
-     *
-     * Preserves array keys in the returned SmartArray.
+     *     $rows->map(strtoupper(...));           // ($value) only - internal function
+     *     $rows->map('strtoupper');              // ($value) only - internal function
+     *     $rows->map(fn($v) => ucfirst($v));     // ($value, $key) - unused args are ignored
+     *     $rows->map(fn($v, $k) => "$k: $v");    // ($value, $key)
+     *     $rows->map(slugify(...));              // ($value, $key) - user code ignores extras
      *
      *     $arr   = new SmartArray(['apple', 'banana', 'cherry']);
      *     $upper = $arr->map(fn(string $fruit) => strtoupper($fruit));
@@ -867,17 +868,17 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     // $values is now a SmartArray: [1, 2]
      *
      * @param callable $callback A function/callable to transform each element.
-     *                           Signature if Closure: fn($value, $key) => mixed
-     *                           Signature if non-Closure: fn($value) => mixed
      * @return static A new SmartArray containing the transformed elements.
      */
     public function map(callable $callback): static
     {
-        $newArray  = [];
-        $isClosure = $callback instanceof Closure;
+        // Pass ($value, $key) only to Closures that don't wrap built-ins: built-ins throw on
+        // extra args (strtoupper) or misread $key as a real parameter (intval's $base)
+        $passKey = $callback instanceof Closure && !(new ReflectionFunction($callback))->isInternal();
+
+        $newArray = [];
         foreach ($this->toArray() as $key => $rawValue) {
-            // For closures, pass both $value and $key, but not for non-Closure callbacks to avoid unexpected behavior, e.g., intval($value, $base) would misinterpret $key as $base
-            $newArray[$key] = $isClosure ? $callback($rawValue, $key) : $callback($rawValue);
+            $newArray[$key] = $passKey ? $callback($rawValue, $key) : $callback($rawValue);
         }
 
         return new static($newArray, $this->getInternalProperties());

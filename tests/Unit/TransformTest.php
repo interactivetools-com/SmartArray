@@ -106,6 +106,22 @@ class TransformTest extends SmartArrayTestCase
         $this->assertSame(2, $visited);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testMapFirstClassCallables(string $class): void
+    {
+        // Built-ins wrapped as first-class callables get ($value) only, like their
+        // string form; user closures keep receiving ($value, $key)
+        $sa = $class::new(['a' => 'x', 'b' => 'y']);
+
+        $this->assertSame(['a' => 'X', 'b' => 'Y'], $sa->map(strtoupper(...))->toArray());
+        $this->assertSame(['a' => 'X', 'b' => 'Y'], $sa->map('strtoupper')->toArray());
+        $this->assertSame(['a' => 'a=x', 'b' => 'b=y'], $sa->map(fn($v, $k) => "$k=$v")->toArray());
+
+        // Keys 8 and 16 would change the result if passed as intval()'s $base
+        $nums = $class::new([8 => '10', 16 => '10']);
+        $this->assertSame([8 => 10, 16 => 10], $nums->map(intval(...))->toArray());
+    }
+
     //endregion
     //region merge()
 

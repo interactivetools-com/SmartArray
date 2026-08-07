@@ -718,20 +718,27 @@ class DeprecationsTest extends SmartArrayTestCase
     {
         [$sa, $deprecations] = $this->captureDeprecations(fn() => new SmartArrayRaw(['name' => 'Bob']));
 
-        $this->assertSame(['SmartArrayRaw is deprecated. Use SmartArray instead.'], $deprecations);
+        $this->assertCount(1, $deprecations);
+        $this->assertMatchesRegularExpression(
+            '/^Replace SmartArrayRaw with SmartArray in DeprecationsTest\.php:\d+\.$/',
+            $deprecations[0],
+            'notice names the caller, like every other deprecation',
+        );
         $this->assertInstanceOf(SmartArray::class, $sa);
         $this->assertSame(['name' => 'Bob'], $sa->toArray());
         $this->assertSame('Bob', $sa->name, 'raw mode: values are plain PHP, not SmartStrings');
     }
 
-    public function testSmartArrayRawNewDeprecatesTwice(): void
+    public function testSmartArrayRawNewDeprecatesOnce(): void
     {
+        // new() logs nothing itself; the constructor it calls logs the one notice
         [$sa, $deprecations] = $this->captureDeprecations(fn() => SmartArrayRaw::new(['name' => 'Bob']));
 
-        $this->assertSame([
-            'SmartArrayRaw::new() is deprecated. Use SmartArray::new() instead.',
-            'SmartArrayRaw is deprecated. Use SmartArray instead.',
-        ], $deprecations, 'the factory logs, then the constructor it calls logs again');
+        $this->assertCount(1, $deprecations);
+        $this->assertMatchesRegularExpression(
+            '/^Replace SmartArrayRaw with SmartArray in DeprecationsTest\.php:\d+\.$/',
+            $deprecations[0],
+        );
         $this->assertSame(['name' => 'Bob'], $sa->toArray());
     }
 

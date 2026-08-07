@@ -23,6 +23,8 @@ use stdClass;
  */
 class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, JsonSerializable, Countable
 {
+    use SharedHelpers;
+
     //region Creation and Conversion
 
     /**
@@ -89,6 +91,24 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     //region Debugging and Help
 
     /**
+     * Displays diagnostic output. A SmartNull marks a missing key or empty result,
+     * so there is no data to dump - the output says what this object is instead of
+     * showing an empty array.
+     */
+    public function debug(): void
+    {
+        $class  = static::class;
+        $output = <<<__TEXT__
+            $class - missing key or empty result, value is null
+
+            Property reads and method calls return SmartNull again, so chains keep working.
+            Check the key name for typos, or test with ->isNotEmpty() before use.
+            __TEXT__;
+
+        echo self::xmpWrap("\n$output\n\n");
+    }
+
+    /**
      * Prints links to the online documentation.
      *
      * @deprecated Read the docs on GitHub instead - same content, easier to read:
@@ -102,19 +122,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
             Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
             __TEXT__;
 
-        // Wrap in <xmp> for readability when output is (or will default to) HTML - same rule
-        // as SmartArrayBase::xmpWrap(): skip on CLI (terminals show the tags literally), and
-        // no Content-Type header means PHP sends its default text/html
-        $inCli = PHP_SAPI === 'cli'
-                 || ($_SERVER['SESSIONNAME'] ?? '') === 'Console' // Windows console
-                 || empty($_SERVER['SCRIPT_NAME']);               // only web servers set SCRIPT_NAME
-        $headersList  = implode("\n", headers_list());
-        $isHtmlOutput = !preg_match('|^\s*Content-Type:\s*|im', $headersList)
-                     || preg_match('|^\s*Content-Type:\s*text/html\b|im', $headersList);
-        if (!$inCli && $isHtmlOutput) {
-            $output = "<xmp>$output</xmp>";
-        }
-        echo $output;
+        echo self::xmpWrap("\n$output\n\n");
     }
 
     /**

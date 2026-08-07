@@ -269,6 +269,18 @@ class DebugTest extends SmartArrayTestCase
         $this->assertStringContainsString("'author_id'", $output, 'the data still prints');
     }
 
+    public function testDebugLevelOneLeavesDataRowsKeyedRootUntouched(): void
+    {
+        // The root-property reformat runs on the properties block only, so a data
+        // key that happens to be named 'root' prints its stored value
+        $sa = SmartArray::new(['root' => 'abc123']);
+
+        [, $output] = $this->captureOutput(fn() => $sa->debug(1));
+
+        $this->assertStringContainsString("'root' => 'abc123'", $output, 'data value intact');
+        $this->assertMatchesRegularExpression("/'root'\s+=> SmartArray #\d+/", $output, 'root property still reformatted');
+    }
+
     //endregion
     //region debug(): mysqli metadata
 
@@ -522,7 +534,23 @@ class DebugTest extends SmartArrayTestCase
             __TEXT__;
 
         $this->assertNull($result, 'help() is void');
-        $this->assertSame($expected, $output);
+        $this->assertSame("\n$expected\n", $output, 'same xmpWrap() framing as SmartArray::help()');
+    }
+
+    /**
+     * debug() on a SmartNull says what the object is - a missing key or empty
+     * result - instead of dumping an empty array of the wrong class.
+     */
+    public function testSmartNullDebugDescribesTheMissingValue(): void
+    {
+        $smartNull = SmartArrayHtml::new(['title' => 'Hello'])->titel;
+
+        [$result, $output] = $this->captureOutput(fn() => $smartNull->debug());
+
+        $this->assertNull($result, 'debug() is void');
+        $this->assertStringContainsString('Itools\SmartArray\SmartNull - missing key or empty result, value is null', $output);
+        $this->assertStringContainsString('->isNotEmpty()', $output);
+        $this->assertStringNotContainsString('SmartArrayHtml', $output, 'no longer misreported as an empty array');
     }
 
     //endregion

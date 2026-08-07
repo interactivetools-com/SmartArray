@@ -116,6 +116,17 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testWhereArrayListFormThrowsWithHint(string $class): void
+    {
+        // where(['featured']) is a half-migration of where('featured', ...): a list
+        // has no field names, so the error names the form the caller meant
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("where(): the array form takes ['field' => value] pairs, list given. Did you mean ->where('featured') to match rows where 'featured' is non-empty?");
+
+        $class::new([['featured' => 1]])->where(['featured']);
+    }
+
+    #[DataProvider('modeProvider')]
     public function testWhereOnFlatThrows(string $class): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -294,6 +305,17 @@ class WhereTest extends SmartArrayTestCase
         $sa = $class::new([1 => ['show_on' => "\tmenu\t"]]);
 
         $this->assertCount(1, $sa->whereInList('show_on', new SmartString('menu')));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListRejectsArrayValues(string $class): void
+    {
+        // Previously cast to the literal string "Array" with a PHP warning naming
+        // the library file, then matched nothing
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('whereInList(): expected a single value to match, got array');
+
+        $class::new([['show_on' => 'menu']])->whereInList('show_on', ['menu']);
     }
 
     #[DataProvider('modeProvider')]

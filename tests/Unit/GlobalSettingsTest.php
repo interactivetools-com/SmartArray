@@ -423,6 +423,21 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertSame(["Replace [''] with ->get('') in FILE:LINE."], $this->normalizeCaller($deprecations));
     }
 
+    public function testFloatAndBoolOffsetReadsCoerceLikePhpArrayKeys(): void
+    {
+        // PHP array key semantics: floats truncate ($arr[1.5] reads 1), bools read
+        // 1/0 - previously an internal TypeError from getElement()
+        $sa = SmartArray::new(['a', 'b', 'c']);
+
+        [[$values, ], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(fn() => [$sa[1.5], $sa[true], $sa[false]])
+        ));
+
+        $this->assertSame(['b', 'b', 'a'], $values);
+        $this->assertCount(3, $deprecations);
+        $this->assertStringContainsString('[1]', $deprecations[0], 'notice shows the coerced key');
+    }
+
     public function testNullOffsetExistsAndUnsetUseTheEmptyStringKey(): void
     {
         $sa = SmartArray::new(['' => 'blank']);

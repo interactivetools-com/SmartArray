@@ -538,6 +538,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // Deprecated: legacy array syntax, use chained ->where('field', value) calls instead
         $conditions = array_map([self::class, 'getRawValue'], $field);
+        foreach ($conditions as $key => $listValue) {
+            if (is_int($key)) { // a list like where(['featured']) has no field names to match on
+                $hint = is_string($listValue) ? " Did you mean ->where('$listValue') to match rows where '$listValue' is non-empty?" : "";
+                throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
+            }
+        }
         $whereCalls = array_map(fn($k, $v) => "->where('$k', " . (is_numeric($v) ? $v : "'$v'") . ")", array_keys($conditions), $conditions);
         self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
 
@@ -614,7 +620,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         $this->assertNestedArray();
         $this->warnIfMissing($field);
-        $value   = (string) self::getRawValue($value);
+        $value = self::getRawValue($value);
+        if (!is_scalar($value) && $value !== null) {
+            throw new InvalidArgumentException("whereInList(): expected a single value to match, got " . get_debug_type($value));
+        }
+        $value   = (string) $value;
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
             if (!isset($row[$field])) {
@@ -1092,8 +1102,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $properties         = $this->getInternalProperties(); // gets public properties
             $rootShort          = self::stripNamespace(get_debug_type($properties['root']));
             $properties['root'] = get_debug_type($properties['root']) . " #" . spl_object_id($properties['root']);
-            $output             .= self::prettyPrintR($properties, $debugLevel, 0, "Object Properties");
-            $output             = preg_replace("/^(\s+'root'\s+=> ).*?(\d+).*?$/m", "$1$rootShort #$2", $output); // format root property as: SmartArrayHtml #123
+            $propertiesOutput   = self::prettyPrintR($properties, $debugLevel, 0, "Object Properties");
+            $propertiesOutput   = preg_replace("/^(\s+'root'\s+=> ).*?(\d+).*?$/m", "$1$rootShort #$2", $propertiesOutput); // format root property as: SmartArrayHtml #123
+            $output             .= $propertiesOutput; // regex runs on the properties block only so a data row keyed 'root' prints untouched
         }
 
         $output .= "\n";
@@ -1125,16 +1136,19 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $wrappedKey    = is_int($key) ? "[$key]" : "'$key'";
                 $thisKeyPrefix = str_pad($wrappedKey, $maxKeyLength) . " => ";
 
-                // add load comment
+                // add load comment for keys the handler resolves; without a handler (or for
+                // int keys, which load() doesn't take) there is nothing to probe
                 $loadComment = "";
-                $loadResult  = false;
-                try {
-                    $loadResult = $var->load($key);
-                } catch (Throwable) {
-                    // ignore errors
-                }
-                if ($loadResult !== false && !$loadResult instanceof SmartNull) {
-                    $loadComment = " // ->load('$key') for more";
+                if ($var instanceof self && $var->loadHandler && is_string($key)) {
+                    $loadResult = false;
+                    try {
+                        $loadResult = $var->load($key);
+                    } catch (Throwable) {
+                        // ignore errors
+                    }
+                    if ($loadResult !== false && !$loadResult instanceof SmartNull) {
+                        $loadComment = " // ->load('$key') for more";
+                    }
                 }
 
                 // get output

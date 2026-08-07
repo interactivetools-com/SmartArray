@@ -13,7 +13,7 @@ class SmartArrayRaw extends SmartArray
      */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {
-        @trigger_error('SmartArrayRaw is deprecated. Use SmartArray instead.', E_USER_DEPRECATED);
+        self::logDeprecation('Replace SmartArrayRaw with SmartArray');
         parent::__construct($array, $properties);
     }
 
@@ -22,7 +22,7 @@ class SmartArrayRaw extends SmartArray
      */
     public static function new(array $array = [], array|bool $properties = []): static
     {
-        @trigger_error('SmartArrayRaw::new() is deprecated. Use SmartArray::new() instead.', E_USER_DEPRECATED);
+        // No notice here: the constructor below logs one, so new() stays at one notice per call
         return new static($array, $properties);
     }
 }

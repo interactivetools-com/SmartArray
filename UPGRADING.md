@@ -122,6 +122,9 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 > (SmartString, SmartArray, SmartNull) - they unwrap and re-wrap for the
 > array's mode instead of throwing, so values copy between arrays without
 > calling `->value()` first. Only affects code that relied on those throws.
+> - `load()` throws `InvalidArgumentException` instead of `RuntimeException`
+> when the field name contains invalid characters, matching its empty-field
+> check. Only affects code catching `RuntimeException` around `load()`.
 
 ## v2.7.0
 

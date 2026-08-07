@@ -428,7 +428,12 @@ trait Deprecations
      */
     public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        $offset ??= ''; // PHP array semantics: $arr[null] reads key ''
+        // PHP array key semantics: $arr[null] reads '', floats truncate ($arr[1.5] reads 1), bools read 1/0
+        $offset = match (true) {
+            $offset === null                     => '',
+            is_float($offset), is_bool($offset)  => (int) $offset,
+            default                              => $offset,
+        };
         $this->triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset);
     }

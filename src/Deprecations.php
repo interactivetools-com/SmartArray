@@ -460,6 +460,8 @@ trait Deprecations
     public function offsetUnset(mixed $offset): void
     {
         $this->triggerArrayAccessDeprecation($offset, 'unset');
+        $this->sourceRows       = null;   // same staleness rule as setElement()
+        $this->root->sourceRows = null;
         unset($this->data[$offset]);
     }
 

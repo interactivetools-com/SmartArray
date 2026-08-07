@@ -46,6 +46,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private bool $hasRows = false;
 
+    /**
+     * The original rows fromDatabaseRows() was given, so toArray() can return them
+     * without rebuilding. Nearly free to keep: the child rows share the same value
+     * storage via copy-on-write. Any write to this array or one of its rows clears
+     * it (see setElement()), so a stale copy can never be returned.
+     */
+    private ?array $sourceRows = null;
+
     //endregion
     //region Position Properties
 
@@ -182,6 +190,49 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
+     * Builds a result set from trusted database rows: a list of flat arrays with
+     * scalar or null values, the shape mysqli's fetch_all(MYSQLI_ASSOC) returns.
+     * ZenDB calls this for query results; call it yourself only when rows have
+     * exactly that shape - nested arrays or objects inside a row are not converted
+     * here, use the constructor for those.
+     *
+     * Skips the per-field type scan the constructor needs on unknown input, and
+     * keeps the original rows so toArray() can return them without rebuilding.
+     *
+     *     $resultSet = SmartArrayHtml::fromDatabaseRows($result->fetch_all(MYSQLI_ASSOC));
+     *     $resultSet = SmartArray::fromDatabaseRows($rows, ['loadHandler' => $handler]);
+     *
+     * @internal ZenDB result-set plumbing; interface may change between releases
+     * @param array $rows       List of flat arrays with scalar/null values
+     * @param array $properties Internal properties, same keys as the constructor
+     */
+    public static function fromDatabaseRows(array $rows, array $properties = []): static
+    {
+        $resultSet = new static([], $properties);
+        $count     = count($rows);
+        if ($count === 0) {
+            return $resultSet;
+        }
+
+        // Same template-clone row building as the constructor, minus the per-field scan
+        $childTemplate = new static([], $resultSet->getInternalProperties());
+        $position      = 0;
+        foreach ($rows as $key => $row) {
+            $position++;
+            $child                 = clone $childTemplate;
+            $child->data           = $row;
+            $child->rowsOnly       = $row === [];
+            $child->position       = $position;
+            $child->isFirst        = $position === 1;
+            $child->isLast         = $position === $count;
+            $resultSet->data[$key] = $child;
+        }
+        $resultSet->hasRows    = true;
+        $resultSet->sourceRows = $rows;
+        return $resultSet;
+    }
+
+    /**
      * Return values as raw PHP types for data processing.
      *
      * Returns the same object if already SmartArray, otherwise creates a new one.
@@ -269,6 +320,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private function setElement(int|string|null $key, mixed $value): void
     {
+        // A write makes kept source rows stale: this array's own copy, and its result
+        // set's when this is a row ($this->root is the result set on rows, $this on
+        // top-level arrays)
+        $this->sourceRows       = null;
+        $this->root->sourceRows = null;
+
         // Unwrap Smart values (SmartString, SmartArray, SmartNull) to their raw
         // equivalents; nested arrays then convert to this array's mode below.
         // The is_object() gate keeps the common scalar case to one cheap check.
@@ -651,6 +708,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function toArray(): array
     {
+        // fromDatabaseRows() result sets hand back their original rows: O(1), and
+        // any write to the set or a row clears the copy, so it's never stale
+        if ($this->sourceRows !== null) {
+            return $this->sourceRows;
+        }
+
         // Flat arrays (no child rows) hand back internal data as-is: PHP arrays are
         // copy-on-write, so this is O(1) and callers can't affect internal storage
         if (!$this->hasRows) {
@@ -1245,6 +1308,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function __unset(string $name): void
     {
+        $this->sourceRows       = null;   // same staleness rule as setElement()
+        $this->root->sourceRows = null;
         unset($this->data[$name]);
     }
 

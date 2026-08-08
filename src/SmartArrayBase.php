@@ -398,13 +398,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $count = count($this->data);
         $index = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
-        $keys  = array_keys($this->data);
 
-        if (array_key_exists($index, $keys)) {
-            return $this->getElement($keys[$index]);
-        }
-
-        return $this->newSmartNull();
+        // Bounds-check before array_slice, which clamps out-of-range negative offsets instead of failing
+        return match (true) {
+            $index < 0 || $index >= $count => $this->newSmartNull(),
+            $index === 0                   => $this->first(),
+            $index === $count - 1          => $this->last(),
+            default                        => $this->getElement(array_key_first(array_slice($this->data, $index, 1, true))),
+        };
     }
 
     /**
@@ -663,6 +664,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Single-argument syntax: where('field') keeps rows where the field is non-empty
         if (is_string($field) && func_num_args() === 1) {
             $this->warnIfMissing($field);
+            // This loop repeats 4x across where()/whereNot() on purpose: a shared helper
+            // would need a per-row closure call, which costs more than it saves. If you
+            // change one copy, change all four.
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
                 if (is_array($row) && !empty($row[$field])) {
@@ -677,6 +681,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if (is_string($field) && func_num_args() === 2) {
             $this->warnIfMissing($field);
             $value   = self::getRawValue($value);
+            // repeated 4x, see the first where() loop for why
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
                 if (is_array($row) && array_key_exists($field, $row) && $row[$field] == $value) {  // intentional loose comparison
@@ -730,6 +735,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // Single-argument syntax: whereNot('field') keeps rows where the field is empty
         if (func_num_args() === 1) {
+            // repeated 4x, see the first where() loop for why
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
                 if (is_array($row) && empty($row[$field])) {
@@ -741,6 +747,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         $value   = self::getRawValue($value);
+        // repeated 4x, see the first where() loop for why
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
             if (is_array($row) && (!array_key_exists($field, $row) || $row[$field] != $value)) {  // intentional loose comparison

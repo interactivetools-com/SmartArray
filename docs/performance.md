@@ -12,7 +12,7 @@ result and rendering it costs about 0.003 milliseconds more than the same
 page written by hand with plain arrays and manual HTML encoding; at best
 it comes out ahead, because SmartString often encodes faster than PHP's
 built-in encoder (2.5x on the long-text detail page below). Memory
-overhead is about 270 bytes per row no matter how large the fields are.
+overhead is about 300 bytes per row no matter how large the fields are.
 
 All times on this page are in milliseconds (ms), thousandths of a second.
 For scale: response-time research puts the threshold where people start to
@@ -71,16 +71,16 @@ for the encoding measurements across platforms.
 
 | Data               | Payload size | SmartArray adds | Per record |
 |--------------------|--------------|-----------------|------------|
-| 25 news records    | ~133 KB      | +7 KB           | ~287 bytes |
-| 1,000 news records | ~5.2 MB      | +263 KB         | ~269 bytes |
+| 25 news records    | ~133 KB      | +7.8 KB         | ~320 bytes |
+| 1,000 news records | ~5.2 MB      | +294 KB         | ~301 bytes |
 
 Field values are never copied: PHP strings are reference-counted, so a 5KB
 content field is shared between the plain array and the SmartArray that
 wraps it. The per-record overhead is the row object itself, so the bytes
 per row are the constant, not a percentage: on these ~5 KB news records it
-works out to 5%, on records with a 50 KB body it would be 0.5%, and on
-lean three-column rows it could exceed 100% - while staying the same
-couple hundred bytes each time.
+works out to 6%, on records with a 50 KB body it would be 0.6%, and on
+lean three-column rows it could exceed 100% - while staying the same few
+hundred bytes each time.
 
 ## When to Care
 
@@ -99,10 +99,16 @@ nearly all of it; everything after is close to free:
 | Operation (25 rows, plain SmartArray) | Cost        |
 |---------------------------------------|-------------|
 | Construct from plain records array    | 0.0053 ms   |
+| Construct via `fromDatabaseRows()`    | 0.0037 ms   |
 | foreach over all rows                 | 0.0007 ms   |
 | Read a field (`$row->title`)          | 0.000046 ms |
 | `toArray()` on the record set         | 0.0006 ms   |
 | `toArray()` on one flat row           | 0.000026 ms |
+
+ZenDB constructs its result sets with `fromDatabaseRows()`, the faster
+construct row above: database rows are uniform (same columns in every row,
+plain scalar values), so it skips the checks the general constructor runs
+on arbitrary input and comes out about a third faster.
 
 Internals that keep those numbers small: all-scalar rows are built by
 cloning a shared template and assigning their data in one copy-on-write

@@ -228,6 +228,11 @@ $constructNs = bestOf(function () use ($records): void {
     $GLOBALS['sink'] += SmartArray::new($records)->count();
 }, 5000);
 
+// Trusted construction: database rows are uniform, so validation is skipped
+$constructDbNs = bestOf(function () use ($records): void {
+    $GLOBALS['sink'] += SmartArray::fromDatabaseRows($records)->count();
+}, 5000);
+
 $prebuilt  = SmartArray::new($records);
 $foreachNs = bestOf(function () use ($prebuilt): void {
     foreach ($prebuilt as $row) {
@@ -249,6 +254,7 @@ $toArrayRowNs = bestOf(function () use ($firstRow): void {
 
 printf("cost split (25-row record set):\n");
 printf("  construct from plain array   %9.6f ms\n", $constructNs / 1e6);
+printf("  fromDatabaseRows(), trusted  %9.6f ms\n", $constructDbNs / 1e6);
 printf("  foreach over all rows        %9.6f ms\n", $foreachNs / 1e6);
 printf("  read one field (\$row->title) %9.6f ms\n", $readNs / 1e6);
 printf("  toArray() on the record set  %9.6f ms\n", $toArraySetNs / 1e6);

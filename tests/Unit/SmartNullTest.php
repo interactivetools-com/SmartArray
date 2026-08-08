@@ -290,6 +290,23 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame('n/a', $smartNull->map('strtoupper')->or('n/a')->value(), 'chain stays open after map');
     }
 
+    public function testApplyAliasPropagatesLikeMapInHtmlMode(): void
+    {
+        // apply() is SmartString's deprecated alias for map(); both spellings
+        // propagate the same way on a missing key
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+        $calls     = 0;
+
+        $result = $smartNull->apply(function ($value) use (&$calls) {
+            $calls++;
+            return 'computed';
+        });
+
+        $this->assertSame($smartNull, $result);
+        $this->assertSame(0, $calls, 'the callback never runs on a missing key');
+        $this->assertSame('n/a', $smartNull->apply('strtoupper')->or('n/a')->value(), 'chain stays open after apply');
+    }
+
     public function testMapStillRunsOnAKeyThatExistsWithANullValue(): void
     {
         // The boundary map() propagation must not cross: NULL is a present value

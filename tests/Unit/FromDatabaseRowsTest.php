@@ -215,4 +215,51 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
     }
 
     //endregion
+    //region fromDatabaseRow() - first row directly
+
+    #[DataProvider('modeProvider')]
+    public function testRowMatchesFromDatabaseRowsFirst(string $class): void
+    {
+        // Same graph as fromDatabaseRows()->first(): the row, its siblings, and root
+        $rows = self::newsRows();
+        $row  = $class::fromDatabaseRow($rows, ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertEquals($class::fromDatabaseRows($rows, ['mysqli' => ['query' => 'SELECT 1']])->first(), $row);
+        $this->assertInstanceOf($class, $row);
+        $this->assertModeValue("Mayor Says 'No'", $row->title, $class);
+        $this->assertSame([1, true, false], [$row->position(), $row->isFirst(), $row->isLast()]);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowRootIsTheFullResultSet(string $class): void
+    {
+        $row = $class::fromDatabaseRow(self::newsRows(), ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertSame(3, $row->root()->count());
+        $this->assertSame(self::newsRows(), $row->root()->toArray());
+        $this->assertSame('SELECT 1', $row->root()->mysqli('query'));
+        $this->assertSame($row, $row->root()->first());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSingleRowIsFirstAndLast(string $class): void
+    {
+        $row = $class::fromDatabaseRow([self::newsRows()[0]]);
+
+        $this->assertSame([1, true, true], [$row->position(), $row->isFirst(), $row->isLast()]);
+        $this->assertSame(1, $row->root()->count());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testNoRowsReturnsEmptyCollection(string $class): void
+    {
+        $row = $class::fromDatabaseRow([], ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertInstanceOf($class, $row);
+        $this->assertSame(0, $row->count());
+        $this->assertSmartNull($row->missing_field);
+        $this->assertSame('SELECT 1', $row->root()->mysqli('query'));
+    }
+
+    //endregion
 }

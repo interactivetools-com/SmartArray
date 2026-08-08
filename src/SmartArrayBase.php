@@ -253,6 +253,80 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
+     * Builds the same result-set graph as fromDatabaseRows() but returns the first
+     * row directly: the row ZenDB's selectOne()/queryOne() hand back. root() on the
+     * row still returns the full result set. With no rows it returns an empty
+     * collection of the called class, so field access fails softly like an empty row.
+     *
+     *     $row = SmartArrayHtml::fromDatabaseRow($result->fetch_all(MYSQLI_ASSOC));
+     *
+     * @internal ZenDB result-set plumbing; interface may change between releases
+     * @param array $rows       List of flat arrays with scalar/null values
+     * @param array $properties Internal properties, same keys as the constructor
+     */
+    public static function fromDatabaseRow(array $rows, array $properties = []): static
+    {
+        // Rare: an explicit useSmartStrings key goes through the constructor for its validation
+        if (isset($properties['useSmartStrings'])) {
+            $resultSet = new static([], $properties);
+        }
+        else {
+            // Same cached-blank clone as fromDatabaseRows()
+            static $blanks = [];
+            $resultSet = clone ($blanks[static::class] ??= new static());
+            $resultSet->loadHandler = $properties['loadHandler'] ?? null;
+            $resultSet->mysqli      = $properties['mysqli']      ?? [];
+            $resultSet->root        = $properties['root']        ?? $resultSet;
+            $resultSet->position    = $properties['position']    ?? 0;
+            $resultSet->isFirst     = $properties['isFirst']     ?? false;
+            $resultSet->isLast      = $properties['isLast']      ?? false;
+        }
+
+        $count = count($rows);
+
+        // No rows: empty collection of the called class with root = the result set
+        if ($count === 0) {
+            return clone $resultSet;
+        }
+
+        // Single row (the LIMIT 1 case)
+        if ($count === 1) {
+            $key                   = array_key_first($rows);
+            $row                   = $rows[$key];
+            $child                 = clone $resultSet;
+            $child->data           = $row;
+            $child->rowsOnly       = $row === [];
+            $child->position       = 1;
+            $child->isFirst        = true;
+            $child->isLast         = true;
+            $resultSet->data[$key] = $child;
+            $resultSet->hasRows    = true;
+            $resultSet->sourceRows = $rows;
+            return $child;
+        }
+
+        // Multiple rows (queries that can't take LIMIT): build all rows exactly like
+        // fromDatabaseRows(), return the first
+        $childTemplate = clone $resultSet;
+        $position      = 0;
+        $firstChild    = null;
+        foreach ($rows as $key => $row) {
+            $position++;
+            $child                 = clone $childTemplate;
+            $child->data           = $row;
+            $child->rowsOnly       = $row === [];
+            $child->position       = $position;
+            $child->isFirst        = $position === 1;
+            $child->isLast         = $position === $count;
+            $resultSet->data[$key] = $child;
+            $firstChild          ??= $child;
+        }
+        $resultSet->hasRows    = true;
+        $resultSet->sourceRows = $rows;
+        return $firstChild;
+    }
+
+    /**
      * Return values as raw PHP types for data processing.
      *
      * Returns the same object if already SmartArray, otherwise creates a new one.

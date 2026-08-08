@@ -84,7 +84,7 @@ Key definitions used throughout:
 ## Class Hierarchy and Type Hints
 
 ```
-SmartBase (interface)     anything the library hands back
+SmartBase (interface)     every collection type plus SmartNull (not SmartString)
 ├── SmartArrayBase        abstract base - type-hint this to accept either mode
 │   ├── SmartArray            raw mode
 │   └── SmartArrayHtml        HTML mode

@@ -1365,7 +1365,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // usual getElement() -> offsetExists() call chain is inlined here as one lookup.
         // - same behavior as getElement(), which all other accessors still use
         // - 6-54% faster across PHP 8.1-8.5 on all 5 platforms
-        // - full results: .github/scripts/speed-results.md (test: arr-get)
+        // - full results: SmartString repo, .github/scripts/speed-results.md (test: arr-get)
 
         // Look up the value; ?? handles missing keys, array_key_exists catches stored nulls
         $value = $this->data[$name] ?? null;

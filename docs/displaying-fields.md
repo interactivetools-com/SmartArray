@@ -93,7 +93,7 @@ you get a warning naming the key and your file and line, so typos surface
 the first time the page runs:
 
 ```php
-$user = $users->first();
+$user = DB::select('users')->first();  // this time the table has rows
 
 echo $user->nmae;
 // Warning: nmae is undefined in listings.php:12

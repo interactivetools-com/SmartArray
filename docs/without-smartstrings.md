@@ -37,10 +37,21 @@ foreach ($products as $product) {
 }
 ```
 
+With database results, `??` is really for stored NULLs like the sale
+price above: every selected column exists on every row, so a truly
+missing key means a typo, and typos on result rows warn on their own.
+Missing keys as a normal case only come up in arrays you assemble
+yourself.
+
 One thing to know: `??` doesn't fire on stored `""`, because an empty
 string is a stored value. On the HTML side, use `or()` instead; it covers
 `""` and keeps fallbacks encoded (see
 [Displaying Fields](displaying-fields.md)).
+
+In hand-built arrays, stick with `??` rather than a truthiness check: a
+key that doesn't exist at all comes back as a placeholder object so
+chains don't crash, and objects are always truthy. `if ($product->discount)`
+passes on a missing key; `$product->discount ?? 0` falls back correctly.
 
 ## Getting Data Out: json_encode() and toArray()
 
@@ -84,7 +95,7 @@ know: `SmartArrayHtml` is not a subclass of `SmartArray`. The two modes
 are siblings under a shared base class:
 
 ```
-SmartBase             interface: anything the library hands back
+SmartBase             interface: every collection type plus SmartNull
 ├── SmartArrayBase    both collection modes - hint this to accept either
 │   ├── SmartArray        fields are plain values
 │   └── SmartArrayHtml    fields are SmartStrings
@@ -103,9 +114,10 @@ function countActive(SmartArrayBase $rows): int
 }
 ```
 
-The `SmartBase` interface is the widest hint: it matches anything the
-library hands back, including `SmartNull`, for functions that should take
-any Smart value at all.
+The `SmartBase` interface is the widest hint: it matches both collection
+modes plus `SmartNull`, for functions that should accept whatever a
+lookup returned. Individual fields aren't part of this tree: HTML-mode
+fields are `SmartString` objects with their own class.
 
 ---
 

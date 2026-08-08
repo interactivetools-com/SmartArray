@@ -1,5 +1,3 @@
-<!-- Example output like &apos; includes a zero-width space (U+200B) after the "&" so PHPStorm's Markdown preview displays it correctly instead of decoding it. -->
-
 # Transforming and Grouping
 
 How to reshape a loaded result: pull one column out, key rows for instant

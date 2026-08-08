@@ -38,11 +38,11 @@ output or encoding at all: it uses plain `SmartArray` (no HTML mode),
 where field reads return plain strings and no SmartString objects are
 created, so data-processing code skips the encoding layer entirely.
 
-**With or without encoding, the difference is about the same.** Render
-the same pages with no encoding on either side (plain SmartArray against
-plain arrays echoed raw) and the list page measures +0.0073 ms:
-SmartString encodes as fast as or faster than hand-encoding, so HTML mode
-adds nothing on net, and the overhead is construction either way.
+**Encoding is not where the time goes.** Render the same pages with no
+encoding on either side (plain SmartArray against plain arrays echoed
+raw) and the list page still measures +0.0073 ms: the overhead is
+construction either way, and SmartString encodes as fast as or faster
+than hand-encoding, so HTML mode adds nothing on net.
 
 To put the list-page row in perspective: to lose a single millisecond on
 one page load, your code would have to build and render that 25-row list

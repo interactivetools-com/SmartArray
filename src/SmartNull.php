@@ -301,6 +301,11 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
         // out: method_exists() reports them, but they aren't part of the API.
         // getIterator is defined by both classes and skips SmartString: a missing value
         // iterates like an empty collection, it doesn't throw SmartString's can't-foreach error
+        //
+        // Don't optimize: measured negligible - this only runs when a key is missing,
+        // so it's rarely called. And caching the method names breaks mixed-case calls:
+        // PHP doesn't care that it's ->dateFormat() not ->dateformat(), but an isset()
+        // lookup would.
         $isSmartStringMethod = $this->useSmartStrings
             && $name !== 'getIterator'
             && method_exists(SmartString::class, $name)

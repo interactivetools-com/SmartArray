@@ -22,9 +22,11 @@ use ReflectionUnionType;
  * - parameter lists are identical across all three declarations
  * - subclass return types equal the base union minus the other mode's types
  *   (SmartArray drops SmartString, SmartArrayHtml drops the raw scalars)
+ * - every redeclaration narrows the return type in at least one subclass; a
+ *   proxy that narrows nothing belongs in the base only (it adds a call frame,
+ *   and forwarding breaks methods that branch on func_num_args())
  *
- * IDE inspections can't catch drift here (SenselessProxyMethodInspection is
- * suppressed on the proxy files by design), so this test is the guard.
+ * IDE inspections can't catch drift here, so this test is the guard.
  */
 class SignatureContractTest extends SmartArrayTestCase
 {
@@ -72,6 +74,20 @@ class SignatureContractTest extends SmartArrayTestCase
                 array_values(array_diff($base, self::HTML_DROPS)),
                 $html,
                 "SmartArrayHtml::$name() return type should be the base union minus the raw scalars",
+            );
+        }
+    }
+
+    public function testRedeclaredMethodsNarrowSomething(): void
+    {
+        foreach ($this->redeclaredMethodNames(SmartArray::class) as $name) {
+            $base = $this->typeSet((new ReflectionMethod(SmartArrayBase::class, $name))->getReturnType());
+            $raw  = $this->typeSet((new ReflectionMethod(SmartArray::class, $name))->getReturnType());
+            $html = $this->typeSet((new ReflectionMethod(SmartArrayHtml::class, $name))->getReturnType());
+
+            $this->assertTrue(
+                $raw !== $base || $html !== $base,
+                "$name() narrows nothing in either subclass - a no-op proxy; declare it in SmartArrayBase only",
             );
         }
     }

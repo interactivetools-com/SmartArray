@@ -439,6 +439,28 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertStringContainsString('[1]', $deprecations[0], 'notice shows the coerced key');
     }
 
+    public function testFloatAndBoolOffsetWritesExistsAndUnsetCoerceLikePhpArrayKeys(): void
+    {
+        // Same PHP array key semantics as reads, on every offset operation:
+        // $arr[1.5] = 'x' writes key 1, isset/unset truncate the same way
+        $sa = SmartArray::new(['a', 'b', 'c']);
+
+        [[$exists, ], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(function () use ($sa) {
+                $sa[1.5]  = 'B';
+                $sa[false] = 'A';
+                $found = isset($sa[2.9]);
+                unset($sa[2.5]);
+                return $found;
+            })
+        ));
+
+        $this->assertTrue($exists, 'isset($sa[2.9]) truncates to key 2');
+        $this->assertSame(['A', 'B'], $sa->toArray(), 'writes landed on keys 0 and 1, unset removed key 2');
+        $this->assertCount(3, $deprecations, 'one notice per write/unset; isset stays silent');
+        $this->assertStringContainsString('[1]', $deprecations[0], 'notice shows the coerced key');
+    }
+
     public function testNullOffsetExistsAndUnsetUseTheEmptyStringKey(): void
     {
         $sa = SmartArray::new(['' => 'blank']);

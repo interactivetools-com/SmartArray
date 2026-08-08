@@ -417,6 +417,7 @@ trait Deprecations
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
+        $offset = self::coerceOffset($offset);   // null stays null: $arr[] = $value appends
         self::triggerArrayAccessDeprecation($offset, 'set');
         $this->setElement($offset, $value);
     }
@@ -428,12 +429,7 @@ trait Deprecations
      */
     public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // PHP array key semantics: $arr[null] reads '', floats truncate ($arr[1.5] reads 1), bools read 1/0
-        $offset = match (true) {
-            $offset === null                     => '',
-            is_float($offset), is_bool($offset)  => (int) $offset,
-            default                              => $offset,
-        };
+        $offset = self::coerceOffset($offset) ?? '';   // PHP array key semantics: $arr[null] reads key ''
         self::triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset);
     }
@@ -449,7 +445,7 @@ trait Deprecations
         // No notice here: PHP calls offsetExists() then offsetGet() for `??` and empty(),
         // and offsetGet() already notifies, so one here would print every message twice.
         // A bare isset() with no read stays silent; any access that reads data notifies.
-        return isset($this->data[$offset]);
+        return isset($this->data[self::coerceOffset($offset)]);
     }
 
     /**
@@ -459,10 +455,29 @@ trait Deprecations
      */
     public function offsetUnset(mixed $offset): void
     {
+        $offset = self::coerceOffset($offset);
         self::triggerArrayAccessDeprecation($offset, 'unset');
         $this->sourceRows       = null;   // same staleness rule as setElement()
         $this->root->sourceRows = null;
         unset($this->data[$offset]);
+    }
+
+    /**
+     * PHP array key semantics for bracket offsets: floats truncate ($arr[1.5] is $arr[1])
+     * and bools read 1/0, same as a plain array. Ints, strings, and null pass through
+     * (null appends in offsetSet and reads key '' elsewhere).
+     *
+     * We cast up front because letting PHP coerce doesn't work here: setElement() is
+     * typed int|string|null under strict_types, so a raw float or bool throws a
+     * TypeError, and the native isset/unset lookups would coerce but emit PHP's
+     * "Implicit conversion from float" deprecation naming this file, not the caller.
+     */
+    private static function coerceOffset(mixed $offset): mixed
+    {
+        return match (true) {
+            is_float($offset), is_bool($offset) => (int) $offset,
+            default                             => $offset,
+        };
     }
 
     /**

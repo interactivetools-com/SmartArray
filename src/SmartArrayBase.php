@@ -208,14 +208,34 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public static function fromDatabaseRows(array $rows, array $properties = []): static
     {
-        $resultSet = new static([], $properties);
-        $count     = count($rows);
+        // Rare: an explicit useSmartStrings key goes through the constructor for its validation
+        if (isset($properties['useSmartStrings'])) {
+            $resultSet = new static([], $properties);
+        }
+        else {
+            // Clone a cached blank instead of running the constructor chain: same fresh-instance
+            // state at a fraction of the cost. The blank holds no per-call state - every
+            // property fromDatabaseRows accepts is written below, and root must be rebound
+            // anyway because the blank's root points at the blank itself.
+            static $blanks = [];
+            $resultSet = clone ($blanks[static::class] ??= new static());
+            $resultSet->loadHandler = $properties['loadHandler'] ?? null;
+            $resultSet->mysqli      = $properties['mysqli']      ?? [];
+            $resultSet->root        = $properties['root']        ?? $resultSet;
+            $resultSet->position    = $properties['position']    ?? 0;
+            $resultSet->isFirst     = $properties['isFirst']     ?? false;
+            $resultSet->isLast      = $properties['isLast']      ?? false;
+        }
+
+        $count = count($rows);
         if ($count === 0) {
             return $resultSet;
         }
 
-        // Same template-clone row building as the constructor, minus the per-field scan
-        $childTemplate = new static([], $resultSet->getInternalProperties());
+        // Same template-clone row building as the constructor, minus the per-field scan.
+        // The template is a clone of the still-empty result set: data is empty,
+        // loadHandler/mysqli/root carry over, and every child overwrites position metadata.
+        $childTemplate = clone $resultSet;
         $position      = 0;
         foreach ($rows as $key => $row) {
             $position++;

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
 
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
@@ -141,6 +142,76 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
         unset($trusted->{0});
 
         $this->assertSame([1, 2], array_keys($trusted->toArray()));
+    }
+
+    //endregion
+    //region Prototype cache
+
+    #[DataProvider('modeProvider')]
+    public function testRepeatCallsStartFresh(string $class): void
+    {
+        // Mutating one collection must never affect the next fromDatabaseRows() call
+        $first = $class::fromDatabaseRows(self::newsRows(), ['mysqli' => ['insert_id' => 42]]);
+        $first->first()->title = 'Mutated';
+        $first->{3}            = ['id' => 4, 'title' => 'Added', 'views' => 1, 'rating' => 0.0, 'notes' => null];
+
+        $second = $class::fromDatabaseRows([['id' => 7, 'title' => 'Fresh', 'views' => 0, 'rating' => 0.0, 'notes' => null]]);
+
+        $this->assertSame(1, $second->count());
+        $this->assertSame('Fresh', $second->toArray()[0]['title']);
+        $this->assertSame([], $second->mysqli());
+        $this->assertSame($second, $second->root());
+        $this->assertSame(0, $second->position());
+    }
+
+    public function testInterleavedClassesKeepTheirClass(): void
+    {
+        $raw   = SmartArray::fromDatabaseRows(self::newsRows());
+        $html  = SmartArrayHtml::fromDatabaseRows(self::newsRows());
+        $raw2  = SmartArray::fromDatabaseRows(self::newsRows());
+
+        $this->assertInstanceOf(SmartArray::class, $raw->first());
+        $this->assertInstanceOf(SmartArrayHtml::class, $html->first());
+        $this->assertModeValue("Mayor Says 'No'", $raw2->first()->title, SmartArray::class);
+        $this->assertModeValue("Mayor Says 'No'", $html->first()->title, SmartArrayHtml::class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testPropertiesLandOnResultSetAndRows(string $class): void
+    {
+        $handler = fn(SmartArrayBase $row, string $field) => [['related' => $field], ['query' => 'SELECT related']];
+        $trusted = $class::fromDatabaseRows(self::newsRows(), [
+            'loadHandler' => $handler,
+            'mysqli'      => ['query' => 'SELECT * FROM news', 'insert_id' => 5],
+        ]);
+
+        $this->assertSame('SELECT * FROM news', $trusted->mysqli('query'));
+        $this->assertSame(5, $trusted->mysqli('insert_id'));
+        $this->assertSame('SELECT * FROM news', $trusted->first()->mysqli('query'));
+
+        // load() on a row proves loadHandler carried into the children
+        $this->assertModeValue('orders', $trusted->first()->load('orders')->related, $class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testExplicitUseSmartStringsKeepsConstructorBehavior(string $class): void
+    {
+        // An explicit key matching the class default behaves like the constructor
+        $matching = $class === SmartArrayHtml::class;
+        $forced   = $class::fromDatabaseRows(self::newsRows(), ['useSmartStrings' => $matching]);
+
+        $this->assertSame((new $class(self::newsRows()))->toArray(), $forced->toArray());
+        $this->assertModeValue("Mayor Says 'No'", $forced->first()->title, $class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testExplicitUseSmartStringsMismatchThrows(string $class): void
+    {
+        // A key contradicting the class still gets the constructor's validation
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('useSmartStrings');
+
+        $class::fromDatabaseRows(self::newsRows(), ['useSmartStrings' => $class !== SmartArrayHtml::class]);
     }
 
     //endregion

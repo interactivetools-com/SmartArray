@@ -133,7 +133,8 @@ trait SharedHelpers
             return $plain;
         }
 
-        return "\n<xmp>\n$output\n</xmp>\n";
+        // escape "</xmp" so output can't break out of the block, same as CMSB's xmp_safe()
+        return "\n<xmp>\n" . str_ireplace('</xmp', '<\/xmp', $output) . "\n</xmp>\n";
     }
 
 }

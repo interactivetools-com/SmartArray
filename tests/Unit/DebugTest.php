@@ -31,7 +31,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * CLI limits: xmpWrap() short-circuits to plain output under CLI (PHP_SAPI),
  * so every expectation here pins the unwrapped format. The <xmp>-wrapped web
- * path can't be simulated in-process.
+ * path can't be simulated in-process; one test reaches it through PHP's
+ * built-in server (requestViaBuiltInServer).
  */
 class DebugTest extends SmartArrayTestCase
 {
@@ -345,6 +346,55 @@ class DebugTest extends SmartArrayTestCase
 
         $this->assertNull($result, 'debug() is void: it echoes, it does not chain');
         $this->assertStringNotContainsString('<xmp>', $output, 'CLI output is plain - terminals show the tags literally');
+    }
+
+    /**
+     * The <xmp> web branch is reachable under PHP's built-in server (SAPI
+     * cli-server), so this is the one test that asserts the wrapped path: a
+     * stored </xmp> can't end the block early - it displays as <\/xmp>, the
+     * same escaping as CMSB's xmp_safe().
+     */
+    public function testDebugEscapesXmpClosingTagOnWebResponses(): void
+    {
+        $body = $this->requestViaBuiltInServer('xmp-breakout.php');
+
+        $this->assertStringContainsString('<xmp>', $body);
+        $this->assertStringContainsString('<\/xmp><script>alert(1)</script>', $body, 'payload displays escaped');
+        $this->assertSame(1, substr_count($body, '</xmp>'), 'only the wrapper itself closes the block');
+    }
+
+    /**
+     * Serve one Support/bin script through php -S and return the response
+     * body. The built-in server is the one place tests can reach xmpWrap()'s
+     * web branch (PHP_SAPI is 'cli' everywhere else in the suite).
+     */
+    private function requestViaBuiltInServer(string $script): string
+    {
+        $docRoot = dirname(__DIR__) . '/Support/bin';
+
+        // find a free port, then hand it to php -S (it can't pick its own)
+        $socket = stream_socket_server('tcp://127.0.0.1:0');
+        $this->assertNotFalse($socket, 'could not find a free port');
+        $port = (int)substr(strrchr(stream_socket_get_name($socket, false), ':'), 1);
+        fclose($socket);
+
+        $pipes  = [];
+        $server = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", '-t', $docRoot], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($server, 'could not start php -S');
+
+        try {
+            $context = stream_context_create(['http' => ['timeout' => 1]]);
+            $body    = false;
+            for ($attempt = 0; $attempt < 50 && $body === false; $attempt++) {
+                usleep(100_000);
+                $body = @file_get_contents("http://127.0.0.1:$port/$script", false, $context);
+            }
+            $this->assertIsString($body, 'no response from php -S after 5 seconds');
+            return $body;
+        } finally {
+            proc_terminate($server);
+            proc_close($server);
+        }
     }
 
     /**

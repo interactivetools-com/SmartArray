@@ -21,6 +21,10 @@ Everything else is hardening and fixes.
 - `json_encode($smartArray)` substitutes malformed UTF-8 in keys with �
   (U+FFFD), not just values - one corrupt byte in a key no longer makes it
   return false and lose the whole document.
+- `debug()` and `help()` escape a literal `</xmp` in web output as `<\/xmp`,
+  same escaping as CMSB's `xmp_safe()`. A stored value containing `</xmp>`
+  ended the `<xmp>` block early, so the rest of the value parsed as live
+  HTML on any page that called `debug()` on it.
 
 ### Added
 

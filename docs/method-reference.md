@@ -112,7 +112,7 @@ HTML-encode automatically, so interpolated user input is safe.*
 | `->or404($text = null)` | Sends a 404 page with `$text` (default: standard not-found text) and stops         |
 | `->orDie($text)`        | Prints `$text` and stops                                                           |
 | `->orThrow($text)`      | Throws a `RuntimeException` with `$text`                                           |
-| `->orRedirect($url)`    | Sends a 302 redirect to `$url` and stops. The headers-already-sent check throws even when results exist, so misuse fails on the first request |
+| `->orRedirect($url)`    | Sends a 302 redirect to `$url` and stops (throws if headers were already sent)     |
 
 ### Database Metadata
 

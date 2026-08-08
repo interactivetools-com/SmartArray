@@ -146,8 +146,8 @@ class SmartNullTest extends SmartArrayTestCase
 
         [$result, $output] = $this->captureOutput(fn() => $smartNull['a']['b'][0]);
 
-        $this->assertSame($smartNull, $result, 'array reads on SmartNull are exempt from the offset-access deprecation');
-        $this->assertSame('', $output);
+        $this->assertSame($smartNull, $result, 'array reads return $this, so chains keep working');
+        $this->assertSame(3, substr_count($output, "\nDeprecated: "), 'bracket syntax notifies on missing-data paths like anywhere else');
     }
 
     #[DataProvider('modeProvider')]
@@ -158,7 +158,7 @@ class SmartNullTest extends SmartArrayTestCase
         [$result, $output] = $this->captureOutput(fn() => $smartNull['rows']->first()->name->value());
 
         $this->assertNull($result, 'the whole chain resolves to null with no fatal');
-        $this->assertSame('', $output);
+        $this->assertSame(1, substr_count($output, "\nDeprecated: "), 'the one bracket read notifies');
     }
 
     #[DataProvider('modeProvider')]

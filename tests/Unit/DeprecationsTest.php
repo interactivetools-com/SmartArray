@@ -75,6 +75,7 @@ class DeprecationsTest extends SmartArrayTestCase
             'sprintf',
             'toHtml',
             'toRaw',
+            'triggerArrayAccessDeprecation',   // not an alias: the offset-syntax dispatcher, public so SmartNull can call it
             'withSmartStrings',
         ], $methods);
     }

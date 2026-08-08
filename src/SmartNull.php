@@ -181,9 +181,11 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     /**
      * Array reads on a missing value stay missing: returns $this so chains keep working.
+     * Bracket syntax is deprecated everywhere, so it dispatches per $onOffsetAccess first.
      */
     public function offsetGet(mixed $offset): SmartNull
     {
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'get');
         return $this;
     }
 
@@ -192,11 +194,13 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'set');
         $this->throwCannotSet();
     }
 
     /**
-     * No keys exist on a missing value.
+     * No keys exist on a missing value. Silent like SmartArrayBase::offsetExists,
+     * so isset() and ?? don't signal - the read carries the notice.
      */
     public function offsetExists(mixed $offset): bool
     {
@@ -205,7 +209,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     public function offsetUnset(mixed $offset): void
     {
-        // ArrayAccess requires this; a SmartNull has nothing to unset
+        // Nothing to unset, but the deprecated bracket syntax still signals
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'unset');
     }
 
     //endregion

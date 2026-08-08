@@ -417,7 +417,7 @@ trait Deprecations
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->triggerArrayAccessDeprecation($offset, 'set');
+        self::triggerArrayAccessDeprecation($offset, 'set');
         $this->setElement($offset, $value);
     }
 
@@ -434,7 +434,7 @@ trait Deprecations
             is_float($offset), is_bool($offset)  => (int) $offset,
             default                              => $offset,
         };
-        $this->triggerArrayAccessDeprecation($offset, 'get');
+        self::triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset);
     }
 
@@ -459,7 +459,7 @@ trait Deprecations
      */
     public function offsetUnset(mixed $offset): void
     {
-        $this->triggerArrayAccessDeprecation($offset, 'unset');
+        self::triggerArrayAccessDeprecation($offset, 'unset');
         $this->sourceRows       = null;   // same staleness rule as setElement()
         $this->root->sourceRows = null;
         unset($this->data[$offset]);
@@ -468,9 +468,13 @@ trait Deprecations
     /**
      * Surface a deprecation notice for array access syntax, dispatched per $onOffsetAccess mode.
      *
+     * Public static so SmartNull, which defines its own ArrayAccess methods, dispatches
+     * through the same rules and modes.
+     *
+     * @internal not part of the supported API
      * @see SmartArrayBase::$onOffsetAccess
      */
-    private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
+    public static function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
     {
         // SECURITY: the key can be user input (e.g. $arr[$_GET['sort']]) and 'notify' mode echoes
         // the message into the page, so encode it. $key is display-only from here on; the actual

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 use InvalidArgumentException;
+use IteratorAggregate;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
@@ -21,13 +22,10 @@ use JetBrains\PhpStorm\Deprecated;
  * mode narrows the return type (raw values here, SmartStrings in SmartArrayHtml);
  * only new(), asRaw(), and asHtml() have per-class behavior.
  *
- * PhpStorm 2025.3.1: Repeated "@implements" needed - union types in Iterator generics don't work reliably for foreach inference
- * @implements \Iterator<mixed, SmartArray>
- * @implements \Iterator<mixed, string>
- * @implements \Iterator<mixed, int>
- * @implements \Iterator<mixed, float>
- * @implements \Iterator<mixed, bool>
- * @implements \Iterator<mixed, null>
+ * PhpStorm: repeated single-type @implements lines - it keeps only one object
+ * member per generic union, so foreach over a union loses the second type
+ * @implements IteratorAggregate<mixed, SmartArray>
+ * @implements IteratorAggregate<mixed, string|int|float|bool|null>
  */
 class SmartArray extends SmartArrayBase
 {

@@ -6,6 +6,7 @@ namespace Itools\SmartArray;
 
 use InvalidArgumentException;
 use Itools\SmartString\SmartString;
+use JetBrains\PhpStorm\Deprecated;
 
 /**
  * SmartArray - Collection returning raw PHP values (string, int, float, bool, null).
@@ -236,12 +237,34 @@ class SmartArray extends SmartArrayBase
     }
 
     //endregion
-    //region Deprecated Array Access
+    //region Deprecated Access
 
     /** {@inheritDoc} */
     public function offsetGet(mixed $offset): static|SmartNull|string|int|float|bool|null
     {
         return parent::offsetGet($offset);
+    }
+
+    /**
+     * {@inheritDoc}
+     * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
+     *             can't type. For a missing-key default use ->key ?? $default.
+     */
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|string|int|float|bool|null
+    {
+        // func_get_args: get() branches on whether $default was passed, so forward the real arg count
+        return parent::get(...func_get_args());
+    }
+
+    /**
+     * {@inheritDoc}
+     * @deprecated Use ->at() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to at()', replacement: '%class%->at()')]
+    public function nth(int $index): static|SmartNull|string|int|float|bool|null
+    {
+        return parent::nth($index);
     }
 
     //endregion

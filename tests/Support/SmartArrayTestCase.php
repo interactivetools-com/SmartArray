@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Base class for the Unit and Integration suites.
  *
- * Conventions (full list in __test-plan.md):
+ * Conventions:
  * - Behaviors run against both SmartArray and SmartArrayHtml via modeProvider()
  * - Warnings and deprecation notices are echoed output by design: tests assert
  *   the text or assert silence, never capture-and-discard

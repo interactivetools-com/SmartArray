@@ -33,6 +33,7 @@ final class DocsCoverageTest extends SmartArrayTestCase
     //region Configuration
 
     private const METHOD_REFERENCE_PATH = __DIR__ . '/../../docs/method-reference.md';
+    private const AI_REFERENCE_PATH     = __DIR__ . '/../../docs/ai-reference.md';
 
     /** Classes whose own public methods make up the documented surface. */
     private const API_CLASSES = [SmartArrayBase::class, SmartArray::class, SmartArrayHtml::class];
@@ -59,6 +60,13 @@ final class DocsCoverageTest extends SmartArrayTestCase
     public function testMethodReferenceDocumentsEveryPublicMethod(): void
     {
         $this->assertDocumentsEveryPublicMethod(self::METHOD_REFERENCE_PATH, 'docs/method-reference.md');
+    }
+
+    public function testAiReferenceDocumentsEveryPublicMethod(): void
+    {
+        // The one docs file shipped in the Composer bundle, and the file AGENTS.md
+        // tells AI agents to trust over training data - it must never go stale
+        $this->assertDocumentsEveryPublicMethod(self::AI_REFERENCE_PATH, 'docs/ai-reference.md');
     }
 
     /**

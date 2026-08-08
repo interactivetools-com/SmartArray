@@ -26,6 +26,19 @@ That covers every string context, so there's no encoding call to remember
 and no way to forget one. The rest of this page is about the places where
 you want something other than the default.
 
+## Where Encoding Ends
+
+HTML encoding makes values safe as HTML text and inside quoted attribute
+values. A few contexts need more than encoding:
+
+- **User-supplied link URLs**: encoding doesn't stop a stored
+  `javascript:alert(1)` from running as an href; check the scheme before
+  outputting a URL that came from user input.
+- **Inside `<script>` blocks**: use `jsonEncode()` to pass values to
+  JavaScript; encoded text is not valid JS.
+- **URL query strings**: use `urlEncode()` so `&` and `=` inside values
+  don't split parameters.
+
 ## Trusted HTML: rawHtml()
 
 Some fields hold real HTML that's meant to render, most often WYSIWYG

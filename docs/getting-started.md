@@ -17,9 +17,10 @@ SmartArray is already installed; skip to
 composer require itools/smartarray
 ```
 
-Requires PHP 8.1+.
-[SmartString](https://github.com/interactivetools-com/SmartString) (the class
-behind the self-encoding fields) installs automatically as a dependency.
+Requires PHP 8.1+ and
+[SmartString](https://github.com/interactivetools-com/SmartString) 3.0+ (the
+class behind the self-encoding fields; installs automatically as a
+dependency).
 
 ## Your First SmartArray
 

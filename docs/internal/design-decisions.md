@@ -14,9 +14,10 @@ in signatures, docblocks, the changelog, and tests.
 
 - **Missing keys and empty lookups return SmartNull, not an empty
   SmartArray**, because the caller may treat the result as a value or as a
-  collection and SmartNull supports both: `->value()`/`->or()`/`== ''` on
-  the value side, `foreach`/`count()`/`keys()` on the array side. An empty
-  SmartArray from `first()` would fatal on `->value()`.
+  collection and SmartNull supports both: `->value()`, `->or()` (HTML mode
+  only), and `== ''` on the value side, `foreach`/`count()`/`keys()` on the
+  array side. An empty SmartArray from `first()` would fatal on
+  `->value()`.
 
 - **SmartNull propagates through SmartString transforms (2026-08-04).** In
   HTML mode, `__call` tries public SmartString methods first and classifies

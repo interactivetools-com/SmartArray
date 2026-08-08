@@ -36,6 +36,13 @@ SmartString's
 [troubleshooting page](https://github.com/interactivetools-com/SmartString/blob/main/docs/troubleshooting.md)
 covers every variation of this.
 
+Raw mode has one version of the same trap: existing fields are plain
+values, but a missing or misspelled field returns a `SmartNull`
+placeholder, which is an object and therefore truthy, so a bare
+`if ($user->is_admin)` runs when the field doesn't exist. `isset()` and
+`??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
+guard, or compare the real value: `$user->is_admin == 1`.
+
 ### A === null check never matches
 
 In HTML mode, fields are always objects: a stored NULL comes back as a
@@ -86,7 +93,7 @@ your data. Use `toArray()`:
 $plain = (array)$cities;      // WRONG - internal properties with unusable keys
 $plain = $cities->toArray();  // RIGHT - plain array, original values
 
-$flat = [...$cities];         // spread also works for flat lists (top level only)
+$flat = [...$cities];         // spread works for flat lists but keeps element mode: SmartStrings in HTML mode
 ```
 
 ### json_encode() returns an object instead of an array

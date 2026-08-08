@@ -11,6 +11,12 @@
 The headlines: building arrays is about 2.9x faster and `toArray()` about 3x.
 Everything else is hardening and fixes.
 
+### Requirements
+
+- Now requires SmartString 3.0+ (previously any version). Composer picks it
+  up on `composer update`; only a pinned `itools/smartstring` constraint in
+  your own composer.json needs changing.
+
 ### Security
 
 - Missing-key warnings and array-syntax deprecation notices HTML-encode the

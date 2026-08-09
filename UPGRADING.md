@@ -109,6 +109,30 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >
 > Regex: `->\w+ \?\?` - also search `isset(` and `empty(` on row fields
 
+### Matching rules for `where()`, `whereNot()`, `whereInList()`, and `contains()`
+
+> Most calls behave the same: numbers still match numeric strings, so
+> `where('id', 5)` matches `'5'` and `where('price', 1)` matches `'1.00'`.
+> Three edge cases now match fewer rows:
+>
+> ```php
+> $rows->where('code', '0e123');  // before: also matched '0e999' (PHP read both strings as numbers)
+>                                 // after:  strings must match exactly ('01' vs '1' changed the same way)
+>
+> $rows->where('field', null);    // before: matched null, '', 0, and false
+>                                 // after:  matches only null, like SQL IS NULL
+>
+> $rows->where('active', true);   // before: matched anything truthy, even 'abc'
+>                                 // after:  true means 1, so it matches 1 and '1'
+> ```
+>
+> Fix:
+>
+> - For empty/non-empty checks, use `where($field)` / `whereNot($field)`
+> - When you mean a number, pass a number: `where('price', (float)$_GET['price'])`
+>
+> Regex: `->(where|whereNot|contains)\([^)]*(null|true|false)\s*\)`
+
 ### Silent changes
 
 > - `print_r()` and `var_dump()` show just the array data, like dumping a

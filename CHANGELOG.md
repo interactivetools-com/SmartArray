@@ -98,6 +98,18 @@ the docs - IDEs show a strikethrough with the replacement.
 
 ### Behavior changes
 
+- `where()`, `whereNot()`, `whereInList()`, and `contains()` match values
+  more precisely. Most code sees no difference: numbers still match numeric
+  strings, so `where('id', 5)` matches `'5'` and `where('price', 1)` matches
+  `'1.00'`. Three edge cases changed:
+    - Two strings must match exactly: `'01'` no longer matches `'1'`, and
+      `where('code', '0e123')` no longer matches `'0e999'` (PHP's loose `==`
+      read both as numbers - a wrong-row risk for hash and token lookups)
+    - null only matches null, like SQL IS NULL (it used to match `''`, 0,
+      and false too)
+    - true/false mean 1/0 (true used to match any truthy value, even `'abc'`)
+
+  See [UPGRADING.md](UPGRADING.md).
 - A missing field stays a SmartNull through the whole chain instead of
   becoming an empty SmartString at the first method call. Same output as
   before (echoes `""`, `or()` still fires), but chains no longer dead-end:

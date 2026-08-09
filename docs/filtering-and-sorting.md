@@ -26,9 +26,12 @@ $active = $users->where('status', 'Active');                        // Jean and 
 $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Jean
 ```
 
-Databases and forms often hand numbers back as strings, so `where()`
-compares loosely: `'1'` matches `1`. When you need a strict match,
-`filter()` (below) takes a callback where you can compare with `===`.
+Databases and forms often hand numbers back as strings, so numbers and
+numeric strings match: `'1'` matches `1`, and `where('price', 1)` matches a
+DECIMAL column's `'1.00'`. Everything else is what you'd expect: two strings
+must match exactly (case-sensitive), null only matches null, and true/false
+mean 1/0. When you need full type-sensitive matching, `filter()` (below)
+takes a callback where you can compare with `===`.
 
 With just a field name, `where()` keeps the rows where that field has a
 truthy value, following PHP's `empty()` rules (NULL, false, 0, `"0"`, and
@@ -127,7 +130,8 @@ echo $tags->sort()->implode(', ');  // Apache, MySQL, PHP
 
 Use `unique()` to drop repeated values from a flat list, keeping the first
 of each, and `contains()` to ask whether a value is in the list at all.
-Both compare loosely, so `1` and `'1'` count as the same value:
+Both treat `1` and `'1'` as the same value (`contains()` follows the same
+matching rules as `where()`):
 
 ```php
 $tags = SmartArrayHtml::new(['PHP', 'MySQL', 'PHP', 'Apache']);

@@ -498,6 +498,23 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         };
     }
 
+    /**
+     * How where(), whereNot(), and contains() decide two values match:
+     * numbers match numeric strings (5 matches '5'), two strings must match
+     * exactly, null only matches null, and true/false mean 1/0.
+     * Callers unwrap Smart values with getRawValue() first.
+     */
+    private static function valueMatches(mixed $rowValue, mixed $value): bool
+    {
+        $value    = is_bool($value)    ? (int)$value    : $value;
+        $rowValue = is_bool($rowValue) ? (int)$rowValue : $rowValue;
+        return match (true) {
+            $value === null || $rowValue === null     => $value === $rowValue,
+            is_string($value) && is_string($rowValue) => $value === $rowValue,
+            default                                   => $value == $rowValue, // PHP 8 numeric comparison, e.g. 1 == '1.00'
+        };
+    }
+
     //endregion
     //region Array Information
 
@@ -526,15 +543,22 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Check if array contains a specific value (loose == comparison).
+     * Check if array contains a specific value.
      *
-     * Loose comparison means types don't need to match: contains('1') matches
-     * 1 and true, and contains(null) matches '' and false. For strict matching
-     * use in_array($value, $arr->toArray(), true).
+     * Values match the same way where() does: contains(5) matches '5', but two
+     * strings must match exactly. For strict type checks use
+     * in_array($value, $arr->toArray(), true).
      */
     public function contains(mixed $value): bool
     {
-        return in_array(self::getRawValue($value), $this->toArray());
+        $value = self::getRawValue($value);
+        foreach ($this->toArray() as $element) {
+            if (self::valueMatches($element, $value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     //endregion
@@ -643,7 +667,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns a new SmartArray containing only elements where a field matches a value.
      * Only works on nested arrays (throws on flat).
      *
-     * Uses loose comparison (==) to allow matching between different types (e.g., '1' == 1).
+     * How values match:
+     * - Numbers match numeric strings: where('id', 5) matches '5', where('price', 1) matches '1.00'
+     * - Two strings must match exactly: where('zip', '01000') won't match '1000'
+     * - null only matches null, like SQL IS NULL (use where('field') for non-empty checks)
+     * - true/false mean 1/0, like MySQL checkbox columns
+     *
      * Chain multiple where() calls to filter by multiple fields.
      *
      * With just a field name, keeps rows where that field is non-empty
@@ -684,7 +713,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             // repeated 4x, see the first where() loop for why
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
-                if (is_array($row) && array_key_exists($field, $row) && $row[$field] == $value) {  // intentional loose comparison
+                if (is_array($row) && array_key_exists($field, $row) && self::valueMatches($row[$field], $value)) {
                     $matches[$key] = $row;
                 }
             }
@@ -715,7 +744,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns a new SmartArray excluding elements where a field matches a value.
      * The inverse of where(). Only works on nested arrays (throws on flat).
      *
-     * Uses loose comparison (==) to match where() behavior.
+     * Matches values the same way where() does.
      *
      * With just a field name, keeps rows where that field is empty
      * (PHP empty() rule: NULL, false, 0, "0", "", and missing fields are empty).
@@ -750,7 +779,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // repeated 4x, see the first where() loop for why
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
-            if (is_array($row) && (!array_key_exists($field, $row) || $row[$field] != $value)) {  // intentional loose comparison
+            if (is_array($row) && (!array_key_exists($field, $row) || !self::valueMatches($row[$field], $value))) {
                 $matches[$key] = $row;
             }
         }
@@ -764,6 +793,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * multi-select fields). Does not perform substring matching.
      *
      * Handles both delimited format ("\tmenu\tfooter\t") and plain single values ("menu").
+     * Plain single values match the same way where() does.
      *
      *     $menuPages   = $pages->whereInList('show_on', 'menu');
      *     $footerPages = $pages->whereInList('show_on', 'footer');
@@ -788,7 +818,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             if (!isset($row[$field])) {
                 continue;
             }
-            if ($row[$field] == $value || (is_string($row[$field]) && str_contains($row[$field], "\t$value\t"))) {  // intentional loose comparison
+            $fieldValue = $row[$field];
+            $isMatch    = is_string($fieldValue)
+                ? $fieldValue === $value || str_contains($fieldValue, "\t$value\t") // exact text, like where()
+                : $fieldValue == $value;                                            // non-string fields match numerically, e.g. int 2 matches '2'
+            if ($isMatch) {
                 $matches[$key] = $row;
             }
         }

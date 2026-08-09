@@ -216,7 +216,7 @@ All three return `SmartNull` silently when there is no such element
 count(): int                  // also works via count($collection) (Countable)
 isEmpty(): bool               // no elements
 isNotEmpty(): bool            // any elements
-contains(mixed $value): bool  // any element == $value (loose; Smart args unwrap)
+contains(mixed $value): bool  // any element matches $value (where() rules; Smart args unwrap)
 ```
 
 Field-level checks (`isMissing()`, `isEmpty()`, `or()`, ...) are SmartString
@@ -242,8 +242,8 @@ All return a new collection; nested-only methods throw
 
 | Method                                                     | Behavior                                                                                                                                                                |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field == $value` (loose; `'1'` matches 1; Smart args unwrap). Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter is a loose == null match |
-| `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field == $value`; rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
+| `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field` matches `$value`: strings match as exact text (`'0e12'` never matches `'0e99'`), numbers match numerically in either direction (`'1'` matches 1, 1 matches `'1.00'`), null matches only null (SQL IS NULL), bools compare as 1/0 on either side. Smart args unwrap. Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter matches only stored NULLs |
+| `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field` matches `$value` (same matching rules as `where()`); rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
 | `whereInList(string $field, mixed $value): static`         | Nested only. Keeps rows where tab-separated `$field` contains `$value` as a whole value (`"\tmenu\tfooter\t"` format, CMS Builder checkbox/multi-select fields) or equals it as a plain single value. Never substring matching |
 | `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
 | `sort(int $flags = SORT_REGULAR): static`                  | Flat only. Sorts ascending by value, renumbers keys. `$flags` choose comparison only; `SORT_ASC`/`SORT_DESC` throw `InvalidArgumentException` (sort descending in SQL)  |

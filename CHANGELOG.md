@@ -95,6 +95,8 @@ the docs - IDEs show a strikethrough with the replacement.
   property, which is how the database layer (ZenDB) has always set it. It
   couldn't work on record sets anyway: rows snapshot the handler during
   construction, so one set afterward never reached them.
+- `newSmartNull()` - now protected; it is the internal factory for
+  missing-value placeholders. Never documented, no found uses.
 
 ### Behavior changes
 

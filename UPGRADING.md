@@ -57,8 +57,10 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >   `new SmartArray($data, ['loadHandler' => $handler])`. Setting it after
 >   construction never worked on record sets - rows are built during
 >   construction and never saw a handler set later.
+> - `newSmartNull()` - now protected; it built the internal missing-value
+>   placeholders and had no use outside the library
 >
-> Search: `usingSmartStrings|setLoadHandler`
+> Search: `usingSmartStrings|setLoadHandler|newSmartNull`
 
 ### sortBy() parameter renamed for named arguments
 

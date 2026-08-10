@@ -50,12 +50,13 @@ trait Deprecations
      * Offset access (`[]` syntax) is deprecated in favor of property access:
      * `$array->key` for reads, `$array->key = $value` for writes, and brace
      * syntax (`$array->{'users.id'}`) for keys property syntax can't type. This setting
-     * controls how the library signals that deprecation at runtime. It covers
-     * reads, writes, and unset(); existence checks (offsetExists) are signal-free
-     * because PHP also calls offsetGet() for `??` and empty(), which carries the
-     * one notice. Property forms (`$array->key`, `isset($array->key)`) are always
-     * signal-free, and so are bracket reads on SmartNull: missing-data chains like
-     * $row->missing['a']['b'] would signal once per level for one call site.
+     * controls how the library signals that deprecation at runtime.
+     *
+     * Reads, writes, and unset() complain once per bracket, so $row['a']['b']
+     * complains twice. Missing data works the same as real data, so
+     * $row->missing['a']['b'] also complains twice. Property syntax never
+     * complains, and neither does isset($array['key']): PHP calls offsetGet()
+     * behind `??` and empty(), so you'd hear about it twice.
      *
      *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
      *                by PHP's error handling. Use for legacy codebases mid-migration.

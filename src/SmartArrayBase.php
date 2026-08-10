@@ -389,8 +389,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function at(int|SmartString|SmartNull $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // Unwrap Smart indexes so positions read from another array work directly (MySQL returns
-        // numeric strings). Missing keys (SmartNull) and non-numeric values stay missing.
+        // Unwrap Smart indexes so HTML-mode positions work directly, since every value it
+        // hands out is a SmartString. Missing keys (SmartNull) and non-numeric values stay missing.
         if ($index instanceof SmartNull) {
             return $this->newSmartNull();
         }

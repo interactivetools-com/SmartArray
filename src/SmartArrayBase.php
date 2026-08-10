@@ -91,6 +91,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         }
      *     }
      *
+     * Positions are set when the array is built; adding or removing rows later doesn't update them.
+     *
      * @return bool
      */
     public function isFirst(): bool
@@ -100,6 +102,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Returns true if this element is the last child in its parent SmartArray.
+     *
+     * Positions are set when the array is built; adding or removing rows later doesn't update them.
      *
      * @return bool
      */
@@ -114,6 +118,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *     foreach ($rows as $row) {
      *         echo "Row {$row->position()} of " . $rows->count();
      *     }
+     *
+     * Positions are set when the array is built; adding or removing rows later doesn't update them.
      *
      * @return int 1-based position (0 if not a child element)
      */
@@ -1540,6 +1546,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * If headers have already been sent, throws immediately - even when the
      * array is not empty - so a misplaced call fails on every request, not
      * just when a result happens to be empty.
+     *
+     * SECURITY: The URL goes to the Location header as-is. Pass a fixed or
+     * validated URL, not user input, or you create an open redirect.
      *
      * @param string $url The URL to redirect to if array is empty
      * @return static Returns $this for method chaining if not empty, redirects if empty

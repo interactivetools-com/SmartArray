@@ -86,3 +86,11 @@ in signatures, docblocks, the changelog, and tests.
   SmartArray docs" rather than linking. These can render on
   private-labeled production sites, where a vendor URL in the page is not
   ours to put there.
+
+- **HTML composition helpers live on SmartString, not here (2026-08-10).**
+  SmartString's `appendHtml()`/`wrapHtml()` are the whole answer to wrapping
+  a present value in markup, and HTML-mode fields are SmartStrings so they
+  get both directly. Rejected across the family: SmartArray-side `*Html()`
+  variants, a SmartHtml type, encode-on-append, and entity-sniffing. If
+  richer safe-HTML composition is ever needed, the design is a dedicated
+  safe-HTML type (see SmartString's design-decisions entry).

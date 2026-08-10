@@ -231,6 +231,24 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testWhereArraySyntaxDeprecationFormatsEveryValueType(string $class): void
+    {
+        $sa = $class::new([['ids' => '1', 'active' => 1, 'deleted' => null, 'count' => 5]]);
+
+        // the suggested replacement spells each value as PHP source: bools and null
+        // by name, arrays as a [...] placeholder (no "Array to string conversion")
+        [, $deprecations] = $this->captureDeprecations(
+            fn() => $sa->where(['ids' => ['1', '2'], 'active' => true, 'deleted' => null, 'count' => 5])
+        );
+
+        $this->assertCount(1, $deprecations);
+        $this->assertStringContainsString(
+            "->where('ids', [...])->where('active', true)->where('deleted', null)->where('count', 5)",
+            $deprecations[0],
+        );
+    }
+
+    #[DataProvider('modeProvider')]
     public function testWhereArrayListFormThrowsWithHint(string $class): void
     {
         // where(['featured']) is a half-migration of where('featured', ...): a list

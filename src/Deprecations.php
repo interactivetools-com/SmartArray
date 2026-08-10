@@ -399,6 +399,44 @@ trait Deprecations
         return new static(array_chunk($this->toArray(), $size), $this->getInternalProperties());
     }
 
+    /**
+     * The legacy where(['field' => value, ...]) array syntax - where() dispatches
+     * here when its first argument is an array. Validates the pairs, logs the
+     * migration nag, then runs the conditions as chained ->where('field', value)
+     * calls (conditions AND together).
+     *
+     * Unlike the aliases above, this backs a deprecated calling convention rather
+     * than a deprecated method name, so callers never see this name and it is free
+     * to label itself. On removal, where()'s first parameter narrows to string and
+     * the dispatch line goes with it.
+     */
+    private function deprecatedWhereArraySyntax(array $field): static
+    {
+        $conditions = array_map([self::class, 'getRawValue'], $field);
+        foreach ($conditions as $key => $listValue) {
+            if (is_int($key)) { // a list like where(['featured']) has no field names to match on
+                $hint = is_string($listValue) ? " Did you mean ->where('$listValue') to match rows where '$listValue' is non-empty?" : "";
+                throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
+            }
+        }
+        $formatValue = fn($v) => match (true) {
+            is_string($v) => "'$v'",
+            is_bool($v)   => $v ? 'true' : 'false',
+            $v === null   => 'null',
+            is_scalar($v) => (string) $v,  // int/float
+            default       => '[...]',      // arrays never match anything, but don't warn while nagging
+        };
+        $whereCalls = array_map(fn($k, $v) => "->where('$k', {$formatValue($v)})", array_keys($conditions), $conditions);
+        self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
+
+        $result = $this;
+        foreach ($conditions as $key => $value) {
+            $result = $result->where($key, $value);
+        }
+
+        return $result;
+    }
+
     //endregion
     //region Visible Notices
 

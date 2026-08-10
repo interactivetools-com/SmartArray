@@ -726,23 +726,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             return new static($matches, $this->getInternalProperties());
         }
 
-        // Deprecated: legacy array syntax, use chained ->where('field', value) calls instead
-        $conditions = array_map([self::class, 'getRawValue'], $field);
-        foreach ($conditions as $key => $listValue) {
-            if (is_int($key)) { // a list like where(['featured']) has no field names to match on
-                $hint = is_string($listValue) ? " Did you mean ->where('$listValue') to match rows where '$listValue' is non-empty?" : "";
-                throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
-            }
-        }
-        $whereCalls = array_map(fn($k, $v) => "->where('$k', " . (is_numeric($v) ? $v : "'$v'") . ")", array_keys($conditions), $conditions);
-        self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
-
-        $result = $this;
-        foreach ($conditions as $key => $value) {
-            $result = $result->where($key, $value);
-        }
-
-        return $result;
+        // Deprecated array syntax: where(['field' => value, ...])
+        return $this->deprecatedWhereArraySyntax($field);
     }
 
     /**

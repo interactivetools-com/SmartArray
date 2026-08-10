@@ -502,7 +502,8 @@ class SmartNullTest extends SmartArrayTestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
-        $smartNull['key'] = 'value';
+        // the deprecated array-write syntax prints its notice before the guard throws
+        $this->captureOutput(fn() => $smartNull['key'] = 'value');
     }
 
     #[DataProvider('modeProvider')]

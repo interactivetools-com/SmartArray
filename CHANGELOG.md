@@ -185,7 +185,8 @@ the docs - IDEs show a strikethrough with the replacement.
 - `indexBy()` and `groupBy()` keep float precision: `19.99` and `19.50` key as
   `'19.99'` and `'19.5'` instead of both truncating to `19` (PHP array-key
   casting, which also printed a PHP deprecation naming library internals).
-  Integer and boolean keys are unchanged.
+  Keys format per PHP's `precision` ini setting (default 14 significant
+  digits). Integer and boolean keys are unchanged.
 - `asRaw()` and `asHtml()` on a row keep its position metadata, so
   `position()`, `isFirst()`, and `isLast()` answer the same before and after
   converting (conversion used to reset them to position 0 with both flags

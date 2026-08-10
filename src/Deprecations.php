@@ -38,6 +38,11 @@ use JetBrains\PhpStorm\Deprecated;
  * SmartArrayBase::$onOffsetAccess: 'log', 'notify', and 'throw' correspond to
  * Logged, Visible, and Fatal. The default is 'notify', which is why the
  * offsetGet/offsetSet/offsetUnset/offsetExists methods are in the Visible region.
+ *
+ * A deprecated calling convention inside a live method (like where()'s array
+ * syntax) can't move here whole - the live method keeps its signature and a
+ * one-line dispatch - but the body does: extract it to a private method named
+ * deprecated*(), placed in the region matching its ladder stage.
  */
 trait Deprecations
 {

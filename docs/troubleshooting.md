@@ -105,6 +105,7 @@ turns any array with key gaps into an object. Chain `values()` to
 renumber first:
 
 ```php
+header('Content-Type: application/json');
 echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
 echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
 ```

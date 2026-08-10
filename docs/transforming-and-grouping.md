@@ -62,6 +62,8 @@ Where `indexBy()` keeps one row per key, `groupBy()` collects all of them,
 which is the shape section-by-section page layouts want:
 
 ```php
+use Itools\SmartString\SmartString;
+
 $articles = SmartArrayHtml::new([
     ['title' => 'Fall Fair Sept 20-21', 'category' => 'Events'],
     ['title' => 'New Trail Maps',       'category' => 'Parks'],
@@ -69,6 +71,7 @@ $articles = SmartArrayHtml::new([
 ]);
 
 foreach ($articles->groupBy('category') as $category => $stories) {
+    $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
     echo "<h3>$category</h3>\n";
     foreach ($stories as $story) {
         echo "   <li>$story->title</li>\n";
@@ -80,6 +83,12 @@ foreach ($articles->groupBy('category') as $category => $stories) {
 // <h3>Parks</h3>
 //    <li>New Trail Maps</li>
 ```
+
+The `SmartString::new()` line is there because foreach hands keys back as
+plain values, never encoded (see
+[Keys Are Never Encoded](outputting-html.md#keys-are-never-encoded)).
+Wrapping the key makes it encode on echo like any field. Skip it when the
+keys are trusted values you defined yourself.
 
 ## Reshaping Rows: map()
 

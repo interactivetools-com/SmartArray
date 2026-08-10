@@ -76,6 +76,8 @@ A `groupBy()` bucket is a normal collection, so `count()` and every other
 method work on it:
 
 ```php
+use Itools\SmartString\SmartString;
+
 $listings = SmartArrayHtml::new([
     ['title' => 'Fall Fair Sept 20-21', 'category' => 'Events'],
     ['title' => 'New Trail Maps',       'category' => 'Parks'],
@@ -83,6 +85,7 @@ $listings = SmartArrayHtml::new([
 ]);
 
 foreach ($listings->groupBy('category') as $category => $rows) {
+    $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
     echo "<h3>$category ({$rows->count()})</h3>\n";
     foreach ($rows as $row) {
         echo "   <li>$row->title</li>\n";

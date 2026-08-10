@@ -7,6 +7,7 @@ use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
+use Itools\SmartString\SmartString;
 
 /**
  * Every executable example in README.md and docs/, run as written.
@@ -668,6 +669,7 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(static function () use ($articles): void {
             foreach ($articles->groupBy('category') as $category => $stories) {
+                $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
                 echo "<h3>$category</h3>\n";
                 foreach ($stories as $story) {
                     echo "   <li>$story->title</li>\n";
@@ -931,6 +933,7 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(static function () use ($listings): void {
             foreach ($listings->groupBy('category') as $category => $rows) {
+                $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
                 echo "<h3>$category ({$rows->count()})</h3>\n";
                 foreach ($rows as $row) {
                     echo "   <li>$row->title</li>\n";

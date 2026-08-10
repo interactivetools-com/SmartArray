@@ -75,24 +75,55 @@ abstract class SmartArrayTestCase extends TestCase
     }
 
     /**
-     * Run $fn collecting E_USER_DEPRECATED messages. The library sends these via
-     * @trigger_error, so only an error handler can observe them. Returns [result, messages].
+     * Run $fn collecting messages for the given error types (error_reporting-style mask).
+     * The library sends warnings and deprecations via @trigger_error, so only an error
+     * handler can observe them. Returns [result, messages].
      *
      * @return array{0: mixed, 1: string[]}
      */
-    protected function captureDeprecations(callable $fn): array
+    protected function captureErrors(callable $fn, int $mask): array
     {
         $messages = [];
         set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
             $messages[] = $errstr;
-            return $errno === E_USER_DEPRECATED; // always true given the mask; anything else falls through to PHP
-        }, E_USER_DEPRECATED);
+            return true; // handled: captured errors stay out of the suite output
+        }, $mask);
         try {
             $result = $fn();
         } finally {
             restore_error_handler();
         }
         return [$result, $messages];
+    }
+
+    /**
+     * Run $fn collecting E_USER_DEPRECATED messages. Returns [result, messages].
+     *
+     * @return array{0: mixed, 1: string[]}
+     */
+    protected function captureDeprecations(callable $fn): array
+    {
+        return $this->captureErrors($fn, E_USER_DEPRECATED);
+    }
+
+    /**
+     * Run a command in its own process. Returns [stdout, stderr, exit code].
+     *
+     * @return array{0: string, 1: string, 2: int}
+     */
+    protected function runProcess(array $command): array
+    {
+        $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+
+        $process = proc_open($command, $descriptors, $pipes);
+        $this->assertNotFalse($process, 'could not start: ' . implode(' ', $command));
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        return [$stdout, $stderr, proc_close($process)];
     }
 
     //endregion

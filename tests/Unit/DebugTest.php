@@ -435,7 +435,7 @@ class DebugTest extends SmartArrayTestCase
             showme(\Itools\SmartArray\SmartArray::new(['a' => 1]));
             __PHP__;
 
-        [$stdout, $stderr, $exitCode] = $this->runPhp($code);
+        [$stdout, $stderr, $exitCode] = $this->runProcess([PHP_BINARY, '-r', $code]);
 
         $this->assertSame('', $stderr);
         $this->assertSame(0, $exitCode);
@@ -546,18 +546,9 @@ class DebugTest extends SmartArrayTestCase
      */
     public function testVarExportStillShowsInternalPropertiesAndWarnsOnRoot(): void
     {
-        $sa       = SmartArray::new(['name' => 'Amy']);
-        $warnings = [];
+        $sa = SmartArray::new(['name' => 'Amy']);
 
-        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
-            $warnings[] = $errstr;
-            return true;
-        }, E_WARNING);
-        try {
-            [, $output] = $this->captureOutput(fn() => var_export($sa));
-        } finally {
-            restore_error_handler();
-        }
+        [[, $output], $warnings] = $this->captureErrors(fn() => $this->captureOutput(fn() => var_export($sa)), E_WARNING);
 
         $this->assertSame(['var_export does not handle circular references'], $warnings);
         $this->assertStringContainsString('Itools\SmartArray\SmartArray::__set_state(array(', $output);
@@ -662,26 +653,6 @@ class DebugTest extends SmartArrayTestCase
             'author_id' => [['id' => 7, 'name' => 'Amy'], ['query' => 'SELECT * FROM authors WHERE id = 7']],
             default     => false,
         };
-    }
-
-    /**
-     * Run PHP code in a subprocess. Returns [stdout, stderr, exit code].
-     *
-     * @return array{0: string, 1: string, 2: int}
-     */
-    private function runPhp(string $code): array
-    {
-        $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-
-        $process = proc_open([PHP_BINARY, '-r', $code], $descriptors, $pipes);
-        $this->assertNotFalse($process, 'could not start php subprocess');
-
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        return [$stdout, $stderr, proc_close($process)];
     }
 
     //endregion

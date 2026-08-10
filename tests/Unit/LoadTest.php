@@ -346,14 +346,14 @@ class LoadTest extends SmartArrayTestCase
         // is the only thing the caller sees - no "Undefined array key 1" warning
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => [['id' => 10]]]);
 
-        $thrown   = null;
-        $warnings = $this->captureWarnings(function () use ($sa, &$thrown) {
+        $thrown        = null;
+        [, $warnings]  = $this->captureErrors(function () use ($sa, &$thrown) {
             try {
                 $sa->load('products');
             } catch (Error $e) {
                 $thrown = $e;
             }
-        });
+        }, E_WARNING);
 
         $this->assertSame([], $warnings);
         $this->assertInstanceOf(Error::class, $thrown);
@@ -424,30 +424,6 @@ class LoadTest extends SmartArrayTestCase
         $this->assertFalse(method_exists(SmartArrayBase::class, 'setLoadHandler'), 'the handler is a constructor property now');
         $this->assertFalse(method_exists(SmartArray::class, 'setLoadHandler'));
         $this->assertFalse(method_exists(SmartArrayHtml::class, 'setLoadHandler'));
-    }
-
-    //endregion
-    //region Helpers
-
-    /**
-     * Run $fn collecting E_WARNING messages, so a PHP warning raised inside the
-     * library can be asserted instead of leaking into the suite output.
-     *
-     * @return string[]
-     */
-    private function captureWarnings(callable $fn): array
-    {
-        $messages = [];
-        set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
-            $messages[] = $errstr;
-            return true;
-        }, E_WARNING);
-        try {
-            $fn();
-        } finally {
-            restore_error_handler();
-        }
-        return $messages;
     }
 
     //endregion

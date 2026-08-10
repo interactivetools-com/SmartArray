@@ -50,16 +50,7 @@ class WarningsTest extends SmartArrayTestCase
      */
     private function captureWarnings(callable $fn): array
     {
-        $messages = [];
-        set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
-            $messages[] = $errstr;
-            return true;
-        }, E_USER_WARNING);
-        try {
-            [, $output] = $this->captureOutput($fn);
-        } finally {
-            restore_error_handler();
-        }
+        [[, $output], $messages] = $this->captureErrors(fn() => $this->captureOutput($fn), E_USER_WARNING);
         return [$output, $messages];
     }
 

@@ -269,18 +269,7 @@ class EmptyGuardsTest extends SmartArrayTestCase
      */
     private function runScript(string $script, string ...$args): array
     {
-        $command     = [PHP_BINARY, dirname(__DIR__) . "/Support/bin/$script", ...$args];
-        $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-
-        $process = proc_open($command, $descriptors, $pipes);
-        $this->assertNotFalse($process, "could not start $script");
-
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        return [$stdout, $stderr, proc_close($process)];
+        return $this->runProcess([PHP_BINARY, dirname(__DIR__) . "/Support/bin/$script", ...$args]);
     }
 
     //endregion

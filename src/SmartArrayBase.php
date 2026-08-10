@@ -375,17 +375,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
+     * A write makes kept source rows stale: clears this array's snapshot and its result
+     * set's ($this->root is the result set on rows, $this on top-level arrays). Every
+     * write path must call this, or toArray() can serve pre-write data (see $sourceRows).
+     */
+    private function invalidateSourceRows(): void
+    {
+        $this->sourceRows       = null;
+        $this->root->sourceRows = null;
+    }
+
+    /**
      * Stores an element with automatic type conversion.
      * Scalars and nulls are stored as-is; arrays are converted to SmartArray instances.
      * Smart values are unwrapped first, so `$a->key = $b->key` works in any mode.
      */
     private function setElement(int|string|null $key, mixed $value): void
     {
-        // A write makes kept source rows stale: this array's own copy, and its result
-        // set's when this is a row ($this->root is the result set on rows, $this on
-        // top-level arrays)
-        $this->sourceRows       = null;
-        $this->root->sourceRows = null;
+        $this->invalidateSourceRows();
 
         // Unwrap Smart values (SmartString, SmartArray, SmartNull) to their raw
         // equivalents; nested arrays then convert to this array's mode below.
@@ -1436,8 +1443,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function __unset(string $name): void
     {
-        $this->sourceRows       = null;   // same staleness rule as setElement()
-        $this->root->sourceRows = null;
+        $this->invalidateSourceRows();
         unset($this->data[$name]);
     }
 

@@ -535,8 +535,7 @@ trait Deprecations
     {
         $offset = self::coerceOffset($offset);
         self::triggerArrayAccessDeprecation($offset, 'unset');
-        $this->sourceRows       = null;   // same staleness rule as setElement()
-        $this->root->sourceRows = null;
+        $this->invalidateSourceRows();
         unset($this->data[$offset]);
     }
 

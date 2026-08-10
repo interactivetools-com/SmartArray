@@ -307,6 +307,22 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame('n/a', $smartNull->apply('strtoupper')->or('n/a')->value(), 'chain stays open after apply');
     }
 
+    public function testOddCasedMapAndApplyPropagateLikeLowercaseInHtmlMode(): void
+    {
+        // PHP method dispatch ignores case (->dateformat() works), so ->Map() must
+        // propagate exactly like ->map() - not delegate and run the callback on null
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+        $calls     = 0;
+        $callback  = function ($value) use (&$calls) {
+            $calls++;
+            return 'computed';
+        };
+
+        $this->assertSame($smartNull, $smartNull->Map($callback));
+        $this->assertSame($smartNull, $smartNull->APPLY($callback));
+        $this->assertSame(0, $calls, 'the callback never runs on a missing key, whatever the casing');
+    }
+
     public function testDeprecatedSmartStringShimsWorkOnMissingKeysInHtmlMode(): void
     {
         // noEncode/toString/jsEncode/stripTags only exist inside SmartString's

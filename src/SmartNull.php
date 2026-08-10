@@ -309,15 +309,16 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
         // The in_array list mirrors the deprecated shims in SmartString::__call, which
         // method_exists() can't see. Keep both sites in sync: when SmartString drops a
         // shim, drop it here too.
+        $nameLower           = strtolower($name); // PHP method dispatch ignores case, so every name check here must too
         $isSmartStringMethod = $this->useSmartStrings
-            && $name !== 'getIterator'
+            && $nameLower !== 'getiterator'
             && (
                 (method_exists(SmartString::class, $name) && (new ReflectionMethod(SmartString::class, $name))->isPublic())
-                || in_array(strtolower($name), ['noencode', 'tostring', 'jsencode', 'striptags'], true)
+                || in_array($nameLower, ['noencode', 'tostring', 'jsencode', 'striptags'], true)
             );
 
         if ($isSmartStringMethod) {
-            if ($name === 'map' || $name === 'apply') {
+            if ($nameLower === 'map' || $nameLower === 'apply') {
                 return $this;
             }
             $result = SmartString::new(null)->$name(...$arguments);

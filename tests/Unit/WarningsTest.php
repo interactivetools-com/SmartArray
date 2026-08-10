@@ -189,18 +189,6 @@ class WarningsTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testArgumentWarningSkippedWhenFirstElementIsNotARow(string $class): void
-    {
-        // Mixed data (scalar config keys alongside array fields) has no first row
-        // to sample, so the check is skipped rather than reporting a false miss
-        $mixed = $class::new(['tableName' => 'users', 'fields' => ['a' => 1]]);
-
-        [, $output] = $this->captureOutput(fn() => $mixed->sortBy('zzz'));
-
-        $this->assertSame('', $output);
-    }
-
-    #[DataProvider('modeProvider')]
     public function testMissingFieldWarningIsAlsoSentToErrorHandlers(string $class): void
     {
         $rows = $class::new([['a' => 1]]);

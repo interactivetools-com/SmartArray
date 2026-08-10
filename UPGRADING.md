@@ -133,6 +133,26 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >
 > Regex: `->(where|whereNot|contains)\([^)]*(null|true|false)\s*\)`
 
+### Row-only methods throw on mixed arrays
+
+> `where()`, `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`,
+> `groupBy()`, `column()`, and `columnAt()` now require every element to be
+> a row. An array mixing rows and scalar values throws
+> `InvalidArgumentException` naming the element, instead of silently
+> skipping the scalars:
+>
+> ```php
+> $data = SmartArrayHtml::new(['count' => 5, 'items' => [['id' => 1]]]);
+> $data->where('id', 1);  // before: returned 0-1 rows, 'count' silently ignored
+>                         // after:  throws "where(): Expected a nested array of
+>                         //         rows, but element 'count' is not a row (int)"
+> ```
+>
+> Database results and empty arrays are unaffected - this only fires on
+> hand-built arrays that mix shapes. The error usually means the array was
+> wrapped one level too high (`->items` was the intended collection) or a
+> scalar was assigned onto a result set.
+
 ### Silent changes
 
 > - `print_r()` and `var_dump()` show just the array data, like dumping a

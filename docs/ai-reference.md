@@ -237,8 +237,10 @@ the new collection.
 
 ## Filtering and Sorting
 
-All return a new collection; nested-only methods throw
-`InvalidArgumentException` on flat arrays and vice versa.
+All return a new collection; nested-only methods require every element to be
+a row and throw `InvalidArgumentException` on flat arrays or on mixed arrays
+where an element is not a row (empty arrays pass); flat-only methods likewise
+throw on nested input.
 
 | Method                                                     | Behavior                                                                                                                                                                |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

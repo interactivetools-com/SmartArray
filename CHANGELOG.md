@@ -110,6 +110,15 @@ the docs - IDEs show a strikethrough with the replacement.
     - true/false mean 1/0 (true used to match any truthy value, even `'abc'`)
 
   See [UPGRADING.md](UPGRADING.md).
+- Row-only methods (`where()`, `whereNot()`, `whereInList()`, `sortBy()`,
+  `indexBy()`, `groupBy()`, `column()`, `columnAt()`) throw
+  `InvalidArgumentException` naming the offending element when the array
+  mixes rows and scalar values, instead of silently skipping the scalars
+  (`sortBy()` kept them). A scalar next to rows means the array was built
+  wrong - usually a wrapped API response (`['count' => 5, 'items' => [...]]`)
+  or a value assigned onto a result set - and skipping it hid the mistake.
+  Database results and empty arrays are unaffected. See
+  [UPGRADING.md](UPGRADING.md).
 - A missing field stays a SmartNull through the whole chain instead of
   becoming an empty SmartString at the first method call. Same output as
   before (echoes `""`, `or()` still fires), but chains no longer dead-end:

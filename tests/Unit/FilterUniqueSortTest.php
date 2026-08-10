@@ -222,6 +222,17 @@ class FilterUniqueSortTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testSortByThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['tableName' => 'users', 'fields' => ['a' => 1]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("sortBy(): Expected a nested array of rows, but element 'tableName' is not a row (string)");
+
+        $sa->sortBy('a');
+    }
+
+    #[DataProvider('modeProvider')]
     public function testSortByRejectsDirectionConstants(string $class): void
     {
         // Previously fataled with a confusing array_multisort() TypeError

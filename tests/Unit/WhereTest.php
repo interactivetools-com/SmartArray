@@ -142,15 +142,62 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereExcludesRowsMissingFieldAndNonArrayRows(string $class): void
+    public function testWhereExcludesRowsMissingField(string $class): void
     {
         $sa = $class::new([
-            'config' => 'scalar row',
-            'a'      => ['f' => 5],
-            'b'      => ['other' => 5],
+            'a' => ['f' => 5],
+            'b' => ['other' => 5],
         ]);
 
         [$result, ] = $this->captureOutput(fn() => $sa->where('f', 5));
+
+        $this->assertSame(['a' => ['f' => 5]], $result->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("where(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->where('f', 5);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereNotThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("whereNot(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->whereNot('f', 5);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['tags' => "\tred\t"]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("whereInList(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->whereInList('tags', 'red');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereWorksAgainAfterScalarRowIsUnset(string $class): void
+    {
+        // Storing a scalar marks the array as not rows-only, and unset doesn't clear
+        // the mark - the assert rescans, proves all remaining elements are rows, and passes
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 0]]);
+
+        [$result, ] = $this->captureOutput(function () use ($sa) {
+            unset($sa['config']); // bracket unset echoes a deprecation, not under test here
+            return $sa->where('f', 5);
+        });
 
         $this->assertSame(['a' => ['f' => 5]], $result->toArray());
     }

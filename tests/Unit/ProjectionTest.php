@@ -119,12 +119,14 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testColumnAtSkipsScalarRows(string $class): void
+    public function testColumnAtThrowsOnScalarRows(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no columns to extract
         $sa = $class::new([['a', 'b'], 'scalar', ['c', 'd']]);
 
-        $this->assertSame(['a', 'c'], $sa->columnAt(0)->toArray());
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("columnAt(): Expected a nested array of rows, but element '1' is not a row (string)");
+
+        $sa->columnAt(0);
     }
 
     //endregion
@@ -240,18 +242,14 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testIndexBySkipsScalarRows(string $class): void
+    public function testIndexByThrowsOnScalarRows(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no fields to index by
         $sa = $class::new([['id' => 1, 'n' => 'a'], 'scalar', ['id' => 2, 'n' => 'b']]);
 
-        [$result, $output] = $this->captureOutput(fn() => $sa->indexBy('id'));
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("indexBy(): Expected a nested array of rows, but element '1' is not a row (string)");
 
-        $this->assertSame([
-            1 => ['id' => 1, 'n' => 'a'],
-            2 => ['id' => 2, 'n' => 'b'],
-        ], $result->toArray());
-        $this->assertSame('', $output);
+        $sa->indexBy('id');
     }
 
     //endregion
@@ -335,15 +333,14 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testGroupBySkipsScalarRows(string $class): void
+    public function testGroupByThrowsOnScalarRows(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no fields to group by
         $sa = $class::new([['g' => 'a', 'v' => 1], 'scalar', ['g' => 'a', 'v' => 2]]);
 
-        [$result, $output] = $this->captureOutput(fn() => $sa->groupBy('g'));
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("groupBy(): Expected a nested array of rows, but element '1' is not a row (string)");
 
-        $this->assertSame(['a' => [['g' => 'a', 'v' => 1], ['g' => 'a', 'v' => 2]]], $result->toArray());
-        $this->assertSame('', $output);
+        $sa->groupBy('g');
     }
 
     //endregion

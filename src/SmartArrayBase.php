@@ -47,15 +47,23 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private bool $hasRows = false;
 
     /**
-     * The rows fromDatabaseRows() was given, kept so toArray() can hand them back
-     * without rebuilding. Costs almost nothing to keep: the child rows share the
-     * same value storage via copy-on-write. Any write to this array or one of its
-     * rows clears it (see setElement()), so toArray() never returns stale data.
+     * Plain-array snapshot of this collection, kept so toArray() can hand it back
+     * without rebuilding. fromDatabaseRows() stores the rows it was given, and
+     * transforms (where(), sortBy(), indexBy(), ...) store the plain array they
+     * built their result from. Costs almost nothing to keep: the child rows share
+     * the same value storage via copy-on-write.
+     *
+     * Staleness rule: every write clears the written object's snapshot and its
+     * root's (see setElement()), and toArray() only serves a snapshot while the
+     * root's is still set. Sets derived from a result set share that root, so one
+     * write anywhere disables every related snapshot at once - snapshots are never
+     * re-set after a write, so from then on reads use the slower, always-correct
+     * rebuild.
      *
      * Calling clone() on a built collection is not supported: the clone shares
-     * these rows, but writes only clear the original's copy, so a cloned result
-     * set can serve stale rows. The internal clones in construction are fine -
-     * they all happen before this property is set.
+     * the same row objects, so writes through one clone show through all of them.
+     * The internal clones in construction are fine - they all happen before this
+     * property is set.
      */
     private ?array $sourceRows = null;
 
@@ -626,7 +634,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $fieldValues = array_map(fn($row) => $row[$field] ?? null, $sorted);
         array_multisort($fieldValues, SORT_ASC, $flags, $sorted);
 
-        return new static($sorted, $this->getInternalProperties());
+        $result             = new static($sorted, $this->getInternalProperties());
+        $result->sourceRows = $sorted;
+        return $result;
     }
 
     /**
@@ -664,8 +674,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function filter(?callable $callback = null): static
     {
-        $values = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
-        return new static($values, $this->getInternalProperties());
+        $values             = array_filter($this->toArray(), $callback, ARRAY_FILTER_USE_BOTH);
+        $result             = new static($values, $this->getInternalProperties());
+        $result->sourceRows = $values;
+        return $result;
     }
 
     /**
@@ -708,7 +720,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 }
             }
 
-            return new static($matches, $this->getInternalProperties());
+            $result             = new static($matches, $this->getInternalProperties());
+            $result->sourceRows = $matches;
+            return $result;
         }
 
         // Two-argument syntax: where('field', value)
@@ -723,7 +737,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 }
             }
 
-            return new static($matches, $this->getInternalProperties());
+            $result             = new static($matches, $this->getInternalProperties());
+            $result->sourceRows = $matches;
+            return $result;
         }
 
         // Deprecated array syntax: where(['field' => value, ...])
@@ -762,7 +778,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 }
             }
 
-            return new static($matches, $this->getInternalProperties());
+            $result             = new static($matches, $this->getInternalProperties());
+            $result->sourceRows = $matches;
+            return $result;
         }
 
         $value   = self::getRawValue($value);
@@ -774,7 +792,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
         }
 
-        return new static($matches, $this->getInternalProperties());
+        $result             = new static($matches, $this->getInternalProperties());
+        $result->sourceRows = $matches;
+        return $result;
     }
 
     /**
@@ -817,7 +837,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
         }
 
-        return new static($matches, $this->getInternalProperties());
+        $result             = new static($matches, $this->getInternalProperties());
+        $result->sourceRows = $matches;
+        return $result;
     }
 
     //endregion
@@ -833,9 +855,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function toArray(): array
     {
-        // fromDatabaseRows() result sets hand back their original rows: O(1), and
-        // any write to the set or a row clears the copy, so it's never stale
-        if ($this->sourceRows !== null) {
+        // Serve the plain-array snapshot while provably fresh: every write clears the
+        // root's snapshot (see $sourceRows), so the root still having one means no
+        // write has happened anywhere in this result set's family
+        if ($this->sourceRows !== null && ($this->root === $this || $this->root->sourceRows !== null)) {
             return $this->sourceRows;
         }
 
@@ -868,8 +891,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function values(): static
     {
-        $values = array_values($this->toArray());
-        return new static($values, $this->getInternalProperties());
+        $values             = array_values($this->toArray());
+        $result             = new static($values, $this->getInternalProperties());
+        $result->sourceRows = $values;
+        return $result;
     }
 
     /**
@@ -925,7 +950,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $values[$key] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
 
-        return new static($values, $this->getInternalProperties());
+        $result             = new static($values, $this->getInternalProperties());
+        $result->sourceRows = $values;
+        return $result;
     }
 
     /**
@@ -977,7 +1004,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $values[$key][] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
 
-        return new static($values, $this->getInternalProperties());
+        $result             = new static($values, $this->getInternalProperties());
+        $result->sourceRows = $values;
+        return $result;
     }
 
     /**
@@ -1067,7 +1096,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $values[$key] = $row[$columnKey]; // PHP keys natively: bools as 1/0, numeric strings as ints
             }
         }
-        return new static($values, $this->getInternalProperties());
+        $result             = new static($values, $this->getInternalProperties());
+        $result->sourceRows = $values;
+        return $result;
     }
 
     /**
@@ -1156,8 +1187,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         // Convert SmartArrays to arrays; SmartNull (missing key) merges as empty
         $arrays = array_map(static fn($array) => self::getRawValue($array) ?? [], $arrays);
-        $merged = array_merge($this->toArray(), ...$arrays);
-        return new static($merged, $this->getInternalProperties());
+        $merged             = array_merge($this->toArray(), ...$arrays);
+        $result             = new static($merged, $this->getInternalProperties());
+        $result->sourceRows = $merged;
+        return $result;
     }
 
     //endregion

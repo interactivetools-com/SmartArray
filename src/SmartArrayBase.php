@@ -47,10 +47,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private bool $hasRows = false;
 
     /**
-     * The original rows fromDatabaseRows() was given, so toArray() can return them
-     * without rebuilding. Nearly free to keep: the child rows share the same value
-     * storage via copy-on-write. Any write to this array or one of its rows clears
-     * it (see setElement()), so a stale copy can never be returned.
+     * The rows fromDatabaseRows() was given, kept so toArray() can hand them back
+     * without rebuilding. Costs almost nothing to keep: the child rows share the
+     * same value storage via copy-on-write. Any write to this array or one of its
+     * rows clears it (see setElement()), so toArray() never returns stale data.
+     *
+     * Calling clone() on a built collection is not supported: the clone shares
+     * these rows, but writes only clear the original's copy, so a cloned result
+     * set can serve stale rows. The internal clones in construction are fine -
+     * they all happen before this property is set.
      */
     private ?array $sourceRows = null;
 

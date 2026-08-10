@@ -82,9 +82,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns true if this element is the first child in its parent SmartArray.
      *
      *     foreach ($rows as $row) {
-     *         if ($row->isFirst()) { echo '<ul>'; }
+     *         if ($row->isFirst()) {
+     *             echo '<ul>';
+     *         }
      *         echo "<li>$row->name</li>";
-     *         if ($row->isLast()) { echo '</ul>'; }
+     *         if ($row->isLast()) {
+     *             echo '</ul>';
+     *         }
      *     }
      *
      * @return bool

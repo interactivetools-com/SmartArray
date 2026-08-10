@@ -33,19 +33,35 @@ trait SharedHelpers
     }
 
     /**
-     * Find the first caller outside the library's own directory.
+     * Find the first caller outside the libraries' own directories.
      *
-     * Walks the debug backtrace to find the first frame that isn't in the same
-     * directory as this file, giving us the actual calling code location.
+     * Walks the debug backtrace to find the first frame that isn't in
+     * SmartString's or SmartArray's src directory, giving us the actual calling
+     * code location.
      * 'method' is the caller's enclosing function or class method, or '' at the top level.
      *
      * @return array{path: string, file: string, line: int|string, function: string, method: string}
      */
     private static function getExternalCaller(): array
     {
+        // Both libraries count as internal: they delegate to each other (SmartArray's
+        // SmartNull forwards method calls to SmartString), so the first frame outside
+        // this file's directory can be the other library's file, not the developer's
+        // code. Each library keeps its copy of this trait in its own src directory
+        // (see the class docblock) and every class that can appear in a backtrace
+        // uses it, so the loaded traits map out both directories. trait_exists(...,
+        // false) never autoloads - a library that isn't loaded can't be in the
+        // backtrace anyway.
+        $internalDirs = [];
+        foreach ([\Itools\SmartString\SharedHelpers::class, \Itools\SmartArray\SharedHelpers::class] as $sharedHelpers) {
+            if (trait_exists($sharedHelpers, false)) {
+                $internalDirs[] = dirname((new \ReflectionClass($sharedHelpers))->getFileName());
+            }
+        }
+
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
         foreach ($backtrace as $index => $caller) {
-            if (!empty($caller['file']) && dirname($caller['file']) !== __DIR__) {
+            if (!empty($caller['file']) && !in_array(dirname($caller['file']), $internalDirs, true)) {
                 $nextFrame = $backtrace[$index + 1] ?? [];
                 return [
                     'path'     => $caller['file'],

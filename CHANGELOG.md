@@ -175,6 +175,10 @@ the docs - IDEs show a strikethrough with the replacement.
 
 ### Fixed
 
+- Deprecation notices and error messages name the developer's file when a call
+  routes through the companion SmartString library (the caller lookup treated
+  only its own src directory as internal, so a frame in the other library
+  could be reported as the caller)
 - `column(null)` and `column(null, null)` match PHP's `array_column()`: whole
   rows renumbered from 0, instead of throwing "unexpected arguments"
 - `sortBy()` no longer throws a bare `ValueError: Array sizes are

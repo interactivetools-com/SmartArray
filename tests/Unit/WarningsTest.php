@@ -396,7 +396,8 @@ class WarningsTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => (string)$sa);
 
-        $this->assertStringContainsString(__FILE__, $output);
+        $this->assertStringContainsString('in ' . basename(__FILE__) . ' on line', $output);
+        $this->assertStringNotContainsString(__DIR__, $output, 'the warning shows the basename only, never the full path');
         $this->assertStringNotContainsString('SmartArrayBase.php', $output);
     }
 

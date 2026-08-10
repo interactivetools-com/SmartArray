@@ -455,7 +455,7 @@ class SmartNullTest extends SmartArrayTestCase
             $this->fail('expected an Error');
         } catch (Error $e) {
             $line = __LINE__ - 3;
-            $this->assertStringContainsString("\nOccurred in " . __FILE__ . ":$line in " . self::class . '->' . __FUNCTION__ . "()\n", $e->getMessage());
+            $this->assertStringContainsString("\nOccurred in " . basename(__FILE__) . ":$line in " . self::class . '->' . __FUNCTION__ . "()\n", $e->getMessage());
         }
     }
 

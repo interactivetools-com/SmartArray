@@ -1684,7 +1684,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function __toString(): string
     {
         $caller       = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[0];
-        $inFileOnLine = sprintf("in %s on line %s", $caller['file'], $caller['line']);
+        $inFileOnLine = sprintf("in %s on line %s", basename($caller['file']), $caller['line']); // basename: this echoes into the page, don't leak paths
 
         // output warning and trigger PHP warning (for logging)
         // PHP Error: Fatal error: Uncaught Error: Object of class Itools\SmartArray\SmartArray could not be converted to string in C:\path\file.php:27

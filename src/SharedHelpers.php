@@ -40,7 +40,10 @@ trait SharedHelpers
      * code location.
      * 'method' is the caller's enclosing function or class method, or '' at the top level.
      *
-     * @return array{path: string, file: string, line: int|string, function: string, method: string}
+     * 'file' is a basename only: these strings reach page output, so they never
+     * carry full paths. Stack traces and logs report full paths on their own.
+     *
+     * @return array{file: string, line: int|string, function: string, method: string}
      */
     private static function getExternalCaller(): array
     {
@@ -64,7 +67,6 @@ trait SharedHelpers
             if (!empty($caller['file']) && !in_array(dirname($caller['file']), $internalDirs, true)) {
                 $nextFrame = $backtrace[$index + 1] ?? [];
                 return [
-                    'path'     => $caller['file'],
                     'file'     => basename($caller['file']),
                     'line'     => $caller['line'] ?? "unknown",
                     'function' => $caller['function'] ?? "unknown",
@@ -72,7 +74,7 @@ trait SharedHelpers
                 ];
             }
         }
-        return ['path' => "unknown", 'file' => "unknown", 'line' => "unknown", 'function' => "unknown", 'method' => ''];
+        return ['file' => "unknown", 'line' => "unknown", 'function' => "unknown", 'method' => ''];
     }
 
     /**
@@ -87,7 +89,7 @@ trait SharedHelpers
     {
         $caller   = self::getExternalCaller();
         $inMethod = $caller['method'] !== '' ? " in {$caller['method']}()" : "";
-        $output   = "Occurred in {$caller['path']}:{$caller['line']}$inMethod\nReported"; // "Reported" is a prefix - trigger_error() appends " in file on line X"
+        $output   = "Occurred in {$caller['file']}:{$caller['line']}$inMethod\nReported"; // "Reported" is a prefix - trigger_error() appends " in file on line X"
 
         // Add Reported in file:line (if requested)
         if ($addReportedFileLine) {
@@ -95,7 +97,7 @@ trait SharedHelpers
             $class        = $backtrace[1]['class'] ?? '';
             $shortClass   = $class ? self::stripNamespace($class) : '';
             $method       = $shortClass . ($backtrace[1]['type'] ?? '') . ($backtrace[1]['function'] ?? '');
-            $reportedFile = $backtrace[0]['file'] ?? "unknown";
+            $reportedFile = basename($backtrace[0]['file'] ?? "unknown");
             $reportedLine = $backtrace[0]['line'] ?? "unknown";
             $output       .= " in $reportedFile:$reportedLine in $method()\n";
         }

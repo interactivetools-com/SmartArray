@@ -584,7 +584,7 @@ class DeprecationsTest extends SmartArrayTestCase
         } catch (Error $e) {
             $this->assertSame(
                 "Call to undefined method SmartArray->totallyUnknown(), see the SmartArray docs for available methods.\n"
-                . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownMethodThrowsWithTheCallersFileAndLine()\nReported",
+                . 'Occurred in ' . basename(__FILE__) . ":$line in " . self::class . "->testUnknownMethodThrowsWithTheCallersFileAndLine()\nReported",
                 $e->getMessage(),
             );
         }
@@ -687,7 +687,7 @@ class DeprecationsTest extends SmartArrayTestCase
         } catch (Error $e) {
             $this->assertSame(
                 "Call to undefined method SmartArray::bogus(), see the SmartArray docs for available methods.\n"
-                . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownStaticCallThrowsWithTheStaticSeparator()\nReported",
+                . 'Occurred in ' . basename(__FILE__) . ":$line in " . self::class . "->testUnknownStaticCallThrowsWithTheStaticSeparator()\nReported",
                 $e->getMessage(),
             );
         }

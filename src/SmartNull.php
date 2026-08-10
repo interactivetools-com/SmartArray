@@ -219,6 +219,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     /**
      * Get mysqli result information for the last database query.
      * Returns specified property (affected_rows, insert_id) or array of all properties if no property specified.
+     *
+     * Keep in sync with SmartArrayBase::mysqli() - SmartNull can't share it (no common parent).
      */
     public function mysqli(?string $property = null): int|string|null|array
     {
@@ -356,6 +358,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     /**
      * Get internal properties for passing to SmartArray/SmartArrayHtml constructors.
+     *
+     * Keep the key list in sync with SmartArrayBase::getInternalProperties() (its base
+     * list - SmartNull has no position metadata), or arrays spawned from a SmartNull
+     * silently lose the missing field.
      */
     private function getInternalProperties(): array
     {

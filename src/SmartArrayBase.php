@@ -1152,17 +1152,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Get mysqli result information for the last database query.
      * Returns specified property (affected_rows, insert_id) or array of all properties if no property specified.
+     *
+     * Keep in sync with SmartNull::mysqli(), which answers the same call on missing values.
      */
     public function mysqli(?string $property = null): int|string|null|array
     {
-        // return array of all mysqli properties
         if (is_null($property)) {
-            return $this->mysqli ?? [];
+            return $this->mysqli;
         }
 
-        // return specific mysqli property
-        $resultInfo = $this->mysqli;
-        return $resultInfo[$property] ?? null;
+        return $this->mysqli[$property] ?? null;
     }
 
     /**
@@ -1217,7 +1216,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         return new static($array, [
             'useSmartStrings' => $this->useSmartStrings, // persist smart strings setting
             'loadHandler'     => $this->loadHandler,     // persist load handler
-            'mysqli'          => $mysqliProperties ?? [],
+            'mysqli'          => $mysqliProperties,
             //'root'          => // skipped, set by constructor to self
             //'isFirst'       => // skipped, instance defaults are accurate for root array
             //'isLast'        => // skipped, instance defaults are accurate for root array
@@ -1827,6 +1826,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * asRaw()/asHtml() pass withPosition: true - the result is the same row in a
      * different mode, not a new derived array, so it keeps its place in the result set.
+     *
+     * Keep the base key list in sync with SmartNull::getInternalProperties(), or
+     * SmartNull-spawned arrays silently lose the missing field.
      */
     protected function getInternalProperties(bool $withPosition = false): array
     {

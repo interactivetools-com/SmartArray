@@ -1555,7 +1555,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private function assertFlatArray(): void
     {
-        if (!empty($this->data) && $this->isNested()) {
+        if ($this->isNested()) {
             $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
             $error    = "$function(): Expected a flat array, but got a nested array";
             throw new InvalidArgumentException($error);
@@ -1590,7 +1590,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
         }
 
-        // All rows after all: the flag went stale-false after an unset, set it right
+        // Turns out it's all rows - the scalar must have been unset - fix the flag
+        // so the next call skips the scan
         $this->rowsOnly = true;
     }
 
@@ -1697,23 +1698,24 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Check if array doesn't contain any nested arrays.
-     */
-    private function isFlat(): bool
-    {
-        return !$this->isNested();
-    }
-
-    /**
      * Check if array contains ANY nested arrays.  Does not check if all values are arrays, only if any are.
      */
     private function isNested(): bool
     {
+        // hasRows false means no row was ever stored, so skip the scan (flat arrays
+        // call this from implode()/sort() in render loops, where the scan adds up)
+        if (!$this->hasRows) {
+            return false;
+        }
         foreach ($this->data as $value) {
             if ($value instanceof self) {
                 return true;
             }
         }
+
+        // No rows found, so the last one must have been unset - fix the flag so the
+        // next call skips the scan
+        $this->hasRows = false;
         return false;
     }
 

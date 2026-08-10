@@ -117,6 +117,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
     public function help(): void
     {
+        // Keep the text in sync with Deprecations::help() - no common parent to share it
         $output = <<<'__TEXT__'
             SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
             Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md

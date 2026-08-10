@@ -88,6 +88,7 @@ trait Deprecations
     #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
     public function help(): void
     {
+        // Keep the text in sync with SmartNull::help() - it can't share this copy (no common parent)
         $docs = <<<'__TEXT__'
             SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
             Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
@@ -250,20 +251,8 @@ trait Deprecations
             };
         }
 
-        // skip if empty
-        if (empty($this->data)) {
-            return $this->newSmartNull();
-        }
-
-        // Return via getElement (no deprecation warning - Silent stage)
-        if (array_key_exists($key, $this->data)) {
-            return $this->getElement($key);
-        }
-
-        // Show warning if key doesn't exist (only when no default provided)
-        $this->warnIfMissing($key, isOffset: true);
-
-        return $this->newSmartNull();
+        // Silent stage: no deprecation signal. getElement() handles the missing-key warning and SmartNull
+        return $this->getElement($key);
     }
 
     /**

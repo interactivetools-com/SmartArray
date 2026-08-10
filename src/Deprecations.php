@@ -442,6 +442,40 @@ trait Deprecations
         return $result;
     }
 
+    /**
+     * The legacy constructor arguments - the boolean form (new SmartArray($data, true))
+     * and an explicit useSmartStrings key in the properties array. The SmartArray and
+     * SmartArrayHtml constructors dispatch here when either form is present. A value
+     * contradicting the constructed class throws (the caller wants the other class);
+     * a redundant match just logs. Returns the properties as a plain array.
+     *
+     * Protected, not private like the method above: the dispatching constructors are
+     * in the subclasses. On removal, the constructors' $properties parameter narrows
+     * to array and the dispatch lines go with it.
+     */
+    protected function deprecatedUseSmartStringsArg(bool|array|null $properties, bool $requiredMode): array
+    {
+        // Class names come from the mode, not static::class: subclasses (SmartArrayRaw)
+        // should be pointed at the canonical class
+        $class      = $requiredMode ? 'SmartArrayHtml' : 'SmartArray';
+        $otherClass = $requiredMode ? 'SmartArray' : 'SmartArrayHtml';
+        $wrongWord  = $requiredMode ? 'false' : 'true';
+        $rightWord  = $requiredMode ? 'true' : 'false';
+
+        // Contradicts the constructed class: boolean form or explicit useSmartStrings key
+        if ($properties === !$requiredMode || (is_array($properties) && ($properties['useSmartStrings'] ?? $requiredMode) === !$requiredMode)) {
+            self::logDeprecation("Creating a $class with useSmartStrings=$wrongWord is deprecated. Use $otherClass::new(\$data) instead.");
+            throw new InvalidArgumentException("Cannot create $class with useSmartStrings=$wrongWord. Use $otherClass::new(\$data) instead.");
+        }
+
+        // Redundant boolean: matches the class, deprecation only
+        if ($properties === $requiredMode) {
+            self::logDeprecation("Passing $rightWord to $class is deprecated. Just use $class::new(\$data)");
+            return [];
+        }
+        return is_array($properties) ? $properties : [];
+    }
+
     //endregion
     //region Visible Notices
 

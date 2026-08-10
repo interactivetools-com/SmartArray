@@ -2,7 +2,6 @@
 declare(strict_types=1);
 namespace Itools\SmartArray;
 
-use InvalidArgumentException;
 use IteratorAggregate;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
@@ -40,27 +39,13 @@ class SmartArrayHtml extends SmartArrayBase
      */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {
-        // Handle deprecated boolean parameter: false contradicts this class (throw),
-        // true is redundant (deprecation only)
-        if ($properties === false) {
-            self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
-        }
-        if ($properties === true) {
-            self::logDeprecation('Passing true to SmartArrayHtml is deprecated. Just use SmartArrayHtml::new($data)');
-            $properties = [];
-        }
-
-        // Handle deprecated useSmartStrings in array
-        if (is_array($properties) && ($properties['useSmartStrings'] ?? true) === false) {
-            self::logDeprecation('Creating a SmartArrayHtml with useSmartStrings=false is deprecated. Use SmartArray::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArrayHtml with useSmartStrings=false. Use SmartArray::new($data) instead.');
+        // Deprecated legacy forms: boolean argument, or an explicit useSmartStrings key
+        if (!is_array($properties) || isset($properties['useSmartStrings'])) {
+            $properties = $this->deprecatedUseSmartStringsArg($properties, requiredMode: true);
         }
 
         // Force useSmartStrings to true so values are SmartStrings
         $properties['useSmartStrings'] = true;
-
-        // Pass through to parent with all properties
         parent::__construct($array, $properties);
     }
 

@@ -307,6 +307,32 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame('n/a', $smartNull->apply('strtoupper')->or('n/a')->value(), 'chain stays open after apply');
     }
 
+    public function testDeprecatedSmartStringShimsWorkOnMissingKeysInHtmlMode(): void
+    {
+        // noEncode/toString/jsEncode/stripTags only exist inside SmartString's
+        // __call, which method_exists() can't see, so they need their own list in
+        // SmartNull::__call. Each one answers like it would on a present null
+        // value and logs its normal deprecation instead of throwing.
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->noEncode());
+        $this->assertNull($result, 'noEncode() returns null, same as on a present null value');
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('rawHtml()', $messages[0]);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->toString());
+        $this->assertSame('', $result);
+        $this->assertCount(1, $messages);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->jsEncode());
+        $this->assertSame('', $result);
+        $this->assertCount(1, $messages);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->stripTags());
+        $this->assertSame($smartNull, $result, 'stripTags() propagates, chain stays open');
+        $this->assertCount(1, $messages);
+    }
+
     public function testMapStillRunsOnAKeyThatExistsWithANullValue(): void
     {
         // The boundary map() propagation must not cross: NULL is a present value

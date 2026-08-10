@@ -1355,8 +1355,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 // get output
                 $output .= self::prettyPrintR($value, $debugLevel, $depth + 1, $thisKeyPrefix, $loadComment);
             }
-            $output = preg_replace("|,(\s*//.*)?$|", " $1", $output); // Remove trailing commas
-            $output .= $depth ? "],\n" : "]\n";                       // skip trailing comma on top level
+            // Remove the formatter's own trailing comma from the last element. In compact
+            // mode only nested "]," gets one - scalar lines print raw and unquoted, so a
+            // wider match would eat a comma that ends the data itself
+            $output = $debugLevel > 0
+                ? preg_replace("|,(\s*//.*)?$|", " $1", $output)
+                : preg_replace("|\],$|", "] ", $output);
+            $output .= $depth ? "],\n" : "]\n"; // skip trailing comma on top level
         } elseif (is_scalar($var) || is_null($var)) {
             $hasTabs     = is_string($var) && str_contains($var, "\t");
             $varExport   = match (true) {

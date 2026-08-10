@@ -106,6 +106,29 @@ class DebugTest extends SmartArrayTestCase
         $this->assertSame($expected, $this->rtrimLines($output));
     }
 
+    public function testDebugLevelZeroKeepsDataTrailingComma(): void
+    {
+        // compact values print raw and unquoted, so the formatter's trailing-comma
+        // cleanup must not reach a comma that ends the data itself - that comma is
+        // exactly what debug() would be used to find
+        $sa = SmartArray::new(['num' => 5, 'csv' => 'apples, oranges, bananas,']);
+
+        [, $output] = $this->captureOutput(fn() => $sa->debug());
+
+        $expected = <<<'__TEXT__'
+
+            Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
+
+            [
+                'num' => 5
+                'csv' => apples, oranges, bananas,
+            ]
+
+            __TEXT__;
+
+        $this->assertSame($expected, $this->rtrimLines($output));
+    }
+
     public function testDebugLevelZeroShowsEmptyArrayAsEmptyBrackets(): void
     {
         $sa = SmartArray::new([]);

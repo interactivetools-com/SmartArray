@@ -138,7 +138,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function __construct(array $array = [], array $properties = [])
     {
         // Set internal properties from the known keys (a fixed list is faster than
-        // property_exists() per key, and internal storage like $data stays private)
+        // property_exists() per key, and internal storage like $data stays private).
+        // Keep the list in sync with fromDatabaseRows(), which assigns it inline to
+        // skip this constructor.
         $this->useSmartStrings = $properties['useSmartStrings'] ?? $this->useSmartStrings;
         $this->loadHandler     = $properties['loadHandler']     ?? null;
         $this->mysqli          = $properties['mysqli']          ?? [];
@@ -230,6 +232,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             // state at a fraction of the cost. The blank holds no per-call state - every
             // property fromDatabaseRows accepts is written below, and root must be rebound
             // anyway because the blank's root points at the blank itself.
+            // Keep the assignment list in sync with the constructor's.
             static $blanks = [];
             $resultSet = clone ($blanks[static::class] ??= new static());
             $resultSet->loadHandler = $properties['loadHandler'] ?? null;
@@ -279,64 +282,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public static function fromDatabaseRow(array $rows, array $properties = []): static
     {
-        // Rare: an explicit useSmartStrings key goes through the constructor for its validation
-        if (isset($properties['useSmartStrings'])) {
-            $resultSet = new static([], $properties);
-        }
-        else {
-            // Same cached-blank clone as fromDatabaseRows()
-            static $blanks = [];
-            $resultSet = clone ($blanks[static::class] ??= new static());
-            $resultSet->loadHandler = $properties['loadHandler'] ?? null;
-            $resultSet->mysqli      = $properties['mysqli']      ?? [];
-            $resultSet->root        = $properties['root']        ?? $resultSet;
-            $resultSet->position    = $properties['position']    ?? 0;
-            $resultSet->isFirst     = $properties['isFirst']     ?? false;
-            $resultSet->isLast      = $properties['isLast']      ?? false;
-        }
+        $resultSet = static::fromDatabaseRows($rows, $properties);
 
-        $count = count($rows);
-
-        // No rows: empty collection of the called class with root = the result set
-        if ($count === 0) {
+        // No rows: empty collection of the called class with root = the result set,
+        // so field access fails softly like an empty row
+        if ($rows === []) {
             return clone $resultSet;
         }
-
-        // Single row (the LIMIT 1 case)
-        if ($count === 1) {
-            $key                   = array_key_first($rows);
-            $row                   = $rows[$key];
-            $child                 = clone $resultSet;
-            $child->data           = $row;
-            $child->rowsOnly       = $row === [];
-            $child->position       = 1;
-            $child->isFirst        = true;
-            $child->isLast         = true;
-            $resultSet->data[$key] = $child;
-            $resultSet->hasRows    = true;
-            $resultSet->sourceRows = $rows;
-            return $child;
-        }
-
-        // Multiple rows (queries that can't take LIMIT): build all rows exactly like
-        // fromDatabaseRows(), return the first
-        $childTemplate = clone $resultSet;
-        $position      = 0;
-        $firstChild    = null;
-        foreach ($rows as $key => $row) {
-            $position++;
-            $child                 = clone $childTemplate;
-            $child->data           = $row;
-            $child->rowsOnly       = $row === [];
-            $child->position       = $position;
-            $child->isFirst        = $position === 1;
-            $child->isLast         = $position === $count;
-            $resultSet->data[$key] = $child;
-            $firstChild          ??= $child;
-        }
-        $resultSet->hasRows    = true;
-        $resultSet->sourceRows = $rows;
-        return $firstChild;
+        return $resultSet->data[array_key_first($rows)];
     }
 
     /**

@@ -446,5 +446,23 @@ class ConversionTest extends SmartArrayTestCase
         $this->assertSame('{"caf\\ufffd":"value"}', json_encode($sa));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testJsonSerializeReturnsCleanDataUnchanged(string $class): void
+    {
+        // Clean data (the normal case) skips the rebuild and comes back as-is
+        $sa = $class::new(['name' => 'Amy', 'id' => 7, 'note' => "caf\u{00E9}"]);
+
+        $this->assertSame(['name' => 'Amy', 'id' => 7, 'note' => "caf\u{00E9}"], $sa->jsonSerialize());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testJsonSerializeKeepsMalformedKeyInPosition(string $class): void
+    {
+        // Scrubbing a key must not move it to the end of the array
+        $sa = $class::new(['a' => 1, "caf\xE9" => 2, 'z' => 3]);
+
+        $this->assertSame(['a', "caf\u{FFFD}", 'z'], array_keys($sa->jsonSerialize()));
+    }
+
     //endregion
 }

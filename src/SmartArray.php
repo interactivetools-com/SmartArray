@@ -7,6 +7,9 @@ use IteratorAggregate;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
+// compile to single opcodes instead of runtime name lookups; see the note in SmartArrayBase.php
+use function func_get_args, is_array;
+
 /**
  * SmartArray - Collection returning raw PHP values (string, int, float, bool, null).
  *

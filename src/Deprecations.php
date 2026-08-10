@@ -10,6 +10,9 @@ use RuntimeException;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
+// compile to single opcodes instead of runtime name lookups; see the note in SmartArrayBase.php
+use function array_key_exists, func_num_args, is_array, is_bool, is_float, is_int, is_null, is_scalar, is_string;
+
 /**
  * Old and retired method names, phased out in stages.
  *

@@ -8,6 +8,15 @@ use Throwable, Error, InvalidArgumentException, RuntimeException;
 use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure, ReflectionFunction;
 use Itools\SmartString\SmartString;
 
+// Speed: an unqualified builtin call in a namespaced file compiles to a runtime
+// name lookup; importing the name lets these compile to single opcodes instead of
+// function calls (~4ns each; SmartString's constructor measured ~12% faster from
+// the same change). Only builtins the compiler turns into opcodes are listed -
+// other builtins gain ~1ns and stay out. NativeCallsTest holds the opcode list
+// and names any uncovered call site or unused import.
+use function array_key_exists, count, func_num_args, is_array, is_bool, is_float,
+    is_int, is_null, is_object, is_scalar, is_string, strlen;
+
 /**
  * SmartArrayBase - Base implementation for SmartArray and SmartArrayHtml.
  *

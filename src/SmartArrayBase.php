@@ -1667,11 +1667,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // For nested method args (where, sortBy, etc.) - check the first row's keys.
         $target = $this;
         if (!$isOffset) {
-            $first = $this->first();
-            if (!($first instanceof self)) {
-                return; // empty array: first() returns SmartNull, no row to sample
+            $firstKey = array_key_first($this->data);
+            if ($firstKey === null || !$this->data[$firstKey] instanceof self) {
+                return; // no first row to sample: empty array, or a flat array of values
             }
-            $target = $first;
+            $target = $this->data[$firstKey];
         }
         if (empty($target->data) || array_key_exists($key, $target->data)) {
             return;

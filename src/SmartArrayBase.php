@@ -896,9 +896,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Rows with a null or missing field value index under '' (PHP's array-key
      * form of null). Duplicate values: last row wins.
      *
-     * Float values key as strings ('19.99'), formatted per PHP's `precision` ini
-     * setting (default 14 significant digits). Integers and integer-like strings
-     * key as ints (PHP array-key rules), booleans as 1/0.
+     * Float values throw - floats don't make reliable array keys, so convert them
+     * to strings first. Integers and integer-like strings key as ints (PHP
+     * array-key rules), booleans as 1/0.
      *
      *     $users = new SmartArray([
      *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
@@ -933,9 +933,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Index by field; rows with a null or missing value index under '' (duplicates: last wins)
         $values = [];
         foreach ($this->toArray() as $row) {
-            $key          = $row[$field] ?? '';
-            $key          = is_bool($key) ? (int)$key : (string)$key; // floats key as strings per PHP's `precision` ini setting; ints re-key as ints, bools as 1/0
-            $values[$key] = $row;
+            $key = $row[$field] ?? '';
+            if (is_float($key)) {
+                throw new InvalidArgumentException("indexBy(): '$field' has float values, convert them to strings first");
+            }
+            $values[$key] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
 
         return new static($values, $this->getInternalProperties());
@@ -950,9 +952,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Rows with a null or missing field value group under '' (PHP's array-key
      * form of null), like SQL GROUP BY keeps a NULL group. No rows are dropped.
      *
-     * Float values key as strings ('19.99'), formatted per PHP's `precision` ini
-     * setting (default 14 significant digits). Integers and integer-like strings
-     * key as ints (PHP array-key rules), booleans as 1/0.
+     * Float values throw - floats don't make reliable array keys, so convert them
+     * to strings first. Integers and integer-like strings key as ints (PHP
+     * array-key rules), booleans as 1/0.
      *
      *     $users = new SmartArray([
      *         ['id' => 1, 'name' => 'John', 'email' => 'john@example.com', 'city' => 'New York'],
@@ -983,9 +985,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $values = [];
         foreach ($this->toArray() as $row) {
-            $key            = $row[$field] ?? '';
-            $key            = is_bool($key) ? (int)$key : (string)$key; // floats key as strings per PHP's `precision` ini setting; ints re-key as ints, bools as 1/0
-            $values[$key][] = $row;
+            $key = $row[$field] ?? '';
+            if (is_float($key)) {
+                throw new InvalidArgumentException("groupBy(): '$field' has float values, convert them to strings first");
+            }
+            $values[$key][] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
 
         return new static($values, $this->getInternalProperties());
@@ -1028,10 +1032,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Mirrors PHP's array_column() - extract a column of values, optionally indexed by another column.
      *
-     * The whole-rows shape column(null, $indexKey) follows indexBy() key rules, not
-     * array_column()'s: rows missing the index field key under '' (last wins) instead
-     * of getting auto-numbered keys that look like real field values, and float
-     * values keep full precision as string keys ('19.99') instead of truncating.
+     * Index keys follow indexBy() rules in both shapes, not array_column()'s: rows
+     * missing the index field key under '' (last wins) instead of getting
+     * auto-numbered keys that look like real field values, float values throw
+     * (convert them to strings first) instead of truncating, and bools key as 1/0.
      *
      *     $users = new SmartArray([
      *         ['id' => 10, 'name' => 'John', 'email' => 'john@example.com'],
@@ -1059,7 +1063,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $this->warnIfMissing($columnKey);
         }
 
-        $values = array_column($this->toArray(), $columnKey, $indexKey);
+        if ($indexKey === null) {
+            $values = array_column($this->toArray(), $columnKey);
+        }
+        else {
+            // Same key rules as indexBy(), which array_column() doesn't follow: missing
+            // index values key under '' instead of auto-numbering, floats throw instead
+            // of truncating, bools key as 1/0
+            $values = [];
+            foreach ($this->toArray() as $row) {
+                if (!array_key_exists($columnKey, $row)) {
+                    continue; // same as array_column(): no column value, no entry
+                }
+                $key = $row[$indexKey] ?? '';
+                if (is_float($key)) {
+                    throw new InvalidArgumentException("column(): '$indexKey' has float values, convert them to strings first");
+                }
+                $values[$key] = $row[$columnKey]; // PHP keys natively: bools as 1/0, numeric strings as ints
+            }
+        }
         return new static($values, $this->getInternalProperties());
     }
 

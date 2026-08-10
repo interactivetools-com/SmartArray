@@ -133,6 +133,21 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >
 > Regex: `->(where|whereNot|contains)\([^)]*(null|true|false)\s*\)`
 
+### Float key values throw in indexBy(), groupBy(), and column()
+
+> Keying rows by a float field now throws instead of using PHP's
+> float-to-int key truncation (`19.99` and `19.50` both keyed as `19`,
+> losing a row, plus a PHP deprecation notice):
+>
+> ```php
+> $products->indexBy('price');
+> // InvalidArgumentException: indexBy(): 'price' has float values,
+> // convert them to strings first
+> ```
+>
+> Convert the field to a string first: `CAST(price AS CHAR)` in SQL, or
+> format it in PHP before keying.
+
 ### Row-only methods throw on mixed arrays
 
 > `where()`, `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`,

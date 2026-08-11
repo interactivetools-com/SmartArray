@@ -8,7 +8,7 @@
 
 > **Bundled with CMS Builder v3.85**
 
-The headlines: building arrays and `toArray()` are ~3x faster, and method
+The headlines: building arrays and `toArray()` are 3-5x faster, and method
 names now match JavaScript and PHP conventions (old names keep working).
 Everything else is hardening and fixes.
 
@@ -43,10 +43,11 @@ Everything else is hardening and fixes.
 
 ### Performance
 
-- Building arrays is ~3x faster (25-row record set: 15.9 → 5.3
-  microseconds), `toArray()` is ~3x faster (flat 4-field row: 81 → 26 ns),
-  and `foreach` is 1.2-1.3x faster when no value needs wrapping. Numbers and
-  how the speedups work: [docs/performance.md](docs/performance.md)
+- Building arrays is ~3.4x faster (25-row record set: 15.5 → 4.5
+  microseconds), `toArray()` is ~4.7x faster (flat 4-field row: 108 → 23 ns),
+  and `foreach` is up to ~1.3x faster when no value needs wrapping (the gain
+  grows with row count). Numbers and how the speedups work:
+  [docs/performance.md](docs/performance.md)
 
 ### Renamed
 

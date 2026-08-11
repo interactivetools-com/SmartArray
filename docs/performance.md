@@ -1,7 +1,7 @@
 # Performance: What SmartArray Costs vs Plain Arrays
 
 SmartArray is extremely fast by default. At worst, wrapping a 25-row query
-result and rendering it costs about 0.003 milliseconds more than the same
+result and rendering it costs about 0.002 milliseconds more than the same
 page written by hand with plain arrays and manual HTML encoding; at best
 it comes out ahead, because SmartString often encodes faster than PHP's
 built-in encoder (2.5x on the long-text detail page below). Memory
@@ -27,9 +27,9 @@ versions are verified to produce byte-identical HTML before timing:
 
 | Scenario                                       | Plain array | SmartArray | Difference         |
 |------------------------------------------------|-------------|------------|--------------------|
-| List page (25 rows, encoded title+summary)     | 0.0277 ms   | 0.0305 ms  | +0.0028 ms (1.10x) |
-| Detail page (1 row, encoded 5KB body)          | 0.0123 ms   | 0.0049 ms  | 2.5x FASTER        |
-| Raw loop (plain SmartArray, create + 50 reads) | 0.0004 ms   | 0.0079 ms  | +0.0075 ms         |
+| List page (25 rows, encoded title+summary)     | 0.0271 ms   | 0.0288 ms  | +0.0017 ms (1.06x) |
+| Detail page (1 row, encoded 5KB body)          | 0.0120 ms   | 0.0047 ms  | 2.5x FASTER        |
+| Raw loop (plain SmartArray, create + 50 reads) | 0.0004 ms   | 0.0070 ms  | +0.0066 ms         |
 
 SmartArray times include constructing the object from the plain records
 array, the same work the database layer does when it returns results. The
@@ -40,16 +40,16 @@ created, so data-processing code skips the encoding layer entirely.
 
 **Encoding is not where the time goes.** Render the same pages with no
 encoding on either side (plain SmartArray against plain arrays echoed
-raw) and the list page still measures +0.0073 ms: the overhead is
+raw) and the list page still measures +0.0066 ms: the overhead is
 construction either way, and SmartString encodes as fast as or faster
 than hand-encoding, so HTML mode adds nothing on net.
 
 To put the list-page row in perspective: to lose a single millisecond on
 one page load, your code would have to build and render that 25-row list
-about 300 times. Same math for the raw-loop row: wrapping one 25-row query
-result in a SmartArray and looping over it costs 0.0075 ms more than the
-plain array, so a single request would have to create 135 separate
-SmartArrays, 25 rows each, and loop over all of them - 3,375 rows - before
+about 600 times. Same math for the raw-loop row: wrapping one 25-row query
+result in a SmartArray and looping over it costs 0.0066 ms more than the
+plain array, so a single request would have to create 151 separate
+SmartArrays, 25 rows each, and loop over all of them - 3,775 rows - before
 the total penalty reached one millisecond.
 
 **Why the detail page is faster.** SmartString checks whether text is
@@ -91,24 +91,26 @@ nearly all of it; everything after is close to free:
 
 | Operation (25 rows, plain SmartArray) | Cost        |
 |---------------------------------------|-------------|
-| Construct from plain records array    | 0.0053 ms   |
+| Construct from plain records array    | 0.0045 ms   |
 | Construct via `fromDatabaseRows()`    | 0.0037 ms   |
 | foreach over all rows                 | 0.0007 ms   |
 | Read a field (`$row->title`)          | 0.000046 ms |
 | `toArray()` on the record set         | 0.0006 ms   |
-| `toArray()` on one flat row           | 0.000026 ms |
+| `toArray()` on one flat row           | 0.000027 ms |
 
 ZenDB constructs its result sets with `fromDatabaseRows()`, the faster
 construct row above: database rows are uniform (same columns in every row,
 plain scalar values), so it skips the checks the general constructor runs
-on arbitrary input and comes out about a third faster.
+on arbitrary input and comes out about 20% faster.
 
 Internals that keep those numbers small: all-scalar rows are built by
 cloning a shared template and assigning their data in one copy-on-write
 step; `foreach` uses a C-level `ArrayIterator` whenever no SmartString
 wrapping can happen (raw mode, or record sets where every value is a row);
-and `toArray()` hands back internal data as-is when there are no child
-rows to convert.
+`toArray()` hands back internal data as-is when there are no child rows
+to convert; and builtin calls like `is_scalar()` and `count()` are
+imported with `use function`, so they compile to single opcodes instead
+of runtime name lookups.
 
 Two things follow from construction being the whole cost:
 

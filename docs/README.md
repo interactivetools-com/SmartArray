@@ -26,7 +26,7 @@ standalone: open whichever matches your task.
 
 - [Method Reference](method-reference.md) - Every method in one place, grouped by what it returns.
 - [Troubleshooting](troubleshooting.md) - Common error messages and behavior gotchas, with fixes.
-- [Performance](performance.md) - What SmartArray costs vs plain arrays: about 0.003 ms per 25-row page and 300 bytes per row.
+- [Performance](performance.md) - What SmartArray costs vs plain arrays: about 0.002 ms per 25-row page and 300 bytes per row.
 - [AI Reference](ai-reference.md) - The complete API in one dense file, written for AI coding assistants.
 
 ---

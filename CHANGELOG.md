@@ -8,7 +8,7 @@
 
 > **Bundled with CMS Builder v3.85**
 
-The headlines: building arrays and `toArray()` are 3-5x faster, and method
+The headlines: building arrays is over 3x faster, and method
 names now match JavaScript and PHP conventions (old names keep working).
 Everything else is hardening and fixes.
 

@@ -1,8 +1,8 @@
 # Performance: What SmartArray Costs vs Plain Arrays
 
 SmartArray is extremely fast by default. At worst, wrapping a 25-row query
-result and rendering it costs about 0.002 milliseconds more than the same
-page written by hand with plain arrays and manual HTML encoding; at best
+result and rendering it costs about 2 microseconds (0.002 ms) more than the
+same page written by hand with plain arrays and manual HTML encoding; at best
 it comes out ahead, because SmartString often encodes faster than PHP's
 built-in encoder (2.5x on the long-text detail page below). Memory
 overhead is about 300 bytes per row no matter how large the fields are.
@@ -117,7 +117,7 @@ Two things follow from construction being the whole cost:
 - **It's eager, per row fetched.** Query 500 rows to show 10 and you pay
   for 500. LIMIT in the query beats any amount of avoiding SmartArray.
 - **Hot loops: unwrap once.** A report loop touching every field thousands
-  of times can call `->toArray()` first (0.000026 ms on a flat row) and
+  of times can call `->toArray()` first (0.000027 ms on a flat row) and
   loop the plain array.
 
 ## Reproducing the Numbers

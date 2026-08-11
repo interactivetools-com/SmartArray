@@ -247,7 +247,7 @@ throw on nested input.
 | `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field` matches `$value`: strings match as exact text (`'0e12'` never matches `'0e99'`), numbers match numerically in either direction (`'1'` matches 1, 1 matches `'1.00'`), null matches only null (SQL IS NULL), bools compare as 1/0 on either side. Smart args unwrap. Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter matches only stored NULLs |
 | `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field` matches `$value` (same matching rules as `where()`); rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
 | `whereInList(string $field, mixed $value): static`         | Nested only. Keeps rows where tab-separated `$field` contains `$value` as a whole value (`"\tmenu\tfooter\t"` format, CMS Builder checkbox/multi-select fields) or equals it as a plain single value. Never substring matching |
-| `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
+| `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, `"0"`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
 | `sort(int $flags = SORT_REGULAR): static`                  | Flat only. Sorts ascending by value, renumbers keys. `$flags` choose comparison only; `SORT_ASC`/`SORT_DESC` throw `InvalidArgumentException` (sort descending in SQL)  |
 | `sortBy(string $field, int $flags = SORT_REGULAR): static` | Nested only. Ascending by `$field`; rows missing the field sort first (like MySQL ORDER BY) and are kept unchanged. Numeric row keys renumber, string keys preserved. `SORT_NATURAL` for human number order; `SORT_ASC`/`SORT_DESC` throw |
 | `unique(): static`                                         | Flat only. Removes duplicates keeping the first, keys preserved; compares as strings (`array_unique()`), so 1 and `'1'` are duplicates                                  |
@@ -299,8 +299,9 @@ this automatically.
   `$field` via the configured `loadHandler`. Returns `SmartNull` when the
   collection is empty; throws `RuntimeException` when no handler is set or
   when called on a record set (call it on a row). Handler contract: return
-  `[rows, mysqliProperties]`; any other return, including `false`, throws
-  a PHP native `Error` naming the field.
+  `[rows, mysqliProperties]`, or `false` to reject the field, which throws a
+  PHP native `Error` naming it. Any other return throws a PHP native `Error`
+  describing what came back instead.
 
 ## Debugging
 
@@ -333,8 +334,8 @@ Output is `<xmp>`-wrapped in the browser and plain text on the command line.
   friends (any nested collection, see Missing Keys above); string
   conversion of a collection (`echo "$users"` yields `""`, page continues,
   message suggests `"{$var->method()}"` braces).
-- **E_USER_DEPRECATED**: deprecated names and `$arr['key']` array syntax
-  (see below).
+- **E_USER_DEPRECATED**: `$arr['key']` array syntax, and deprecated names that
+  have reached the notice stage (see below).
 
 ## Deprecated Names
 
@@ -363,8 +364,9 @@ signal. When reading old code, translate:
 
 How the deprecated array syntax is reported is configurable via
 `SmartArrayBase::$onOffsetAccess`: `'notify'` (default) echoes a notice into
-the page and logs it, `'log'` logs only (for legacy sites mid-migration),
-`'throw'` throws a RuntimeException (strict mode for new installs).
+the page and passes it to your error handler, `'log'` passes it to your error
+handler only (for legacy sites mid-migration), `'throw'` throws a
+RuntimeException (strict mode for new installs).
 
 ## Gotchas Quick Reference
 
@@ -397,9 +399,11 @@ the page and logs it, `'log'` logs only (for legacy sites mid-migration),
   absent or misspelled. `isset()` and `??` see missing keys correctly;
   use them or `->value()` for logic.
 - HTML encoding makes values safe as HTML text and quoted attribute
-  values only. It does NOT make them safe as `javascript:`-scheme hrefs,
-  inside `<script>` or `<style>` blocks, or as URL parameters (use
-  `urlencode()` on `->value()`).
+  values only. It does NOT make them safe as `javascript:`-scheme hrefs
+  (check the scheme first), inside `<script>` or `<style>` blocks (use
+  `jsonEncode()`), or as URL query parameters (use `urlEncode()`, which
+  returns `""` on a NULL field where `urlencode($x->value())` raises a
+  deprecation; for a path segment use `rawurlencode($x->value())`).
 - `echo $collection` / `"$users"` never works (collections have no string
   form); echo fields or `implode()`.
 

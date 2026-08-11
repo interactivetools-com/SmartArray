@@ -41,7 +41,8 @@ values, but a missing or misspelled field returns a `SmartNull`
 placeholder, which is an object and therefore truthy, so a bare
 `if ($user->is_admin)` runs when the field doesn't exist. `isset()` and
 `??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
-guard, or compare the real value: `$user->is_admin == 1`.
+guard. Comparing without one isn't: `$user->is_admin == 1` is true for a
+missing field too, because PHP casts the placeholder object to `1`.
 
 ### A === null check never matches
 

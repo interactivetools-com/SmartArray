@@ -28,9 +28,10 @@ $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Je
 
 Databases and forms often hand numbers back as strings, so numbers and
 numeric strings match: `'1'` matches `1`, and `where('price', 1)` matches a
-DECIMAL column's `'1.00'`. Everything else is what you'd expect: two strings
-must match exactly (case-sensitive), null only matches null, and true/false
-mean 1/0. When you need full type-sensitive matching, `filter()` (below)
+DECIMAL column's `'1.00'`. The rule behind every case is that `where()` gives
+the same answers a SQL WHERE does, with two exceptions: strings stay
+case-sensitive, and a non-numeric string never equals 0. So two strings must
+match exactly, null only matches null, and true/false mean 1/0. When you need full type-sensitive matching, `filter()` (below)
 takes a callback where you can compare with `===`.
 
 With just a field name, `where()` keeps the rows where that field has a
@@ -91,9 +92,10 @@ $tables = SmartArrayHtml::new(['cms_accounts', 'wp_posts', 'cms_orders']);
 $ours = $tables->filter(fn($name) => str_starts_with($name, 'cms_'));  // cms_accounts, cms_orders
 ```
 
-Called with no callback, `filter()` removes empty values (`""`, `0`, NULL,
-false). Keep in mind that `0` is removed even when it's real data (a $0
-price, a sort order of 0); pass a callback when zeros should stay. Like
+Called with no callback, `filter()` removes empty values (`""`, `"0"`, `0`,
+NULL, false). Keep in mind that zeros are removed even when they're real data
+(a $0 price, a sort order of 0, an unchecked tinyint MySQL handed back as
+`"0"`); pass a callback when zeros should stay. Like
 PHP's `array_filter()`, kept rows keep their original keys; chain
 `values()` when you want them renumbered.
 

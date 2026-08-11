@@ -10,8 +10,8 @@ the row helpers that control loop layout.
 
 A field holds your original value, exactly as it came from the database,
 and produces the HTML-encoded version only at the moment you output it.
-That means what you display is safe, what you compare or calculate with is
-still the real value, and no time is spent encoding fields you never show:
+That means what you display is safe, the original is still there when you
+need it with `value()`, and no time is spent encoding fields you never show:
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;

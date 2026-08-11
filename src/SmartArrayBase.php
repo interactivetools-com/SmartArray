@@ -491,9 +491,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * How where(), whereNot(), and contains() decide two values match:
-     * numbers match numeric strings (5 matches '5'), two strings must match
-     * exactly, null only matches null, and true/false mean 1/0.
+     * How where(), whereNot(), and contains() decide two values match: the same
+     * answers a SQL WHERE gives, except strings stay case-sensitive and a
+     * non-numeric string never equals 0. Numbers match numeric strings (5 matches
+     * '5'), two strings must match exactly, null only matches null, and true/false
+     * mean 1/0 (so, like MySQL, '01' and ' 1' match true and '00' matches false).
      * Callers unwrap Smart values with getRawValue() first.
      */
     private static function valueMatches(mixed $rowValue, mixed $value): bool
@@ -663,11 +665,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns a new SmartArray containing only elements where a field matches a value.
      * Works on arrays of rows only: throws if the array is flat or any element is not a row.
      *
-     * How values match:
+     * How values match: the same answers a SQL WHERE gives, with two exceptions
+     * (strings stay case-sensitive, and a non-numeric string never equals 0).
      * - Numbers match numeric strings: where('id', 5) matches '5', where('price', 1) matches '1.00'
      * - Two strings must match exactly: where('zip', '01000') won't match '1000'
      * - null only matches null, like SQL IS NULL (use where('field') for non-empty checks)
-     * - true/false mean 1/0, like MySQL checkbox columns
+     * - true/false mean 1/0, like MySQL checkbox columns: where('active', true) matches 1 and '1'
      *
      * Chain multiple where() calls to filter by multiple fields.
      *
@@ -1675,9 +1678,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $warning .= self::occurredInFile(true);
         }
 
-        // Emulate PHP warning: output warning and trigger PHP warning (for logging)
+        // Emulate PHP warning: echo it, and hand it to any error handler the site has set
         echo "\nWarning: $warning\n";                  // Output with echo so PHP doesn't add the filename and line number of this function on the end
-        @trigger_error($warning, E_USER_WARNING);      // Trigger a PHP warning but hide output with @ so it will still get logged
+        @trigger_error($warning, E_USER_WARNING);      // The @ mutes PHP's own display and logging, so only a set_error_handler() sees this
     }
 
     /**

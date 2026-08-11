@@ -7,12 +7,16 @@ Most old code keeps working after an upgrade:
   (IDE strikethrough, logged notice, visible notice, then a clear Error),
   always naming their replacement.
 - **Breaking changes produce clear errors.** Removed features and wrong named
-  arguments throw an Error with your file and line, and deprecated calls raise
-  a deprecation notice with their exact replacement, e.g. "Replace
+  arguments throw an Error with your file and line, and once a deprecated call
+  reaches the notice stage it names its exact replacement, e.g. "Replace
   ->toRaw() with ->asRaw() in listings.php:14" - error handlers like
   CMS Builder's developer log catch these.
 - **Only the silent changes need checking.** This file lists them per
   version, each with a search.
+
+Upgrading SmartArray also upgrades SmartString, and SmartArrayHtml returns its
+values as SmartString objects, so check its
+[upgrade notes](https://github.com/interactivetools-com/SmartString/blob/main/UPGRADING.md) too.
 
 Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 
@@ -257,8 +261,8 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >
 > - Follow the file and line in each notice and switch to `->key` or
 >   `->{'key'}`
-> - Sites mid-migration can silence the echo (notices still reach error
->   logs): `SmartArrayBase::$onOffsetAccess = 'log';`
+> - Sites mid-migration can silence the echo (your error handler still
+>   receives the notices): `SmartArrayBase::$onOffsetAccess = 'log';`
 
 ### Removed settings (added v2.2.2, removed v2.6.7)
 
@@ -324,8 +328,6 @@ developer log). Renaming is optional cleanup.
 > - Search `new SmartArray(` and `SmartArray::new(` - anywhere the values
 >   are echoed into HTML, create with `SmartArrayHtml::new()` instead
 > - ZenDB query results are unaffected: they already come back HTML-safe
->
-> Also in this release: `join()` renamed to `implode()` (old name still works).
 
 ---
 

@@ -167,8 +167,8 @@ echo $row->{0};             // zero (numeric keys)
 ```
 
 SmartArrays are writable too, with the same syntax in reverse:
-`$user->status = 'Active'`. Template code rarely needs it; see the
-[Method Reference](method-reference.md) when you do.
+`$user->status = 'Active'`. Template code rarely needs it; see
+[Writing Values](method-reference.md#writing-values) when you do.
 
 ---
 

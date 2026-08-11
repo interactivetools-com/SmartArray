@@ -1019,6 +1019,21 @@ class DocsExamplesTest extends SmartArrayTestCase
         $this->assertSame('plain', SmartArray::getRawValue('plain'));
     }
 
+    /** The Writing Values block: assignment, nested arrays, unset. */
+    public function testMethodReferenceWritingValuesStoresFieldsRowsAndRemovesKeys(): void
+    {
+        $user = SmartArrayHtml::new(['status' => 'Pending', 'nickname' => 'Jay']);
+
+        $user->status = 'Active';
+        $user->tags   = ['staff', 'admin'];
+        unset($user->nickname);
+
+        $this->assertSame('Active', (string)$user->status);
+        $this->assertInstanceOf(SmartArrayHtml::class, $user->tags);
+        $this->assertSame(['staff', 'admin'], $user->tags->toArray());
+        $this->assertSame(['status' => 'Active', 'tags' => ['staff', 'admin']], $user->toArray());
+    }
+
     //endregion
     //region Troubleshooting: empty() and if() checks
 

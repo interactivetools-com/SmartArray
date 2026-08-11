@@ -50,6 +50,24 @@ and objects are always truthy in PHP, so test for missing values with
 | `->last()`     | Returns the last element                                                                   |
 | `->at($index)` | Returns the element at a position, ignoring keys: 0 is first, negatives count from the end |
 
+### Writing Values
+
+Collections are writable with the same syntax in reverse. A plain value is
+stored as-is, an array becomes a nested collection, and a Smart value from
+another collection unwraps and re-wraps for this one's mode. Reading a field
+back gives you a field, so output still encodes.
+
+```php
+$user->status = 'Active';            // sets a field
+$user->tags   = ['staff', 'admin'];  // stored as a nested collection
+unset($user->nickname);              // removes the key
+
+echo $user->status;                  // Active
+```
+
+Row positions are set when a collection is built, so `isFirst()`, `isLast()`,
+and `position()` don't change when you add or remove rows afterward.
+
 ### [Collection Checks](displaying-fields.md#showing-a-no-results-message)
 
 *These return plain values, typically used in if statements.*

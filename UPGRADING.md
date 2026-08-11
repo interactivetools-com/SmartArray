@@ -2,17 +2,13 @@
 
 Most old code keeps working after an upgrade:
 
-- **Renamed methods are removed slowly, never silently.** Old names keep
-  working while they step through deprecation stages over multiple releases
-  (IDE strikethrough, logged notice, visible notice, then a clear Error),
-  always naming their replacement.
-- **Breaking changes produce clear errors.** Removed features and wrong named
-  arguments throw an Error with your file and line, and once a deprecated call
-  reaches the notice stage it names its exact replacement, e.g. "Replace
-  ->toRaw() with ->asRaw() in listings.php:14" - error handlers like
-  CMS Builder's developer log catch these.
-- **Only the silent changes need checking.** This file lists them per
-  version, each with a search.
+- **If it breaks, it tells you.** Old names phase out over multiple
+  releases - IDE strikethrough, then a quietly logged notice with your file
+  and line (CMS Builder shows these in the Developer Log), then a clear
+  error - always naming the replacement.
+- **Everything worth checking is listed here.** Silent behavior changes,
+  deprecations, and optional renames, per version, each with a search that
+  finds affected code.
 
 Upgrading SmartArray also upgrades SmartString, and SmartArrayHtml returns its
 values as SmartString objects, so check its

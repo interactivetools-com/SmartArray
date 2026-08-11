@@ -7,6 +7,15 @@ methods, with fields that HTML-encode themselves on output. This page covers
 installation, your first collection, the mental model behind the two classes,
 and the everyday basics: loops, field access, and debugging.
 
+Contents:
+
+- [Installation](#installation)
+- [Your First SmartArray](#your-first-smartarray)
+- [The Mental Model](#the-mental-model)
+- [Working with ZenDB and CMS Builder](#working-with-zendb-and-cms-builder)
+- [Converting to Plain Arrays](#converting-to-plain-arrays)
+- [Debugging](#debugging)
+
 ## Installation
 
 Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?

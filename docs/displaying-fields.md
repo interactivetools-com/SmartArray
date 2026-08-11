@@ -6,6 +6,16 @@ How to show fields in templates and handle data that isn't there: fallbacks
 for blank values, "no results" messages, and required records that stop the
 page.
 
+Contents:
+
+- [Reading Fields](#reading-fields)
+- [Fallbacks with or()](#fallbacks-with-or)
+- [Showing a "No Results" Message](#showing-a-no-results-message)
+- [When Data Is Missing](#when-data-is-missing)
+- [Requiring Data: The Guards](#requiring-data-the-guards)
+- [Checking a Single Field](#checking-a-single-field)
+- [Keys Property Syntax Can't Type](#keys-property-syntax-cant-type)
+
 ## Reading Fields
 
 A SmartArray is an object, not an array, so you read fields with the arrow

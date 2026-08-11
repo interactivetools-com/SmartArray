@@ -5,6 +5,15 @@ built from methods covered on earlier pages, and the examples assume
 database rows from [ZenDB](https://github.com/interactivetools-com/ZenDB)
 or `SmartArrayHtml::new($records)`.
 
+Contents:
+
+- [Showing Related Names Without a Join](#showing-related-names-without-a-join)
+- [Select Dropdowns from Query Results](#select-dropdowns-from-query-results)
+- [Top N with a "More" Link](#top-n-with-a-more-link)
+- [Grouped Headings with Counts](#grouped-headings-with-counts)
+- [Safe Id Lists for SQL IN Clauses](#safe-id-lists-for-sql-in-clauses)
+- [Results with Unpredictable Column Names](#results-with-unpredictable-column-names)
+
 ## Showing Related Names Without a Join
 
 When rows reference another table by id, one keyed map replaces the join:

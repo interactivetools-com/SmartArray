@@ -16,24 +16,24 @@ links here are absolute).
 
 Contents:
 
-- What is SmartArray
-- Class Hierarchy and Type Hints
-- Creating Collections
-- Reading and Writing Fields
-- Missing Keys and SmartNull
-- Iteration and Keys
-- Mode Conversion and Plain Arrays
-- Single Elements - first(), last(), at()
-- Collection Checks - count(), isEmpty(), isNotEmpty(), contains()
-- Row Position - isFirst(), isLast(), position()
-- Filtering and Sorting - where(), whereNot(), whereInList(), filter(), sort(), sortBy(), unique()
-- Transforming and Grouping - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
-- Guards - or404(), orDie(), orThrow(), orRedirect()
-- Database Metadata - mysqli(), load()
-- Debugging - debug()
-- Errors and Exceptions
-- Deprecated Names
-- Gotchas Quick Reference
+- [What is SmartArray](#what-is-smartarray)
+- [Class Hierarchy and Type Hints](#class-hierarchy-and-type-hints)
+- [Creating Collections](#creating-collections)
+- [Reading and Writing Fields](#reading-and-writing-fields)
+- [Missing Keys and SmartNull](#missing-keys-and-smartnull)
+- [Iteration and Keys](#iteration-and-keys)
+- [Mode Conversion and Plain Arrays](#mode-conversion-and-plain-arrays)
+- [Single Elements](#single-elements) - first(), last(), at()
+- [Collection Checks](#collection-checks) - count(), isEmpty(), isNotEmpty(), contains()
+- [Row Position](#row-position) - isFirst(), isLast(), position()
+- [Filtering and Sorting](#filtering-and-sorting) - where(), whereNot(), whereInList(), filter(), sort(), sortBy(), unique()
+- [Transforming and Grouping](#transforming-and-grouping) - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
+- [Guards](#guards) - or404(), orDie(), orThrow(), orRedirect()
+- [Database Metadata](#database-metadata) - mysqli(), load()
+- [Debugging](#debugging) - debug()
+- [Errors and Exceptions](#errors-and-exceptions)
+- [Deprecated Names](#deprecated-names)
+- [Gotchas Quick Reference](#gotchas-quick-reference)
 
 ---
 

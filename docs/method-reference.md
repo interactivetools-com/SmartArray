@@ -3,6 +3,20 @@
 Every method, grouped by what it returns. Each group heading links to the
 guide page that teaches those methods.
 
+Contents:
+
+- [Basic Usage](#basic-usage)
+- [Creation and Conversion](#creation-and-conversion)
+- [Single Elements](#single-elements)
+- [Writing Values](#writing-values)
+- [Collection Checks](#collection-checks)
+- [Row Position](#row-position)
+- [Filtering and Sorting](#filtering-and-sorting)
+- [Transforming and Grouping](#transforming-and-grouping)
+- [Requiring Results](#requiring-results)
+- [Database Metadata](#database-metadata)
+- [Debugging](#debugging)
+
 ### [Basic Usage](getting-started.md)
 
 ```php

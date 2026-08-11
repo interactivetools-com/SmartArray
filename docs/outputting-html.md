@@ -6,6 +6,14 @@ The first two pages used auto-encoding without explaining it. This page
 covers how it works, how to output trusted HTML like WYSIWYG editor content, and
 the row helpers that control loop layout.
 
+Contents:
+
+- [How Auto-Encoding Works](#how-auto-encoding-works)
+- [Where Encoding Ends](#where-encoding-ends)
+- [Trusted HTML: rawHtml()](#trusted-html-rawhtml)
+- [Loop Layout: isFirst(), isLast(), position()](#loop-layout-isfirst-islast-position)
+- [Keys Are Never Encoded](#keys-are-never-encoded)
+
 ## How Auto-Encoding Works
 
 A field holds your original value, exactly as it came from the database,

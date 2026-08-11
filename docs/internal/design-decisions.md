@@ -94,3 +94,11 @@ in signatures, docblocks, the changelog, and tests.
   variants, a SmartHtml type, encode-on-append, and entity-sniffing. If
   richer safe-HTML composition is ever needed, the design is a dedicated
   safe-HTML type (see SmartString's design-decisions entry).
+
+- **The `@` on `trigger_error()` stays (2026-08-10).** Warnings and
+  deprecations go out as `@trigger_error(...)`, and the `@` mutes PHP's own
+  display *and* its logging, so only a `set_error_handler()` ever sees them.
+  That is the intent: sites report through their own handler (CMS Builder's
+  developer log), never through PHP's default error log. It also means
+  `$onOffsetAccess = 'log'` is named for that handler, and on a site with no
+  handler it is silent. Don't remove the `@` to make PHP log these.

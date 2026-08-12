@@ -269,7 +269,7 @@ class EmptyGuardsTest extends SmartArrayTestCase
      */
     private function runScript(string $script, string ...$args): array
     {
-        return $this->runProcess([PHP_BINARY, dirname(__DIR__) . "/Support/bin/$script", ...$args]);
+        return $this->runCommand([PHP_BINARY, dirname(__DIR__) . "/Support/bin/$script", ...$args]);
     }
 
     //endregion

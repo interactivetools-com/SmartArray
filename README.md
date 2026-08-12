@@ -35,8 +35,10 @@ foreach ($articles->where('featured') as $article) {
 }
 ```
 
-Query results from ZenDB and CMS Builder already arrive as SmartArrays; for
-anything else, wrap once with `SmartArrayHtml::new($rows)`.
+SmartArray works on any array, but it's built and documented around the most
+common case: database rows. Query results from ZenDB and CMS Builder already
+arrive as SmartArrays; for anything else, wrap once with
+`SmartArrayHtml::new($rows)`.
 
 - **Two modes, one API.** `SmartArray` returns plain PHP values for logic and
   data processing; `SmartArrayHtml` returns

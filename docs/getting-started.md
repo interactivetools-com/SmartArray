@@ -18,7 +18,7 @@ Contents:
 
 ## Installation
 
-Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?
+**Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?**
 SmartArray is already installed, and query results already arrive as
 SmartArrays; skip to [Your First SmartArray](#your-first-smartarray) to see
 how they behave.

@@ -11,8 +11,8 @@ use JetBrains\PhpStorm\Deprecated;
 use JsonSerializable;
 use stdClass;
 
-// compile to single opcodes instead of runtime name lookups; see the note in SmartArrayBase.php
-use function count, is_null;
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function count, in_array, is_null, method_exists, property_exists, strtolower;
 
 /**
  * SmartNull - Chainable null object for missing elements.

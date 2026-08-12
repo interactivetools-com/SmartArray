@@ -8,14 +8,8 @@ use Throwable, Error, InvalidArgumentException, RuntimeException;
 use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSerializable, Closure, ReflectionFunction;
 use Itools\SmartString\SmartString;
 
-// Speed: an unqualified builtin call in a namespaced file compiles to a runtime
-// name lookup; importing the name lets these compile to single opcodes instead of
-// function calls (~4ns each; SmartString's constructor measured ~12% faster from
-// the same change). Only builtins the compiler turns into opcodes are listed -
-// other builtins gain ~1ns and stay out. NativeCallsTest holds the opcode list
-// and names any uncovered call site or unused import.
-use function array_key_exists, count, func_num_args, is_array, is_bool, is_float,
-    is_int, is_null, is_object, is_scalar, is_string, strlen;
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, htmlspecialchars, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_numeric, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
 
 /**
  * SmartArrayBase - Base implementation for SmartArray and SmartArrayHtml.

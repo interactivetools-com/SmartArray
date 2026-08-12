@@ -6,7 +6,7 @@ use IteratorAggregate;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
-// compile to single opcodes instead of runtime name lookups; see the note in SmartArrayBase.php
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function func_get_args, is_array;
 
 /**

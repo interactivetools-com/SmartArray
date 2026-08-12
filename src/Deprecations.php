@@ -515,7 +515,7 @@ trait Deprecations
         // No notice here: PHP calls offsetExists() then offsetGet() for `??` and empty(),
         // and offsetGet() already notifies, so one here would print every message twice.
         // A bare isset() with no read stays silent; any access that reads data notifies.
-        return isset($this->data[self::coerceOffset($offset)]);
+        return isset($this->data[self::coerceOffset($offset) ?? '']);   // PHP array key semantics: isset($arr[null]) checks key ''
     }
 
     /**
@@ -539,7 +539,8 @@ trait Deprecations
      * We cast up front because letting PHP coerce doesn't work here: setElement() is
      * typed int|string|null under strict_types, so a raw float or bool throws a
      * TypeError, and the native isset/unset lookups would coerce but emit PHP's
-     * "Implicit conversion from float" deprecation naming this file, not the caller.
+     * "Implicit conversion from float" deprecation (and, since 8.5, "Using null as
+     * an array offset") naming this file, not the caller.
      */
     private static function coerceOffset(mixed $offset): mixed
     {

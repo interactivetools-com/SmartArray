@@ -12,6 +12,7 @@ use JetBrains\PhpStorm\Deprecated;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function array_chunk, array_key_exists, array_keys, array_map, func_num_args, get_debug_type, implode, in_array, is_array, is_bool, is_float, is_int, is_null, is_scalar, is_string, preg_match, sprintf, str_replace, strtolower, trigger_error;
+use const E_USER_DEPRECATED;
 
 /**
  * Old and retired method names, phased out in stages.

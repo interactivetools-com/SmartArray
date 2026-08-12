@@ -10,6 +10,7 @@ use Itools\SmartString\SmartString;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, htmlspecialchars, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_numeric, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
+use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_WARNING, JSON_INVALID_UTF8_SUBSTITUTE, SORT_ASC, SORT_DESC, SORT_REGULAR;
 
 /**
  * SmartArrayBase - Base implementation for SmartArray and SmartArrayHtml.

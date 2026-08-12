@@ -5,6 +5,7 @@ namespace Itools\SmartArray;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function array_column, array_map, basename, debug_backtrace, dirname, headers_list, implode, in_array, preg_match, str_ireplace, str_replace, trait_exists, trigger_error, trim;
+use const DEBUG_BACKTRACE_IGNORE_ARGS, E_USER_DEPRECATED, PHP_SAPI;
 
 /**
  * SharedHelpers - common functions used across our libraries.

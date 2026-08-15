@@ -479,14 +479,28 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public static function getRawValue(mixed $value): mixed
     {
-        return match (true) {
-            $value instanceof SmartString      => $value->value(),
-            $value instanceof self             => $value->toArray(),
-            $value instanceof SmartNull        => null,
-            is_scalar($value), is_null($value) => $value,
-            is_array($value)                   => array_map([self::class, 'getRawValue'], $value), // for manually passed in arrays
-            default                            => throw new InvalidArgumentException("Unsupported value type: " . get_debug_type($value)),
-        };
+        // Checks ordered by measured frequency: plain scalars are the common case
+        // (where()/contains() compare values); Smart objects come from setElement()
+        if (is_scalar($value) || $value === null) {
+            return $value;
+        }
+        if ($value instanceof SmartString) {
+            return $value->value();
+        }
+        if ($value instanceof self) {
+            return $value->toArray();
+        }
+        if ($value instanceof SmartNull) {
+            return null;
+        }
+        if (is_array($value)) { // for manually passed in arrays
+            $raw = [];
+            foreach ($value as $key => $element) {
+                $raw[$key] = is_scalar($element) || $element === null ? $element : self::getRawValue($element);
+            }
+            return $raw;
+        }
+        throw new InvalidArgumentException("Unsupported value type: " . get_debug_type($value));
     }
 
     /**
@@ -611,7 +625,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // sort by field value, treating missing fields as null
         $sorted      = $this->toArray();
-        $fieldValues = array_map(fn($row) => $row[$field] ?? null, $sorted);
+        $fieldValues = [];
+        foreach ($sorted as $row) {
+            $fieldValues[] = $row[$field] ?? null;
+        }
         array_multisort($fieldValues, SORT_ASC, $flags, $sorted);
 
         $result             = new static($sorted, $this->getInternalProperties());
@@ -1101,8 +1118,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         $this->assertFlatArray();
 
-        $values = array_map('strval', $this->toArray());
-        $value  = implode($separator, $values);
+        $value = implode($separator, $this->toArray()); // implode casts int/float/bool/null to string itself, same results as strval
 
         return $this->useSmartStrings ? new SmartString($value) : $value;
     }

@@ -500,7 +500,7 @@ class DebugTest extends SmartArrayTestCase
         $this->assertStringContainsString('Itools\SmartArray\SmartArray', $output);
         $this->assertStringContainsString('name', $output);
         $this->assertStringContainsString('Amy', $output);
-        foreach (['useSmartStrings', 'loadHandler', 'mysqli', 'root', 'isLast', 'position'] as $internal) {
+        foreach (['useSmartStrings', 'loadHandler', 'mysqli', 'root', 'parent', 'position'] as $internal) {
             $this->assertStringNotContainsString($internal, $output, "var_dump should not expose $internal");
         }
     }

@@ -62,6 +62,21 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testCallerPassedPositionDoesNotLeakIntoRows(string $class): void
+    {
+        // The child template is cloned from the result set, which carries any
+        // position passed via properties - each row must still resolve its own
+        $trusted = $class::fromDatabaseRows(self::newsRows(), ['position' => 5]);
+
+        $positions = [];
+        foreach ($trusted as $row) {
+            $positions[] = [$row->position(), $row->isFirst(), $row->isLast()];
+        }
+        $this->assertSame([[1, true, false], [2, false, false], [3, false, true]], $positions);
+        $this->assertSame(5, $trusted->position(), 'the result set itself keeps the passed position');
+    }
+
+    #[DataProvider('modeProvider')]
     public function testFieldAccessWrapsPerMode(string $class): void
     {
         $trusted = $class::fromDatabaseRows(self::newsRows());

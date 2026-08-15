@@ -329,6 +329,20 @@ class WarningsTest extends SmartArrayTestCase
         $this->assertSame(1, substr_count($output, 'Warning:'));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testRowsAddedAfterConstructionAlsoWarn(string $class): void
+    {
+        // A late-set row sits inside a parent collection like any other row, so
+        // its keys are column names and a miss warns (before positions resolved
+        // lazily, late rows had no position metadata and stayed silent)
+        $rows = $class::new([['name' => 'Bob']]);
+        $rows->set('late', ['name' => 'Sue']);
+
+        [, $output] = $this->captureOutput(fn() => $rows->late->zzz);
+
+        $this->assertSame(1, substr_count($output, 'Warning:'));
+    }
+
     //endregion
     //region __toString
 

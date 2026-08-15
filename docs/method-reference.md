@@ -79,8 +79,9 @@ unset($user->nickname);              // removes the key
 echo $user->status;                  // Active
 ```
 
-Row positions are set when a collection is built, so `isFirst()`, `isLast()`,
-and `position()` don't change when you add or remove rows afterward.
+Row positions are computed the first time a row is asked, so a row added
+later reports its real position; once computed, a row's `position()` is
+kept and doesn't recalculate when rows are added or removed after that.
 
 ### [Collection Checks](displaying-fields.md#showing-a-no-results-message)
 

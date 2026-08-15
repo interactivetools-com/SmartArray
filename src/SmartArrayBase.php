@@ -75,12 +75,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Position Properties
 
     /**
-     * Position metadata for nested SmartArrays (child rows).
-     * Set during parent construction, used for template rendering.
+     * The SmartArray this element was built into, used to compute position metadata.
+     * Set during parent construction; null on root arrays.
      */
-    protected bool $isFirst = false;
-    protected bool $isLast  = false;
-    private int $position   = 0;
+    private ?SmartArrayBase $parent = null;
+
+    /**
+     * 1-based position within $parent, computed by position() on first use.
+     * 0 = not computed yet (or not a child element).
+     */
+    private int $position = 0;
 
     /**
      * Returns true if this element is the first child in its parent SmartArray.
@@ -95,25 +99,21 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         }
      *     }
      *
-     * Positions are set when the array is built; adding or removing rows later doesn't update them.
-     *
      * @return bool
      */
     public function isFirst(): bool
     {
-        return $this->isFirst;
+        return $this->position() === 1;
     }
 
     /**
      * Returns true if this element is the last child in its parent SmartArray.
      *
-     * Positions are set when the array is built; adding or removing rows later doesn't update them.
-     *
      * @return bool
      */
     public function isLast(): bool
     {
-        return $this->isLast;
+        return $this->parent !== null && $this->position() === count($this->parent->data);
     }
 
     /**
@@ -123,12 +123,21 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         echo "Row {$row->position()} of " . $rows->count();
      *     }
      *
-     * Positions are set when the array is built; adding or removing rows later doesn't update them.
+     * Computed on first call and kept, so rows added or removed after that don't change it.
      *
      * @return int 1-based position (0 if not a child element)
      */
     public function position(): int
     {
+        if ($this->position === 0 && $this->parent !== null) {
+            $i = 0;
+            foreach ($this->parent->data as $sibling) {
+                $i++;
+                if ($sibling === $this) {
+                    return $this->position = $i;
+                }
+            }
+        }
         return $this->position;
     }
 
@@ -159,17 +168,12 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $this->loadHandler     = $properties['loadHandler']     ?? null;
         $this->mysqli          = $properties['mysqli']          ?? [];
         $this->root            = $properties['root']            ?? $this;
+        $this->parent          = $properties['parent']          ?? null;
         $this->position        = $properties['position']        ?? 0;
-        $this->isFirst         = $properties['isFirst']         ?? false;
-        $this->isLast          = $properties['isLast']          ?? false;
 
-        // Add elements and set position metadata on child SmartArrays
-        $count         = count($array);
-        $position      = 0;
+        // Add elements; child SmartArrays get a parent link for position metadata
         $childTemplate = null;
         foreach ($array as $key => $value) {
-            $position++;
-
             // Fast path: scalars and nulls, the bulk of real data (encoded on access by getElement)
             if (is_scalar($value) || $value === null) {
                 $this->data[$key] = $value;
@@ -182,7 +186,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             // database rows - assign their data wholesale: a copy-on-write array assignment
             // instead of a per-field loop.
             if (is_array($value)) {
-                $childTemplate ??= new static([], $this->getInternalProperties());
+                if ($childTemplate === null) {
+                    $childTemplate         = new static([], $this->getInternalProperties());
+                    $childTemplate->parent = $this;
+                }
 
                 $allScalar = true;
                 foreach ($value as $fieldValue) {
@@ -197,13 +204,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                     $child->rowsOnly = $value === [];
                 }
                 else {
-                    $child = new static($value, $this->getInternalProperties());
+                    $child         = new static($value, $this->getInternalProperties());
+                    $child->parent = $this;
                 }
-                $child->position   = $position;
-                $child->isFirst    = $position === 1;
-                $child->isLast     = $position === $count;
-                $this->data[$key]  = $child;
-                $this->hasRows     = true;
+                $this->data[$key] = $child;
+                $this->hasRows    = true;
                 continue;
             }
 
@@ -211,9 +216,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $this->setElement($key, $value);
             $element = $this->data[$key];
             if ($element instanceof self) {
-                $element->position = $position;
-                $element->isFirst  = $position === 1;
-                $element->isLast   = $position === $count;
+                $element->parent = $this;
             }
         }
     }
@@ -252,29 +255,29 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $resultSet->loadHandler = $properties['loadHandler'] ?? null;
             $resultSet->mysqli      = $properties['mysqli']      ?? [];
             $resultSet->root        = $properties['root']        ?? $resultSet;
+            $resultSet->parent      = $properties['parent']      ?? null;
             $resultSet->position    = $properties['position']    ?? 0;
-            $resultSet->isFirst     = $properties['isFirst']     ?? false;
-            $resultSet->isLast      = $properties['isLast']      ?? false;
         }
 
-        $count = count($rows);
-        if ($count === 0) {
+        if (!$rows) {
             return $resultSet;
         }
 
         // Same template-clone row building as the constructor, minus the per-field scan.
         // The template is a clone of the still-empty result set: data is empty,
-        // loadHandler/mysqli/root carry over, and every child overwrites position metadata.
-        $childTemplate = clone $resultSet;
-        $position      = 0;
+        // loadHandler/mysqli/root/parent carry over to every child, and the template's
+        // rowsOnly covers every non-empty row. Position metadata is computed on demand
+        // from the parent link, so the loop is just clone, data, store.
+        $childTemplate           = clone $resultSet;
+        $childTemplate->rowsOnly = false;
+        $childTemplate->parent   = $resultSet;
+        $childTemplate->position = 0; // the clone carries any caller-passed position; rows must resolve their own
         foreach ($rows as $key => $row) {
-            $position++;
-            $child                 = clone $childTemplate;
-            $child->data           = $row;
-            $child->rowsOnly       = $row === [];
-            $child->position       = $position;
-            $child->isFirst        = $position === 1;
-            $child->isLast         = $position === $count;
+            $child       = clone $childTemplate;
+            $child->data = $row;
+            if ($row === []) {
+                $child->rowsOnly = true;
+            }
             $resultSet->data[$key] = $child;
         }
         $resultSet->hasRows    = true;
@@ -429,7 +432,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // Convert nested arrays to SmartArrays (preserving the current class type)
         if (is_array($value)) {
-            $value = new static($value, $this->getInternalProperties());
+            $value         = new static($value, $this->getInternalProperties());
+            $value->parent = $this;
             if ($key === null) {
                 $this->data[] = $value;
             }
@@ -1242,8 +1246,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             'loadHandler'     => $this->loadHandler,     // persist load handler
             'mysqli'          => $mysqliProperties,
             //'root'          => // skipped, set by constructor to self
-            //'isFirst'       => // skipped, instance defaults are accurate for root array
-            //'isLast'        => // skipped, instance defaults are accurate for root array
+            //'parent'        => // skipped, instance defaults are accurate for root array
             //'position'      => // skipped, instance defaults are accurate for root array
         ]);
     }
@@ -1635,9 +1638,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     private function warnIfMissing(string|int $key, bool $isOffset = false): void
     {
-        // Key access: only rows inside a parent collection warn (position is 1-based
-        // on rows, 0 on top-level and derived collections)
-        if ($isOffset && $this->position === 0) {
+        // Key access: only rows inside a parent collection warn (top-level and
+        // derived collections have no parent)
+        if ($isOffset && $this->parent === null) {
             return;
         }
 
@@ -1865,9 +1868,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         ];
         if ($withPosition) {
             $properties += [
-                'position' => $this->position,
-                'isFirst'  => $this->isFirst,
-                'isLast'   => $this->isLast,
+                'parent'   => $this->parent,
+                'position' => $this->position(),   // resolve now: the copy won't be in parent's data, so it can't resolve later
             ];
         }
         return $properties;

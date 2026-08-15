@@ -231,7 +231,7 @@ isLast(): bool     // true for the last row
 position(): int    // 1-based position in parent; 0 on top-level/derived collections
 ```
 
-Set at construction on nested rows; preserved through `asHtml()`/`asRaw()`.
+Computed on first call and then kept; preserved through `asHtml()`/`asRaw()`.
 Rows in a DERIVED collection (a `where()` result) get fresh positions in
 the new collection.
 

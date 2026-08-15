@@ -103,6 +103,11 @@ the docs - IDEs show a strikethrough with the replacement.
   array assignment unwrap SmartString/SmartArray/SmartNull values instead
   of throwing, converting to the target array's mode; `get()` and `at()`
   unwrap Smart keys the same way
+- **Row positions resolve on first use, not at build time** - a row added
+  after construction reports its real `position()` and `isLast()` instead
+  of 0/false, the row that was last at build stops reporting `isLast()`,
+  and late-added rows now warn on missing keys like any other row; once
+  read, a row's position is kept
 
 ### Fixed
 

@@ -251,21 +251,21 @@ class WriteAccessTest extends SmartArrayTestCase
     //region Position metadata on late writes
 
     #[DataProvider('modeProvider')]
-    public function testLateWritesDoNotRecalculatePositions(string $class): void
+    public function testLateWritesSeeCurrentPositions(string $class): void
     {
-        // Position metadata is set at construction only (documented in offsetSet):
-        // a row added later reads position 0 / isFirst false / isLast false,
-        // and existing siblings keep their original metadata
+        // Position metadata is computed on first call from the row's place in its
+        // parent: a row added later resolves its real position, and the row that
+        // was last at build stops reporting isLast()
         $sa = $class::new([['a' => 1], ['a' => 2]]);
 
         $sa->set('late', ['a' => 3]);
 
         $late = $sa->late;
-        $this->assertSame(0, $late->position());
+        $this->assertSame(3, $late->position());
         $this->assertFalse($late->isFirst());
-        $this->assertFalse($late->isLast());
+        $this->assertTrue($late->isLast());
 
-        $this->assertTrue($sa->at(1)->isLast(), 'original last row keeps isLast even though it no longer is');
+        $this->assertFalse($sa->at(1)->isLast(), 'row that was last at build is not last anymore');
     }
 
     //endregion

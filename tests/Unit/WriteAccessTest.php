@@ -247,6 +247,46 @@ class WriteAccessTest extends SmartArrayTestCase
         $this->assertCount(1, $deprecations);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testOffsetSetAndUnsetRejectUnsupportedOffsetTypesBeforeAnyOutput(string $class): void
+    {
+        // The notice echoes the offset in 'notify' mode, so unsupported types
+        // (whose text the library doesn't control) must throw before printing
+        $sa         = $class::new(['name' => 'Bob']);
+        $stringable = new class {
+            public function __toString(): string
+            {
+                return '<img src=x onerror=alert(1)>';
+            }
+        };
+
+        [$e, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                $sa[$stringable] = 'x';
+            } catch (InvalidArgumentException $e) {
+                return $e;
+            }
+            return null;
+        });
+        $this->assertInstanceOf(InvalidArgumentException::class, $e, 'set must throw');
+        $this->assertStringNotContainsString('onerror', $e->getMessage());
+        $this->assertSame('', $output, 'nothing printed before the set throw');
+
+        [$e, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                unset($sa[$stringable]);
+            } catch (InvalidArgumentException $e) {
+                return $e;
+            }
+            return null;
+        });
+        $this->assertInstanceOf(InvalidArgumentException::class, $e, 'unset must throw');
+        $this->assertStringNotContainsString('onerror', $e->getMessage());
+        $this->assertSame('', $output, 'nothing printed before the unset throw');
+
+        $this->assertSame(['name' => 'Bob'], $sa->toArray(), 'collection unchanged');
+    }
+
     //endregion
     //region Position metadata on late writes
 

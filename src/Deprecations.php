@@ -564,7 +564,13 @@ trait Deprecations
     {
         // SECURITY: the key can be user input (e.g. $arr[$_GET['sort']]) and 'notify' mode echoes
         // the message into the page, so encode it. $key is display-only from here on; the actual
-        // data access already happened with the original key.
+        // data access already happened with the original key. Unwrap Smart* offsets so they
+        // display like plain keys; everything else (Stringables, arrays) was never a valid
+        // offset, so throw before any of it can reach the page.
+        $key = self::getRawValue($key); // throws on unsupported objects
+        if (!is_scalar($key) && $key !== null) {
+            throw new InvalidArgumentException("Unsupported array offset type: " . get_debug_type($key));
+        }
         if (is_string($key)) {
             $key = self::htmlEncode($key);
         }

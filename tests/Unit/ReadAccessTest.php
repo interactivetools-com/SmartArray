@@ -389,6 +389,47 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertCount(1, $deprecations);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testOffsetGetRejectsUnsupportedOffsetTypesBeforeAnyOutput(string $class): void
+    {
+        // The notice echoes the offset in 'notify' mode, so unsupported types
+        // (whose text the library doesn't control) must throw before printing
+        $sa         = $class::new(['name' => 'Bob']);
+        $stringable = new class {
+            public function __toString(): string
+            {
+                return '<img src=x onerror=alert(1)>';
+            }
+        };
+
+        foreach ([$stringable, ['name']] as $badOffset) {
+            [$caught, $output] = $this->captureOutput(function () use ($sa, $badOffset) {
+                try {
+                    return [$sa[$badOffset], null];
+                } catch (InvalidArgumentException $e) {
+                    return [null, $e];
+                }
+            });
+            [, $e] = $caught;
+            $this->assertInstanceOf(InvalidArgumentException::class, $e);
+            $this->assertStringContainsString('Unsupported', $e->getMessage());
+            $this->assertStringNotContainsString('onerror', $e->getMessage());
+            $this->assertSame('', $output, 'nothing printed before the throw');
+        }
+
+        // SmartNull's own ArrayAccess methods dispatch through the same rules
+        [$caught, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                return [$sa->missing[$stringable], null];
+            } catch (InvalidArgumentException $e) {
+                return [null, $e];
+            }
+        });
+        [, $e] = $caught;
+        $this->assertInstanceOf(InvalidArgumentException::class, $e);
+        $this->assertStringNotContainsString('onerror', $output, 'missing-key warning may print, but never the offset text');
+    }
+
     //endregion
     //region __isset / offsetExists
 

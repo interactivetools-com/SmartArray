@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function array_column, array_map, basename, debug_backtrace, dirname, headers_list, htmlspecialchars, implode, in_array, preg_match, str_ireplace, str_replace, trait_exists, trigger_error, trim;
+use function basename, debug_backtrace, dirname, headers_list, htmlspecialchars, implode, in_array, preg_match, str_ireplace, str_replace, strtolower, trait_exists, trigger_error, trim;
 use const DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_DEPRECATED, PHP_SAPI;
 
 /**
@@ -167,9 +167,9 @@ trait SharedHelpers
             return $plain;
         }
 
-        // showme() debug helper adds its own <xmp>
-        $backtraceFunctions = array_map('strtolower', array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'));
-        if (in_array('showme', $backtraceFunctions, true)) {
+        // showme() debug helper adds its own <xmp>. Only the immediate external caller
+        // counts - an unrelated showme() higher up the stack can't disable the wrapping.
+        if (strtolower(self::getExternalCaller()['method']) === 'showme') {
             return $plain;
         }
 

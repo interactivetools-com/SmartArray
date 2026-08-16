@@ -707,7 +707,7 @@ class DeprecationsTest extends SmartArrayTestCase
     {
         // Declared methods never reach __callStatic()
         $this->assertSame(
-            'Non-static method Itools\SmartArray\SmartArray::first() cannot be called statically',
+            'Non-static method Itools\SmartArray\SmartArrayBase::first() cannot be called statically',
             $this->firstLineOfError(static fn() => SmartArray::first()),
         );
     }

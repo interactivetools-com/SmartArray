@@ -20,14 +20,20 @@ use function func_get_args, is_array;
  * - Nested arrays return SmartArray, use ->toArray() for raw arrays
  * - Missing keys return SmartNull, use ->value() for raw null
  *
- * Full API and docs: SmartArrayBase. Methods are redeclared here only when this
- * mode narrows the return type (raw values here, SmartStrings in SmartArrayHtml);
- * only new(), asRaw(), and asHtml() have per-class behavior.
+ * Full API and docs: SmartArrayBase. The @method tags below narrow return types
+ * to this mode (raw values here, SmartStrings in SmartArrayHtml); only new(),
+ * asRaw(), and asHtml() have per-class behavior.
  *
  * PhpStorm: repeated single-type @implements lines - it keeps only one object
  * member per generic union, so foreach over a union loses the second type
  * @implements IteratorAggregate<mixed, SmartArray>
  * @implements IteratorAggregate<mixed, string|int|float|bool|null>
+ *
+ * @method static|SmartNull|string|int|float|bool|null first()
+ * @method static|SmartNull|string|int|float|bool|null last()
+ * @method static|SmartNull|string|int|float|bool|null at(int|SmartString|SmartNull $index)
+ * @method string implode(string $separator = '')
+ * @method static|SmartNull|string|int|float|bool|null offsetGet(mixed $offset)
  */
 class SmartArray extends SmartArrayBase
 {
@@ -94,43 +100,7 @@ class SmartArray extends SmartArrayBase
     }
 
     //endregion
-    //region Value Access
-
-    /** {@inheritDoc} */
-    public function first(): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::first();
-    }
-
-    /** {@inheritDoc} */
-    public function last(): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::last();
-    }
-
-    /** {@inheritDoc} */
-    public function at(int|SmartString|SmartNull $index): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::at($index);
-    }
-
-    //endregion
-    //region Array Transformation
-
-    /** {@inheritDoc} */
-    public function implode(string $separator = ''): string
-    {
-        return parent::implode($separator);
-    }
-
-    //endregion
     //region Deprecated Access
-
-    /** {@inheritDoc} */
-    public function offsetGet(mixed $offset): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::offsetGet($offset);
-    }
 
     /**
      * {@inheritDoc}

@@ -15,7 +15,7 @@ use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, EN
 /**
  * SmartArrayBase - Base implementation for SmartArray and SmartArrayHtml.
  *
- * Uses wide return types that child classes narrow via covariance.
+ * Uses wide return types that SmartArray and SmartArrayHtml narrow per mode.
  * Do not instantiate directly - use SmartArray or SmartArrayHtml.
  *
  * Extends stdClass to enable clean IDE property autocomplete. Without this,
@@ -503,25 +503,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         throw new InvalidArgumentException("Unsupported value type: " . get_debug_type($value));
     }
 
-    /**
-     * How where(), whereNot(), and contains() decide two values match: the same
-     * answers a SQL WHERE gives, except strings stay case-sensitive and a
-     * non-numeric string never equals 0. Numbers match numeric strings (5 matches
-     * '5'), two strings must match exactly, null only matches null, and true/false
-     * mean 1/0 (so, like MySQL, '01' and ' 1' match true and '00' matches false).
-     * Callers unwrap Smart values with getRawValue() first.
-     */
-    private static function valueMatches(mixed $rowValue, mixed $value): bool
-    {
-        $value    = is_bool($value)    ? (int)$value    : $value;
-        $rowValue = is_bool($rowValue) ? (int)$rowValue : $rowValue;
-        return match (true) {
-            $value === null || $rowValue === null     => $value === $rowValue,
-            is_string($value) && is_string($rowValue) => $value === $rowValue,
-            default                                   => $value == $rowValue, // PHP 8 numeric comparison, e.g. 1 == '1.00'
-        };
-    }
-
     //endregion
     //region Array Information
 
@@ -558,9 +539,19 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function contains(mixed $value): bool
     {
-        $value = self::getRawValue($value);
+        $value = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
+        $value = is_bool($value) ? (int)$value : $value;
+        // This comparison repeats 3x across contains()/where()/whereNot() on purpose: a
+        // shared helper would need a per-row call, which costs more than the comparison
+        // itself. ValueMatchParityTest keeps the copies identical.
         foreach ($this->toArray() as $element) {
-            if (self::valueMatches($element, $value)) {
+            $element = is_bool($element) ? (int)$element : $element;
+            $isMatch = match (true) {
+                is_string($value) && is_string($element) => $value === $element,
+                $value === null || $element === null     => $value === $element,
+                default                                  => $value == $element, // PHP 8 numeric comparison, e.g. 1 == '1.00'
+            };
+            if ($isMatch) {
                 return true;
             }
         }
@@ -726,11 +717,22 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // Two-argument syntax: where('field', value)
         if (is_string($field) && func_num_args() === 2) {
             $this->warnIfMissing($field);
-            $value   = self::getRawValue($value);
-            // repeated 4x, see the first where() loop for why
+            $value   = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
+            $value   = is_bool($value) ? (int)$value : $value;
+            // loop repeated 4x, comparison repeated 3x - see the first where() loop and contains() for why
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
-                if (array_key_exists($field, $row) && self::valueMatches($row[$field], $value)) {
+                if (!array_key_exists($field, $row)) {
+                    continue;
+                }
+                $rowValue = $row[$field];
+                $rowValue = is_bool($rowValue) ? (int)$rowValue : $rowValue;
+                $isMatch  = match (true) {
+                    is_string($value) && is_string($rowValue) => $value === $rowValue,
+                    $value === null || $rowValue === null     => $value === $rowValue,
+                    default                                   => $value == $rowValue, // PHP 8 numeric comparison, e.g. 1 == '1.00'
+                };
+                if ($isMatch) {
                     $matches[$key] = $row;
                 }
             }
@@ -781,11 +783,23 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             return $result;
         }
 
-        $value   = self::getRawValue($value);
-        // repeated 4x, see the first where() loop for why
+        $value   = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
+        $value   = is_bool($value) ? (int)$value : $value;
+        // loop repeated 4x, comparison repeated 3x - see the first where() loop and contains() for why
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
-            if (!array_key_exists($field, $row) || !self::valueMatches($row[$field], $value)) {
+            if (!array_key_exists($field, $row)) {
+                $matches[$key] = $row;
+                continue;
+            }
+            $rowValue = $row[$field];
+            $rowValue = is_bool($rowValue) ? (int)$rowValue : $rowValue;
+            $isMatch  = match (true) {
+                is_string($value) && is_string($rowValue) => $value === $rowValue,
+                $value === null || $rowValue === null     => $value === $rowValue,
+                default                                   => $value == $rowValue, // PHP 8 numeric comparison, e.g. 1 == '1.00'
+            };
+            if (!$isMatch) {
                 $matches[$key] = $row;
             }
         }
@@ -816,9 +830,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         $this->assertNestedArray();
         $this->warnIfMissing($field);
-        $value = self::getRawValue($value);
-        if (!is_scalar($value) && $value !== null) {
-            throw new InvalidArgumentException("whereInList(): expected a single value to match, got " . get_debug_type($value));
+        if (!is_scalar($value) && $value !== null) { // fast path: skip getRawValue() for plain values
+            $value = self::getRawValue($value);
+            if (!is_scalar($value) && $value !== null) {
+                throw new InvalidArgumentException("whereInList(): expected a single value to match, got " . get_debug_type($value));
+            }
         }
         $value   = (string) $value;
         $matches = [];
@@ -1281,7 +1297,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @internal
      */
-    public function root(): self
+    public function root(): SmartArrayBase
     {
         return $this->root;
     }

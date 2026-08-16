@@ -500,6 +500,34 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testWhereInListRejectsTabsInSearchValue(string $class): void
+    {
+        // A tab is the list separator, so a tab-bearing value can never be one
+        // discrete value. Previously "menu\tfooter" built needle "\tmenu\tfooter\t"
+        // and matched a field storing separate menu and footer tokens.
+        $sa = $class::new([1 => ['show_on' => "\tmenu\tfooter\t"]]);
+
+        foreach (["menu\tfooter", "\tmenu", "menu\t", "\t"] as $badValue) {
+            try {
+                $sa->whereInList('show_on', $badValue);
+                $this->fail('Expected InvalidArgumentException for value ' . json_encode($badValue));
+            } catch (InvalidArgumentException $e) {
+                $this->assertSame('whereInList(): expected a single value to match, got a tab-separated list', $e->getMessage());
+            }
+        }
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListRejectsTabsInSmartStringSearchValue(string $class): void
+    {
+        // getRawValue() unwraps first, so a wrapped tab-list is caught too
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('whereInList(): expected a single value to match, got a tab-separated list');
+
+        $class::new([1 => ['show_on' => "\tmenu\t"]])->whereInList('show_on', new SmartString("menu\tfooter"));
+    }
+
+    #[DataProvider('modeProvider')]
     public function testWhereInListRejectsArrayValues(string $class): void
     {
         // Previously cast to the literal string "Array" with a PHP warning naming

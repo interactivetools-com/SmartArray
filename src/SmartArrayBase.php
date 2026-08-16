@@ -836,6 +836,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 throw new InvalidArgumentException("whereInList(): expected a single value to match, got " . get_debug_type($value));
             }
         }
+        if (is_string($value) && str_contains($value, "\t")) { // a tab can't be part of one value - it's the list separator
+            throw new InvalidArgumentException("whereInList(): expected a single value to match, got a tab-separated list");
+        }
         $value   = is_bool($value) ? (int)$value : $value;
         $needle  = "\t$value\t"; // tab-list membership; plain values compare typed below, like where()
         $matches = [];

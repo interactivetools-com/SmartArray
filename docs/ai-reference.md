@@ -310,7 +310,9 @@ $collection->debug();   // contents, current mode, mysqli metadata; debug(1) add
 print_r($collection);   // element data only; the class name identifies the mode
 ```
 
-Output is `<xmp>`-wrapped in the browser and plain text on the command line.
+`debug()` output is `<xmp>`-wrapped in the browser and plain text on the
+command line. `print_r()`/`var_dump()` output raw values with no wrapper -
+in a browser use `debug()`.
 
 ## Errors and Exceptions
 

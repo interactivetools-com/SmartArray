@@ -152,7 +152,8 @@ $users->debug();  // contents, current mode, and query metadata
 ```
 
 Plain `print_r($users)` works too and shows just the element data; the class
-name in its output tells you the mode.
+name in its output tells you the mode. Unlike `debug()`, its output isn't
+`<xmp>`-wrapped, so in a browser it's raw and unformatted - prefer `debug()`.
 
 ---
 

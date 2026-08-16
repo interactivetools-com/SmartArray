@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Unit;
 
 use InvalidArgumentException;
+use RuntimeException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
@@ -462,6 +463,54 @@ class ConversionTest extends SmartArrayTestCase
         $sa = $class::new(['a' => 1, "caf\xE9" => 2, 'z' => 3]);
 
         $this->assertSame(['a', "caf\u{FFFD}", 'z'], array_keys($sa->jsonSerialize()));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testJsonSerializeThrowsWhenScrubbedKeysCollide(string $class): void
+    {
+        // "caf\xE9" and "caf\xC0" both scrub to "caf�" - silently keeping only
+        // one record would be data loss, so it throws instead
+        $sa = $class::new(["caf\xE9" => 1, "caf\xC0" => 2]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("key 'caf\u{FFFD}' appears twice after malformed UTF-8");
+
+        $sa->jsonSerialize();
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testJsonSerializeThrowsWhenScrubbedKeyMatchesLiteralReplacementChar(string $class): void
+    {
+        // A malformed key can also collide with a valid key that already spells
+        // U+FFFD; both insert orders throw
+        $arrays = [
+            ["caf\xE9" => 1, "caf\u{FFFD}" => 2],
+            ["caf\u{FFFD}" => 1, "caf\xE9" => 2],
+        ];
+        foreach ($arrays as $array) {
+            $thrown = null;
+            try {
+                $class::new($array)->jsonSerialize();
+            } catch (RuntimeException $e) {
+                $thrown = $e;
+            }
+            $this->assertInstanceOf(RuntimeException::class, $thrown, 'collision must throw in both insert orders');
+        }
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testJsonSerializeCollisionMessageEncodesTheKey(string $class): void
+    {
+        // Keys are data, and exception handlers often echo messages into a page
+        $sa = $class::new(["<b>\xE9" => 1, "<b>\xC0" => 2]);
+
+        try {
+            $sa->jsonSerialize();
+            $this->fail('Expected RuntimeException for colliding keys');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('&lt;b&gt;', $e->getMessage(), 'markup in the key must be encoded');
+            $this->assertStringNotContainsString('<b>', $e->getMessage());
+        }
     }
 
     //endregion

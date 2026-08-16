@@ -1838,9 +1838,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Substitutes malformed UTF-8 in keys and values with � (U+FFFD) so json_encode($smartArray)
      * returns valid JSON instead of false. Nested SmartArrays scrub themselves when json_encode()
-     * descends into them.
+     * descends into them. If substitution makes two keys identical, throws instead of silently
+     * dropping a record.
      *
      * @return array The internal data array.
+     * @throws RuntimeException If key substitution makes two keys identical
      */
     public function jsonSerialize(): array
     {
@@ -1866,6 +1868,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
             if (is_string($value) && preg_match('//u', $value) !== 1) {
                 $value = json_decode(json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE));
+            }
+            if (array_key_exists($key, $data)) { // original keys were unique, so a repeat means substitution collapsed two keys
+                $keyDisplay = self::htmlEncode((string) $key); // SECURITY: keys are data, and exception handlers often echo messages into a page
+                throw new RuntimeException("jsonSerialize(): key '$keyDisplay' appears twice after malformed UTF-8 bytes were replaced with \u{FFFD}, which would silently drop a record. Fix the key encoding before calling json_encode().");
             }
             $data[$key] = $value;
         }

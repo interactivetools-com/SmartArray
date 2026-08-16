@@ -25,7 +25,8 @@ Everything else is hardening and fixes.
   reflected XSS vector
 - **`json_encode()` survives malformed UTF-8 in keys** - bad bytes become
   � instead of the whole document returning false (values were already
-  handled)
+  handled). If the substitution would make two keys identical, it throws
+  rather than silently dropping a record
 - **`debug()` and `help()` escape `</xmp`** - a stored value containing
   `</xmp>` ended the debug block early, so the rest of it parsed as live
   HTML

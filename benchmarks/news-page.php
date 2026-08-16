@@ -261,7 +261,11 @@ printf("  toArray() on the record set  %9.6f ms\n", $toArraySetNs / 1e6);
 printf("  toArray() on one flat row    %9.6f ms\n\n", $toArrayRowNs / 1e6);
 
 printf("millisecond test (how many before SmartArray overhead adds 1 ms):\n");
-printf("  rendered list pages (25 rows each): %6.0f\n", 1_000_000 / $listOverheadNs);
+if ($listOverheadNs > 0) {
+    printf("  rendered list pages (25 rows each): %6.0f\n", 1_000_000 / $listOverheadNs);
+} else {
+    printf("  rendered list pages (25 rows each):    n/a - SmartArray was faster on this run\n");
+}
 printf("  raw 25-row record sets:             %6.0f\n", 1_000_000 / $rawOverheadNs);
 printf("  rows through construction:          %6.0f\n", 1_000_000 / ($constructNs / 25));
 

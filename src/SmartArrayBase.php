@@ -453,12 +453,11 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Returns the element at the given key, optionally wrapped in SmartString.
-     * Returns SmartNull with a warning if the key doesn't exist.
+     * Returns the element at the given key; HTML mode wraps scalars in SmartString.
+     * Returns SmartNull if the key doesn't exist; rows inside a result set also warn (see warnIfMissing()).
      */
     private function getElement(int|string $key): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // Return value if key exists, or SmartNull if not found
         if (array_key_exists($key, $this->data)) {
             $value = $this->data[$key];
             return $this->useSmartStrings && !$value instanceof self

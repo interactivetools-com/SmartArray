@@ -454,8 +454,10 @@ trait Deprecations
      * The legacy constructor arguments - the boolean form (new SmartArray($data, true))
      * and an explicit useSmartStrings key in the properties array. The SmartArray and
      * SmartArrayHtml constructors dispatch here when either form is present. A value
-     * contradicting the constructed class throws (the caller wants the other class);
-     * a redundant match just logs. Returns the properties as a plain array.
+     * contradicting the constructed class throws (the caller wants the other class).
+     * A redundant boolean logs a deprecation. A redundant useSmartStrings key passes
+     * through silently (sprintf() passes one internally). Returns the properties as a
+     * plain array.
      *
      * Protected, not private like the method above: the dispatching constructors are
      * in the subclasses. On removal, the constructors' $properties parameter narrows
@@ -492,12 +494,9 @@ trait Deprecations
     /**
      * Sets a value in the SmartArray using array syntax.
      *
-     * Note: If you add a key after the array is created the position properties will not be updated.
-     * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
-     *
      * @deprecated Use ->key = $value or ->{'key'} = $value instead of $array['key'] = $value
      * @param mixed $offset The key to set. If null, the value is appended to the array.
-     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
+     * @param mixed $value The value to set. Scalars and nulls are stored as-is; arrays become a child SmartArray of this array's mode; Smart values are unwrapped first.
      *
      * @throws InvalidArgumentException If an unsupported value type is provided.
      */

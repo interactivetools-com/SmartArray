@@ -458,6 +458,40 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testWhereInListMatchesBoolsAsOneAndZero(string $class): void
+    {
+        // Same 1/0 rule as where(): a stored bool can't loose-match arbitrary
+        // strings (true == 'admin' is true in PHP, and used to match here)
+        $sa = $class::new([
+            1 => ['flag' => true],
+            2 => ['flag' => false],
+            3 => ['flag' => 'admin'],
+        ]);
+
+        $this->assertSame([1], $sa->whereInList('flag', true)->keys()->toArray());
+        $this->assertSame([1], $sa->whereInList('flag', 1)->keys()->toArray());
+        $this->assertSame([1], $sa->whereInList('flag', '1')->keys()->toArray());
+        $this->assertSame([2], $sa->whereInList('flag', false)->keys()->toArray());
+        $this->assertSame([2], $sa->whereInList('flag', 0)->keys()->toArray());
+        $this->assertSame([3], $sa->whereInList('flag', 'admin')->keys()->toArray(), 'stored true must not match arbitrary strings');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListNullAndEmptyStringSearchValuesStayDistinct(string $class): void
+    {
+        // Used to stringify the search value, so null and false collapsed to ''
+        $sa = $class::new([
+            1 => ['note' => ''],
+            2 => ['note' => null],
+            3 => ['note' => 'x'],
+        ]);
+
+        $this->assertSame([1], $sa->whereInList('note', '')->keys()->toArray(), "'' matches only '' fields");
+        $this->assertCount(0, $sa->whereInList('note', null), 'null matches nothing - null fields mean "nothing selected"');
+        $this->assertCount(0, $sa->whereInList('note', false), "false matches 0, not ''");
+    }
+
+    #[DataProvider('modeProvider')]
     public function testWhereInListUnwrapsSmartStringValues(string $class): void
     {
         $sa = $class::new([1 => ['show_on' => "\tmenu\t"]]);

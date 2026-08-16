@@ -8,15 +8,15 @@ use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use ReflectionMethod;
 
 /**
- * Call-site-form enforcement: contains(), where(), and whereNot() each carry an
- * inlined copy of the value-match comparison (row bool-to-int cast plus $isMatch
- * match block) because a shared helper would need a per-row call. This test
- * reads the source of each method and fails if the copies drift apart, so an
- * edit to one copy can't silently change how the others match.
+ * Call-site-form enforcement: contains(), where(), whereNot(), and whereInList()
+ * each carry an inlined copy of the value-match comparison (row bool-to-int cast
+ * plus $isMatch match block) because a shared helper would need a per-row call.
+ * This test reads the source of each method and fails if the copies drift apart,
+ * so an edit to one copy can't silently change how the others match.
  */
 class ValueMatchParityTest extends SmartArrayTestCase
 {
-    private const INLINED_COPY_METHODS = ['contains', 'where', 'whereNot'];
+    private const INLINED_COPY_METHODS = ['contains', 'where', 'whereNot', 'whereInList'];
 
     public function testInlinedComparisonCopiesAreIdentical(): void
     {

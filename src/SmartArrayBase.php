@@ -541,9 +541,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         $value = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
         $value = is_bool($value) ? (int)$value : $value;
-        // This comparison repeats 3x across contains()/where()/whereNot() on purpose: a
-        // shared helper would need a per-row call, which costs more than the comparison
-        // itself. ValueMatchParityTest keeps the copies identical.
+        // This comparison repeats 4x across contains()/where()/whereNot()/whereInList() on
+        // purpose: a shared helper would need a per-row call, which costs more than the
+        // comparison itself. ValueMatchParityTest keeps the copies identical.
         foreach ($this->toArray() as $element) {
             $element = is_bool($element) ? (int)$element : $element;
             $isMatch = match (true) {
@@ -719,7 +719,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $this->warnIfMissing($field);
             $value   = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
             $value   = is_bool($value) ? (int)$value : $value;
-            // loop repeated 4x, comparison repeated 3x - see the first where() loop and contains() for why
+            // loop repeated 4x, comparison repeated 4x - see the first where() loop and contains() for why
             $matches = [];
             foreach ($this->toArray() as $key => $row) {
                 if (!array_key_exists($field, $row)) {
@@ -785,7 +785,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         $value   = is_scalar($value) || $value === null ? $value : self::getRawValue($value); // fast path: skip getRawValue() for plain values
         $value   = is_bool($value) ? (int)$value : $value;
-        // loop repeated 4x, comparison repeated 3x - see the first where() loop and contains() for why
+        // loop repeated 4x, comparison repeated 4x - see the first where() loop and contains() for why
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
             if (!array_key_exists($field, $row)) {
@@ -836,16 +836,25 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 throw new InvalidArgumentException("whereInList(): expected a single value to match, got " . get_debug_type($value));
             }
         }
-        $value   = (string) $value;
+        $value   = is_bool($value) ? (int)$value : $value;
+        $needle  = "\t$value\t"; // tab-list membership; plain values compare typed below, like where()
         $matches = [];
         foreach ($this->toArray() as $key => $row) {
-            if (!isset($row[$field])) {
+            if (!isset($row[$field])) { // null and missing both mean "nothing selected" for list fields
                 continue;
             }
-            $fieldValue = $row[$field];
-            $isMatch    = is_string($fieldValue)
-                ? $fieldValue === $value || str_contains($fieldValue, "\t$value\t") // exact text, like where()
-                : $fieldValue == $value;                                            // non-string fields match numerically, e.g. int 2 matches '2'
+            $rowValue = $row[$field];
+            if (is_string($rowValue) && $value !== null && str_contains($rowValue, $needle)) {
+                $matches[$key] = $row;
+                continue;
+            }
+            // comparison repeated 4x - see contains() for why
+            $rowValue = is_bool($rowValue) ? (int)$rowValue : $rowValue;
+            $isMatch  = match (true) {
+                is_string($value) && is_string($rowValue) => $value === $rowValue,
+                $value === null || $rowValue === null     => $value === $rowValue,
+                default                                   => $value == $rowValue, // PHP 8 numeric comparison, e.g. 1 == '1.00'
+            };
             if ($isMatch) {
                 $matches[$key] = $row;
             }

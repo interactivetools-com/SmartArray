@@ -9,7 +9,7 @@ use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSeri
 use Itools\SmartString\SmartString;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, htmlspecialchars, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_numeric, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
+use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, htmlspecialchars, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
 use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_WARNING, JSON_INVALID_UTF8_SUBSTITUTE, SORT_ASC, SORT_DESC, SORT_REGULAR;
 
 /**
@@ -358,8 +358,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Get an element by its position in the array, ignoring keys.
      *
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
-     * Returns SmartNull if out of bounds, or if the index is a missing key (SmartNull) or a
-     * non-numeric value - a bad position in means a missing value out, so chains survive.
+     * Returns SmartNull if out of bounds, or if the index is a missing key (SmartNull) or not a
+     * whole number ('abc', '1.9', '1e2') - a bad position in means a missing value out, so chains survive.
      * Use $array->key for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
@@ -368,15 +368,18 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function at(int|SmartString|SmartNull $index): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // Unwrap Smart indexes so HTML-mode positions work directly, since every value it
-        // hands out is a SmartString. Missing keys (SmartNull) and non-numeric values stay missing.
+        // hands out is a SmartString. Missing keys (SmartNull) and non-integer values stay
+        // missing - is_numeric() would let '1.9' truncate to 1 and '1e2' become 100. The
+        // int round-trip accepts only exact integer spellings ('2' but not '02' or '+2').
         if ($index instanceof SmartNull) {
             return $this->newSmartNull();
         }
         if ($index instanceof SmartString) {
-            if (!is_numeric($index->value())) {
+            $raw = $index->value();
+            if ((string) (int) $raw !== (string) $raw) {
                 return $this->newSmartNull();
             }
-            $index = (int) $index->value();
+            $index = (int) $raw;
         }
 
         $count = count($this->data);

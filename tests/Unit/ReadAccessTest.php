@@ -292,6 +292,25 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertSmartNull($sa->at(new SmartString(null)));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testAtNonIntegerSmartStringIndexesReturnSmartNull(string $class): void
+    {
+        // is_numeric() used to let these through and (int) reshaped them:
+        // '1.9' selected position 1, '-0.5' position 0, '1e2' position 100
+        $sa = $class::new(['a', 'b', 'c']);
+
+        $this->assertSmartNull($sa->at(new SmartString('1.9')));
+        $this->assertSmartNull($sa->at(new SmartString('-0.5')));
+        $this->assertSmartNull($sa->at(new SmartString('1e2')));
+        $this->assertSmartNull($sa->at(new SmartString(' 1')));
+        $this->assertSmartNull($sa->at(new SmartString('+1')));
+        $this->assertSmartNull($sa->at(new SmartString('01')), 'exact integer spellings only');
+        $this->assertSmartNull($sa->at(new SmartString(1.9)));
+
+        // Non-string backing values still work when they spell an exact integer
+        $this->assertModeValue('c', $sa->at(new SmartString(2.0)), $class); // float 2.0 stringifies to '2'
+    }
+
     //endregion
     //region __get (property access)
 

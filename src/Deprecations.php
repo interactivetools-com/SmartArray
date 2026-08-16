@@ -213,7 +213,7 @@ trait Deprecations
         $newArray = [];
         foreach ($this as $key => $value) {
             $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? self::htmlEncode((string)$key) : $key;
+            $encodedKey = $this->useSmartStrings ? self::h($key) : $key;
             $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
@@ -425,20 +425,21 @@ trait Deprecations
     private function deprecatedWhereArraySyntax(array $field): static
     {
         $conditions = array_map([self::class, 'getRawValue'], $field);
+        $h          = self::h(...); // SECURITY: keys and values are data - handlers often echo exception and deprecation messages into pages
         foreach ($conditions as $key => $listValue) {
             if (is_int($key)) { // a list like where(['featured']) has no field names to match on
-                $hint = is_string($listValue) ? " Did you mean ->where('$listValue') to match rows where '$listValue' is non-empty?" : "";
+                $hint = is_string($listValue) ? " Did you mean ->where('{$h($listValue)}') to match rows where '{$h($listValue)}' is non-empty?" : "";
                 throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
             }
         }
         $formatValue = fn($v) => match (true) {
-            is_string($v) => "'$v'",
+            is_string($v) => "'{$h($v)}'",
             is_bool($v)   => $v ? 'true' : 'false',
             $v === null   => 'null',
             is_scalar($v) => (string) $v,  // int/float
             default       => '[...]',      // arrays never match anything, but don't warn while nagging
         };
-        $whereCalls = array_map(fn($k, $v) => "->where('$k', {$formatValue($v)})", array_keys($conditions), $conditions);
+        $whereCalls = array_map(fn($k, $v) => "->where('{$h($k)}', {$formatValue($v)})", array_keys($conditions), $conditions);
         self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
 
         $result = $this;
@@ -586,7 +587,7 @@ trait Deprecations
             throw new InvalidArgumentException("Unsupported array offset type: " . get_debug_type($key));
         }
         if (is_string($key)) {
-            $key = self::htmlEncode($key);
+            $key = self::h($key);
         }
         $keyStr          = is_string($key) ? "'$key'" : (string) $key;
         $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
@@ -651,6 +652,7 @@ trait Deprecations
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $suggestion = self::didYouMean($method) ?? "see the SmartArray docs for available methods.";
         $className  = self::stripNamespace(static::class);
+        $method     = self::h($method); // SECURITY: encode the caller-supplied name - handlers often echo exception messages into pages
         throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
     }
 
@@ -661,6 +663,7 @@ trait Deprecations
     {
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $className = self::stripNamespace(static::class);
+        $method    = self::h($method); // SECURITY: encode the caller-supplied name - handlers often echo exception messages into pages
         throw new Error("Call to undefined method $className::$method(), see the SmartArray docs for available methods.\n" . self::occurredInFile());
     }
 

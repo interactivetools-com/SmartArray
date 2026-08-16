@@ -9,8 +9,8 @@ use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSeri
 use Itools\SmartString\SmartString;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, htmlspecialchars, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
-use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_WARNING, JSON_INVALID_UTF8_SUBSTITUTE, SORT_ASC, SORT_DESC, SORT_REGULAR;
+use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
+use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, E_USER_WARNING, JSON_INVALID_UTF8_SUBSTITUTE, SORT_ASC, SORT_DESC, SORT_REGULAR;
 
 /**
  * SmartArrayBase - Base implementation for SmartArray and SmartArrayHtml.
@@ -448,8 +448,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         // Throw an exception for unsupported types or anything else
-        $error = sprintf("SmartArray doesn't support %s values. Key %s", get_debug_type($value), $key);
-        throw new InvalidArgumentException($error);
+        $h = self::h(...); // SECURITY: keys are data - handlers often echo exception messages into pages
+        throw new InvalidArgumentException("SmartArray doesn't support " . get_debug_type($value) . " values. Key {$h($key)}");
     }
 
     /**
@@ -974,7 +974,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         foreach ($this->toArray() as $row) {
             $key = $row[$field] ?? '';
             if (is_float($key)) {
-                throw new InvalidArgumentException("indexBy(): '$field' has float values, convert them to strings first");
+                $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
+                throw new InvalidArgumentException("indexBy(): '{$h($field)}' has float values, convert them to strings first");
             }
             $values[$key] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
@@ -1028,7 +1029,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         foreach ($this->toArray() as $row) {
             $key = $row[$field] ?? '';
             if (is_float($key)) {
-                throw new InvalidArgumentException("groupBy(): '$field' has float values, convert them to strings first");
+                $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
+                throw new InvalidArgumentException("groupBy(): '{$h($field)}' has float values, convert them to strings first");
             }
             $values[$key][] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
@@ -1120,7 +1122,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 }
                 $key = $row[$indexKey] ?? '';
                 if (is_float($key)) {
-                    throw new InvalidArgumentException("column(): '$indexKey' has float values, convert them to strings first");
+                    $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
+                    throw new InvalidArgumentException("column(): '{$h($indexKey)}' has float values, convert them to strings first");
                 }
                 $values[$key] = $row[$columnKey]; // PHP keys natively: bools as 1/0, numeric strings as ints
             }
@@ -1265,7 +1268,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             !$loadHandler                        => throw new RuntimeException("load(): no load handler is set. Handlers are normally provided by the database layer (ZenDB); arrays created directly don't have one."),
             !is_callable($loadHandler)           => throw new RuntimeException("Load handler is not callable"),
             $field === ''                        => throw new InvalidArgumentException("Field name is required for load() method."),
-            (bool)preg_match('/[^\w-]/', $field) => throw new InvalidArgumentException("Field name contains invalid characters: $field"),
+            (bool)preg_match('/[^\w-]/', $field) => throw new InvalidArgumentException("Field name contains invalid characters: " . self::h($field)), // SECURITY: fires precisely when the name has unexpected chars
             $this->isNested()                    => throw new RuntimeException("Cannot call load() on record set, only on a single row."),
             default                              => null,
         };
@@ -1534,7 +1537,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         http_response_code(404);
         header("Content-Type: text/html; charset=utf-8");
         $text ??= "The requested URL was not found on this server.";
-        $text = self::htmlEncode($text);
+        $text = self::h($text);
 
         echo <<<__HTML__
             <!DOCTYPE html>
@@ -1565,7 +1568,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orDie(string $text): static
     {
         if (empty($this->data)) {
-            echo self::htmlEncode($text); // SECURITY: intentional encode, do not remove (see docblock)
+            echo self::h($text); // SECURITY: intentional encode, do not remove (see docblock)
             exit(1);
         }
         return $this;
@@ -1590,7 +1593,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     public function orThrow(string $text): static
     {
         if (empty($this->data)) {
-            $text = self::htmlEncode($text); // SECURITY: intentional encode, do not remove (see docblock)
+            $text = self::h($text); // SECURITY: intentional encode, do not remove (see docblock)
             throw new RuntimeException($text);
         }
         return $this;
@@ -1661,8 +1664,9 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         foreach ($this->data as $key => $value) {
             if (!$value instanceof self) {
                 $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+                $h        = self::h(...); // SECURITY: keys are data - handlers often echo exception messages into pages
                 $error    = $this->isNested()
-                    ? "$function(): Expected a nested array of rows, but element '$key' is not a row (" . get_debug_type($value) . ")"
+                    ? "$function(): Expected a nested array of rows, but element '{$h($key)}' is not a row (" . get_debug_type($value) . ")"
                     : "$function(): Expected a nested array, but got a flat array";
                 throw new InvalidArgumentException($error);
             }
@@ -1708,7 +1712,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // SECURITY: the key can be user input (e.g. ->{$_GET['sort']}) and the warning echoes
         // into the page, so encode it. The trigger_error() copy gets the same encoded key.
-        $keyDisplay       = is_string($key) ? self::htmlEncode($key) : $key;
+        $keyDisplay       = self::h($key);
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
         $warning = $isOffset
@@ -1870,25 +1874,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $value = json_decode(json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE));
             }
             if (array_key_exists($key, $data)) { // original keys were unique, so a repeat means substitution collapsed two keys
-                $keyDisplay = self::htmlEncode((string) $key); // SECURITY: keys are data, and exception handlers often echo messages into a page
-                throw new RuntimeException("jsonSerialize(): key '$keyDisplay' appears twice after malformed UTF-8 bytes were replaced with \u{FFFD}, which would silently drop a record. Fix the key encoding before calling json_encode().");
+                $h = self::h(...); // SECURITY: keys are data - handlers often echo exception messages into pages
+                throw new RuntimeException("jsonSerialize(): key '{$h($key)}' appears twice after malformed UTF-8 bytes were replaced with \u{FFFD}, which would silently drop a record. Fix the key encoding before calling json_encode().");
             }
             $data[$key] = $value;
         }
         return $data;
     }
 
-    /**
-     * HTML-encode text for output in warnings, notices, and guard messages.
-     * ENT_DISALLOWED substitutes code points HTML5 forbids (C1 controls, noncharacters)
-     * with � so they can't hide in page source.
-     *
-     * Same flags as SmartString::HTML_ENCODE_FLAGS - keep in sync.
-     */
-    private static function htmlEncode(string $text): string
-    {
-        return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
-    }
 
     //endregion
     //region Instance Properties

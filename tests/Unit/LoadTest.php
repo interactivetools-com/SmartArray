@@ -406,12 +406,15 @@ class LoadTest extends SmartArrayTestCase
     }
 
     #[DataProvider('invalidFieldNameProvider')]
-    public function testLoadRejectsEverythingElseAndEchoesTheFieldBack(string $field): void
+    public function testLoadRejectsEverythingElseAndEchoesTheFieldBackEncoded(string $field): void
     {
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $f) => [[], []]]);
 
+        // The field is echoed back HTML-encoded: handlers often echo exception messages into pages
+        $encodedField = htmlspecialchars($field, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
+
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Field name contains invalid characters: $field");
+        $this->expectExceptionMessage("Field name contains invalid characters: $encodedField");
 
         $sa->load($field);
     }

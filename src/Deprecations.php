@@ -173,6 +173,11 @@ trait Deprecations
      * formatting; SmartArray does not. Always returns SmartArray (raw) so the
      * pre-formatted strings aren't re-encoded by later operations.
      *
+     * %c is not supported and throws: it converts numbers to raw characters
+     * (60 -> '<'), which could turn encoded values back into markup. All other
+     * sprintf directives work as usual - numeric conversions can only emit
+     * digits and letters.
+     *
      * @deprecated Use ->map() with an inline format string:
      *
      *     // SmartArray (raw, no encoding), old and new:
@@ -187,7 +192,7 @@ trait Deprecations
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws InvalidArgumentException If called on a nested array
+     * @throws InvalidArgumentException If called on a nested array, or the format contains %c
      */
     #[Deprecated(reason: 'retired - use ->map() with an inline format string')]
     public function sprintf(string $format): SmartArray
@@ -196,6 +201,14 @@ trait Deprecations
 
         // Convert {value} and {key} aliases to sprintf positional format
         $format = str_replace(['{value}', '{key}'], ['%1$s', '%2$s'], $format);
+
+        // %c maps attacker-chosen numbers to raw characters (60 -> '<'), recreating
+        // markup after HTML encoding. Every other conversion emits only digits/letters
+        // or the substituted string, so only %c is blocked.
+        $scan = str_replace('%%', '', $format); // %% is literal text, not a directive
+        if (preg_match('/%(?:\d+\$)?(?:\'.|[-+ 0])*\d*(?:\.\d+)?c/', $scan)) {
+            throw new InvalidArgumentException("sprintf(): %c is not supported - it converts numbers to raw characters after HTML encoding");
+        }
 
         $newArray = [];
         foreach ($this as $key => $value) {

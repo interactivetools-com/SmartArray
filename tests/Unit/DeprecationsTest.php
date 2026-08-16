@@ -299,6 +299,34 @@ class DeprecationsTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testSprintfRejectsPercentC(string $class): void
+    {
+        // %c turns numbers into raw characters (60 -> '<') after HTML encoding,
+        // the one directive where the data picks the output character
+        $sa = $class::new([60, 62]);
+
+        foreach (['%c', '%1$c', '%2$c', "%'x5c", '%-5c'] as $format) {
+            try {
+                $sa->sprintf($format);
+                $this->fail("Expected InvalidArgumentException for format $format");
+            } catch (InvalidArgumentException $e) {
+                $this->assertStringContainsString('%c is not supported', $e->getMessage());
+            }
+        }
+
+        // %%c is a literal "%c", not a directive
+        $this->assertSame(['%c', '%c'], $sa->sprintf('%%c')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSprintfAllowsLiteralPercents(string $class): void
+    {
+        $sa = $class::new(['v']);
+
+        $this->assertSame(['100% of v'], $sa->sprintf('100%% of {value}')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
     public function testSprintfOnNestedArrayThrows(string $class): void
     {
         $this->expectException(InvalidArgumentException::class);

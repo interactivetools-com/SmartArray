@@ -68,7 +68,8 @@ the docs - IDEs show a strikethrough with the replacement.
   defaults in HTML mode use `->or()` - a `??` fallback skips encoding)
 - **`each()`** - a `foreach` loop does the same in plain PHP
 - **`sprintf()`** - use `map()` with an inline format string:
-  `$list->map(fn($v) => "<li>$v</li>")`
+  `$list->map(fn($v) => "<li>$v</li>")`. `%c` now throws - it converts
+  numbers to raw characters after HTML encoding; other directives unchanged
 - **`help()`** - the docs on GitHub replaced the built-in cheat sheet
 
 ### Removed

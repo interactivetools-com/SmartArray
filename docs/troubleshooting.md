@@ -117,8 +117,8 @@ renumber first:
 
 ```php
 header('Content-Type: application/json');
-echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
-echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
+$json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
+$json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
 ```
 
 ### A lookup using a field as the key renders blank

@@ -1618,7 +1618,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         // Check early so developers find out immediately, not only when count === 0
         if (headers_sent($file, $line)) {
-            throw new RuntimeException("orRedirect(): headers already sent in $file on line $line");
+            throw new RuntimeException("orRedirect(): headers already sent in " . basename($file) . " on line $line");
         }
 
         if (empty($this->data)) {
@@ -1721,7 +1721,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
-            $warning .= "\nIn double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n";
+            $warning .= "\n" . 'In double-quoted strings, use "$var->property" for properties, but wrap methods in braces like "{$var->method()}"' . "\n";
         }
         if (!$isOffset) {
             $warning .= self::occurredInFile(true);
@@ -1751,7 +1751,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // PHP Error: Fatal error: Uncaught Error: Object of class Itools\SmartArray\SmartArray could not be converted to string in C:\path\file.php:27
         $className = self::stripNamespace(static::class);
         $warning   = "Can't convert $className to string $inFileOnLine.\n\n";
-        $warning .= "In double-quoted strings, use \"\$var->property\" for properties, but wrap methods in braces like \"{\$var->method()}\"\n\n";
+        $warning .= 'In double-quoted strings, use "$var->property" for properties, but wrap methods in braces like "{$var->method()}"' . "\n\n";
         $warning .= 'See SmartArray docs for more info';
 
         // output warning

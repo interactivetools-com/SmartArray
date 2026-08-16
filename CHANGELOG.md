@@ -64,7 +64,8 @@ These still work with no runtime notice, they're just no longer featured in
 the docs - IDEs show a strikethrough with the replacement.
 
 - **`get()` and `set()`** - use property access: `$row->name`,
-  `$row->name ?? 'n/a'`, `$row->name = $value`
+  `$row->name ?? 'n/a'`, `$row->name = $value` (for non-literal
+  defaults in HTML mode use `->or()` - a `??` fallback skips encoding)
 - **`each()`** - a `foreach` loop does the same in plain PHP
 - **`sprintf()`** - use `map()` with an inline format string:
   `$list->map(fn($v) => "<li>$v</li>")`

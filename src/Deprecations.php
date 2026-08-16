@@ -221,13 +221,14 @@ trait Deprecations
      * fatal error.
      *
      * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
-     *             can't type. For a missing-key default use ->key ?? $default.
+     *             can't type. For defaults use ->key ?? $default in raw mode; in HTML mode
+     *             use ->key->or($default), which HTML-encodes - a ?? fallback skips encoding.
      *
      * @param int|string|SmartString|SmartNull $key The key to retrieve; Smart values unwrap first
      * @param mixed $default Returned when $key doesn't exist; treated like a stored value
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
-    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? (raw) or ->or() (HTML mode) for defaults")]
     public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int

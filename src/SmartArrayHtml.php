@@ -104,9 +104,11 @@ class SmartArrayHtml extends SmartArrayBase
     /**
      * {@inheritDoc}
      * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
-     *             can't type. For a missing-key default use ->key ?? $default.
+     *             can't type. For defaults use ->key->or($default), which HTML-encodes;
+     *             a ?? fallback skips encoding (PHP substitutes it before the library
+     *             runs), so only use ?? with literal defaults.
      */
-    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ->or() for defaults (?? skips encoding)")]
     public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString
     {
         // func_get_args: get() branches on whether $default was passed, so forward the real arg count

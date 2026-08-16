@@ -346,7 +346,7 @@ signal. When reading old code, translate:
 | Deprecated                                               | Use instead                                            |
 |----------------------------------------------------------|--------------------------------------------------------|
 | `$arr['key']`, `$arr['key'] = $v` (array syntax)         | `$arr->key`, `$arr->key = $v` (braces for odd keys)    |
-| `get($key)` / `get($key, $default)`                      | `->key` / `->{'key'}`; `?? $default` for defaults (NOTE: `??` also fires on stored NULLs; `get()`'s default only fired on missing keys) |
+| `get($key)` / `get($key, $default)`                      | `->key` / `->{'key'}`; for defaults use `->or($default)` in HTML mode (encoded; `??` fallbacks skip encoding) or `?? $default` in raw mode (NOTE: both fire on stored NULLs too; `get()`'s default only fired on missing keys) |
 | `set($key, $value)`                                      | `->key = $value` / `->{'key'} = $value`                |
 | `pluck($field)` / `pluck($field, $keyField)`             | `column($field)` / `column($field, $keyField)`         |
 | `pluckNth($index)`                                       | `columnAt($index)`                                     |

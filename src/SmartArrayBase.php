@@ -29,7 +29,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Internal Storage
 
     /**
-     * Internal array storage (replaces ArrayObject's internal storage)
+     * Internal array storage
      */
     private array $data = [];
 
@@ -359,7 +359,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * Uses zero-based indexing (0=first, 1=second) and negative indices (-1=last, -2=second-to-last).
      * Returns SmartNull if out of bounds, or if the index is a missing key (SmartNull) or not a
-     * whole number ('abc', '1.9', '1e2') - a bad position in means a missing value out, so chains survive.
+     * whole number ('abc', '1.9', '1e2') - a bad position in means a missing value out, so chains keep working.
      * Use $array->key for access by key; at() is by position.
      *
      *     $result = DB::query("SELECT MAX(`order`) FROM `uploads`");
@@ -475,8 +475,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Converts Smart* objects to their original values while leaving other types unchanged.
      * Recursively unwraps arrays containing Smart* objects.
      *
-     *     SmartArrayBase::getRawValue($smartString); // returns original string
-     *     SmartArrayBase::getRawValue($smartArray);  // returns plain array
+     *     SmartArrayBase::getRawValue($smartString);  // returns original string
+     *     SmartArrayBase::getRawValue($smartArray);   // returns plain array
      *     SmartArrayBase::getRawValue('plain');       // returns 'plain' unchanged
      */
     public static function getRawValue(mixed $value): mixed
@@ -650,7 +650,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * The callback receives raw values (arrays, strings, numbers) instead of SmartString or SmartArray
      * objects, and should return true to keep the element, false to remove it.
-     * When called without a callback, removes all falsy values (empty strings, 0, null, false).
+     * When called without a callback, removes all falsy values (PHP falsy rule: '', '0', 0, null, false).
      *
      * Keys are preserved, like PHP's array_filter(), so a filtered list json_encodes as an
      * object ({"0":...,"2":...}) - chain ->values() first to reindex and get a JSON array.
@@ -896,7 +896,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             return $this->data;
         }
 
-        // Future options: We could add a default arg $smartStringsToValues = true to allow SmartStrings to be returned as objects
         $array = [];
         foreach ($this->data as $key => $value) {  // $this->data so getIterator doesn't convert to SmartStrings
             $array[$key] = $value instanceof self ? $value->toArray() : $value;
@@ -1601,7 +1600,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Redirects to a URL if the array is empty
      *
-     * Uses a simple Location header redirect (HTTP 302 Temporary Redirect).
+     * Uses a simple Location header redirect (temporary HTTP 302 redirect).
      * If headers have already been sent, throws immediately - even when the
      * array is not empty - so a misplaced call fails on every request, not
      * just when a result happens to be empty.

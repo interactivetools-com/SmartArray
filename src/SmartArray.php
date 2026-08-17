@@ -45,7 +45,7 @@ class SmartArray extends SmartArrayBase
      * Sets position metadata on child rows.
      *
      * @param array $array The input array to convert into a SmartArray.
-     * @param bool|array|null $properties An associative array of custom internal properties (legacy boolean accepted but deprecated).
+     * @param bool|array|null $properties An associative array of custom internal properties, or null for none (legacy boolean accepted but deprecated).
      */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {

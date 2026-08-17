@@ -118,9 +118,9 @@ and `values()` drops the keys and renumbers from 0, which fixes the
 key-gaps that `filter()` leaves when you need a clean list:
 
 ```php
-$authorsById->keys()->implode(', ');  // 7, 12, 15
+echo $authorsById->keys()->implode(', ');  // 7, 12, 15
 
-json_encode($authors->filter(fn($a) => $a['city'] !== 'Toronto')->values());  // a JSON array, not an object
+$json = json_encode($authors->filter(fn($a) => $a['city'] !== 'Toronto')->values());  // a JSON array, not an object
 ```
 
 ---

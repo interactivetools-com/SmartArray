@@ -103,6 +103,8 @@ offers no way to override it), so the result is mangled keys instead of
 your data. Use `toArray()`:
 
 ```php
+$cities = SmartArrayHtml::new(['Vancouver', 'Ottawa']);
+
 $plain = (array)$cities;      // WRONG - internal properties with unusable keys
 $plain = $cities->toArray();  // RIGHT - plain array, original values
 
@@ -116,6 +118,8 @@ turns any array with key gaps into an object. Chain `values()` to
 renumber first:
 
 ```php
+$cities = SmartArrayHtml::new(['Vancouver', 'Ottawa']);
+
 header('Content-Type: application/json');
 $json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
 $json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
@@ -140,4 +144,4 @@ lookups work either way.
 
 ---
 
-[← Documentation Index](README.md) | [← Prev: Method Reference](method-reference.md) | [Next: AI Reference →](ai-reference.md)
+[← Documentation Index](README.md) | [← Prev: Method Reference](method-reference.md) | [Next: Performance →](performance.md)

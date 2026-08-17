@@ -705,7 +705,9 @@ class DocsExamplesTest extends SmartArrayTestCase
     {
         $authorsById = SmartArrayHtml::new(self::transformingAuthors())->indexBy('author_id');
 
-        $this->assertSame('7, 12, 15', $authorsById->keys()->implode(', ')->value());
+        [, $output] = $this->captureOutput(static fn() => print($authorsById->keys()->implode(', ')));
+
+        $this->assertSame('7, 12, 15', $output);
     }
 
     public function testTransformingValuesRenumbersSoJsonStaysAnArray(): void
@@ -901,7 +903,8 @@ class DocsExamplesTest extends SmartArrayTestCase
     public function testCommonPatternsTopNBreaksAfterThreeRows(): void
     {
         $articles = SmartArrayHtml::new([
-            ['title' => 'One'], ['title' => 'Two'], ['title' => 'Three'], ['title' => 'Four'], ['title' => 'Five'],
+            ['title' => 'Runaway'], ['title' => 'Local Trails'], ['title' => 'Harbour Lights'],
+            ['title' => 'Night Ferry'], ['title' => 'Winter Roads'],
         ]);
 
         [, $output] = $this->captureOutput(static function () use ($articles): void {
@@ -915,7 +918,7 @@ class DocsExamplesTest extends SmartArrayTestCase
         });
 
         $this->assertSame(
-            "<li>One</li>\n<li>Two</li>\n<li>Three</li>\n<li><a href='articles.php'>more...</a></li>\n",
+            "<li>Runaway</li>\n<li>Local Trails</li>\n<li>Harbour Lights</li>\n<li><a href='articles.php'>more...</a></li>\n",
             $output,
         );
     }

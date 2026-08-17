@@ -1,6 +1,6 @@
 # Performance: What SmartArray Costs vs Plain Arrays
 
-SmartArray is extremely fast by default. At worst, wrapping a 25-row query
+At worst, wrapping a 25-row query
 result and rendering it costs about 2 microseconds (0.002 ms) more than the
 same page written by hand with plain arrays and manual HTML encoding; at best
 it comes out ahead, because SmartString often encodes faster than PHP's
@@ -86,8 +86,8 @@ hundred bytes each time.
 
 Almost never. Every number above is a fraction of a fraction of the
 smallest delay a person can perceive. Write the code that's simplest to
-read and work with - for query results headed to HTML, that's SmartArray -
-and don't spend a line of it dodging these costs. If a page is genuinely
+read and work with - for query results rendered as HTML, that's
+SmartArrayHtml - and don't spend a line of it dodging these costs. If a page is genuinely
 slow, benchmark it and fix what the benchmark points at: it will be a
 query, a missing index, or an API call, not the array wrapper.
 
@@ -108,7 +108,8 @@ nearly all of it; everything after is close to free:
 ZenDB constructs its result sets with `fromDatabaseRows()`, the faster
 construct row above: database rows are uniform (same columns in every row,
 plain scalar values), so it skips the checks the general constructor runs
-on arbitrary input and comes out about 20% faster.
+on arbitrary input and comes out about 20% faster. The method is internal
+(ZenDB plumbing, not a public API), so use `new()` in your own code.
 
 Internals that keep those numbers small: all-scalar rows are built by
 cloning a shared template and assigning their data in one copy-on-write
@@ -140,4 +141,4 @@ php -n -d zend_extension=opcache -d opcache.enable_cli=1 benchmarks/news-page.ph
 
 ---
 
-[← Documentation Index](README.md)
+[← Documentation Index](README.md) | [← Prev: Troubleshooting](troubleshooting.md) | [Next: AI Reference →](ai-reference.md)

@@ -49,11 +49,15 @@ Compare with the raw value to mark the current selection, and echo the
 fields for encoded output:
 
 ```php
+$authors = SmartArrayHtml::new([
+    ['author_id' => 7,  'name' => 'Alice Munro'],
+    ['author_id' => 12, 'name' => 'Bob Gibson'],
+]);
 $selectedId = (int)($_GET['author'] ?? 0);
 
 echo "<select name='author'>\n";
 foreach ($authors as $author) {
-    $selected = $author->author_id->value() == $selectedId ? ' selected' : '';
+    $selected = $author->author_id->value() == $selectedId ? ' selected' : '';  // == so ids match whether the DB returns int or string
     echo "<option value='$author->author_id'$selected>$author->name</option>\n";
 }
 echo "</select>\n";
@@ -70,6 +74,11 @@ Dashboards and sidebars show the first few rows and link to the rest.
 Rows know their `position()`, so no counter variable is needed:
 
 ```php
+$articles = SmartArrayHtml::new([
+    ['title' => 'Runaway'], ['title' => 'Local Trails'], ['title' => 'Harbour Lights'],
+    ['title' => 'Night Ferry'], ['title' => 'Winter Roads'],
+]);
+
 foreach ($articles as $article) {
     if ($article->position() > 3) {
         echo "<li><a href='articles.php'>more...</a></li>\n";
@@ -77,6 +86,10 @@ foreach ($articles as $article) {
     }
     echo "<li>$article->title</li>\n";
 }
+// <li>Runaway</li>
+// <li>Local Trails</li>
+// <li>Harbour Lights</li>
+// <li><a href='articles.php'>more...</a></li>
 ```
 
 ## Grouped Headings with Counts

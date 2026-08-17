@@ -5,9 +5,9 @@ template code gets shorter and safer at once: filter, sort, and group with
 chainable methods, and echo fields directly. Fields HTML-encode themselves
 the moment you output them.
 
-New to SmartArray? Read the first two pages in order; together they cover
-everything a typical list-plus-detail template needs. The rest are
-standalone: open whichever matches your task.
+New to SmartArray? The Basics reads in order, and the first two pages
+alone cover everything a typical list-plus-detail template needs. The
+other sections are standalone: open whichever matches your task.
 
 ## The Basics (read in order)
 

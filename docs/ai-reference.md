@@ -411,4 +411,4 @@ RuntimeException (strict mode for new installs).
 
 ---
 
-[← Documentation Index](https://github.com/interactivetools-com/SmartArray/blob/main/docs/README.md) | [← Prev: Troubleshooting](https://github.com/interactivetools-com/SmartArray/blob/main/docs/troubleshooting.md)
+[← Documentation Index](https://github.com/interactivetools-com/SmartArray/blob/main/docs/README.md) | [← Prev: Performance](https://github.com/interactivetools-com/SmartArray/blob/main/docs/performance.md)

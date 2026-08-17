@@ -20,3 +20,6 @@ SmartArray-specific additions only.
   values; `or()` is the display answer on the guide pages. Wherever `??`
   is taught, its gotchas ship with it: it doesn't cover "", the fallback
   skips encoding, and it never warns.
+- **Troubleshooting entries use flowing prose** instead of the shared
+  "What happened / Fix" scaffold - a conscious deviation; the entries
+  are short enough to read in one pass.

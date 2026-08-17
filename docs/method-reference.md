@@ -23,6 +23,12 @@ Contents:
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
 
+$records = [
+    ['name' => 'Sam',  'status' => 'Active'],
+    ['name' => 'Jean', 'status' => 'Active'],
+    ['name' => 'Tom',  'status' => 'Inactive'],
+];
+
 $users = SmartArrayHtml::new($records);  // HTML mode: fields encode themselves when echoed
 $data  = SmartArray::new($records);      // raw mode: fields are plain PHP values
 

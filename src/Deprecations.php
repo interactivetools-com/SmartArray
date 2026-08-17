@@ -36,7 +36,8 @@ use const E_USER_DEPRECATED;
  * removed method is an undefined name like any other, at best keeping a
  * "did you mean" entry. Moving a method down the ladder is a cut-paste to the
  * next region plus updating its runtime line (Silent: none, Logged:
- * logDeprecation(), Fatal: a match arm in __call).
+ * logDeprecation(), Visible: triggerArrayAccessDeprecation(), Fatal: a
+ * match arm in __call).
  *
  * The deprecated $array['key'] bracket syntax follows the same ladder via
  * SmartArrayBase::$onOffsetAccess: 'log', 'notify', and 'throw' correspond to

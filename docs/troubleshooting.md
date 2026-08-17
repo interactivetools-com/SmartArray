@@ -52,7 +52,8 @@ placeholder, which is an object and therefore truthy, so a bare
 `if ($user->is_admin)` runs when the field doesn't exist. PHP's `isset()`
 and `??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
 guard. Comparing without one isn't: `$user->is_admin == 1` is true for a
-missing field too, because PHP casts the placeholder object to `1`.
+missing field too, because PHP casts the placeholder object to `1` (and
+raises its own object-to-int notice).
 
 ### A === null check never matches
 

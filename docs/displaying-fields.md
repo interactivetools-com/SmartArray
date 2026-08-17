@@ -93,6 +93,8 @@ An empty result displays as nothing. You can chain and echo without
 checking first:
 
 ```php
+use Itools\ZenDB\DB;
+
 $users = DB::select('users');  // suppose the table is empty
 
 echo $users->first()->name;    // prints nothing

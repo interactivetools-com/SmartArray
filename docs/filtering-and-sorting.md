@@ -35,13 +35,19 @@ $active = $users->where('status', 'Active');                          // Jean an
 $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Jean
 ```
 
-Databases and forms often hand numbers back as strings, so numbers and
-numeric strings match: `'1'` matches `1`, and `where('price', 1)` matches a
-DECIMAL column's `'1.00'`. The rule behind every case is that `where()` gives
-the same answers a SQL WHERE does, with two exceptions: strings stay
-case-sensitive, and a non-numeric string never equals 0. So two strings must
-match exactly, null only matches null, and true/false mean 1/0. When you need full type-sensitive matching, `filter()` (below)
-takes a callback where you can compare with `===`.
+The rule behind every case: `where()` gives the same answers a SQL WHERE
+does, with two exceptions - strings stay case-sensitive, and a non-numeric
+string never equals 0. In practice:
+
+- Numbers match numeric strings: `'1'` matches `1`, and `where('price', 1)`
+  matches a DECIMAL column's `'1.00'` (databases and forms often hand
+  numbers back as strings).
+- Two strings must match exactly.
+- Null only matches null.
+- True/false mean 1/0.
+
+When you need full type-sensitive matching, `filter()` (below) takes a
+callback where you can compare with `===`.
 
 With just a field name, `where()` keeps the rows where that field has a
 truthy value, following PHP's `empty()` rules (NULL, false, 0, `"0"`, and

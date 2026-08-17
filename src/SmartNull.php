@@ -261,9 +261,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     }
 
     /**
-     * One argument is SmartString's set($value): produce that value and end the
-     * chain, like or(). Two arguments is SmartArray's set($key, $value), a
-     * write, and all writes throw (see __set above).
+     * One argument in HTML mode is SmartString's set($value): produce that
+     * value and end the chain, like or(). Everything else is a write - two
+     * arguments is SmartArray's set($key, $value), and raw mode has no
+     * one-argument form - and all writes throw (see __set above).
      */
     public function set(mixed ...$args): mixed
     {

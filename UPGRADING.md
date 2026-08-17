@@ -188,6 +188,29 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 > - `load()` throws `InvalidArgumentException` instead of `RuntimeException`
 > when the field name contains invalid characters, matching its empty-field
 > check. Only affects code catching `RuntimeException` around `load()`.
+> - Writes to a `SmartNull` (a missing key or empty result) throw
+> `RuntimeException` instead of silently discarding the value.
+> - Raw-mode arrays throw on SmartString-style fallbacks like `->or()` on a
+> missing key - use `??` instead.
+> - `orDie()` and `or404()` exit with status 1 instead of 0, so shell
+> scripts and cron jobs see the failure.
+
+### Optional renames
+
+No required changes: the old names still work with no runtime notice, and
+IDEs like PHPStorm show them in strikethrough with a one-click rename.
+
+| Old name (still works)  | Current name                                     |
+|-------------------------|--------------------------------------------------|
+| `->nth($n)`             | `->at($n)`                                       |
+| `->pluckNth($n)`        | `->columnAt($n)`                                 |
+| `->pluck($field)`       | `->column($field)`                               |
+| `->get($key, $default)` | `$row->key`, `$row->key ?? $default`             |
+| `->set($key, $value)`   | `$row->key = $value`                             |
+| `->each($fn)`           | a plain `foreach` loop                           |
+| `->sprintf($format)`    | `->map(fn($v) => "<li>$v</li>")`                 |
+| `->help()`              | the docs on GitHub                               |
+| `sortBy(type: ...)`     | `sortBy(flags: ...)` (named-argument calls only) |
 
 ## v2.7.0
 
@@ -277,14 +300,15 @@ No required changes: the old names still work and raise a deprecation notice
 naming their replacement (visible in error handlers like CMS Builder's
 developer log). Renaming is optional cleanup.
 
-| Old name (still works) | Current name                          |
-|------------------------|---------------------------------------|
-| `->toRaw()`            | `->asRaw()`                           |
-| `->toHtml()`           | `->asHtml()`                          |
-| `->smartMap()`         | `->map()`                             |
-| `SmartArrayRaw` class  | `SmartArray`                          |
-| `->chunk()`            | deprecated, no replacement planned    |
-| `->isMultipleOf($n)`   | `->position() % $n === 0`             |
+| Old name (still works)      | Current name                            |
+|-----------------------------|-----------------------------------------|
+| `->toRaw()`                 | `->asRaw()`                             |
+| `->toHtml()`                | `->asHtml()`                            |
+| `->smartMap()`              | `->map()`                               |
+| `SmartArrayRaw` class       | `SmartArray`                            |
+| `->chunk()`                 | deprecated, no replacement planned      |
+| `->isMultipleOf($n)`        | `->position() % $n === 0`               |
+| `->where([...])` array form | chained `->where($field, $value)` calls |
 
 ## v2.4.0
 

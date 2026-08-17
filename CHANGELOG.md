@@ -40,8 +40,8 @@ Everything else is hardening and fixes.
 ### Performance
 
 - **Building arrays is ~3.4x faster** (25-row record set: 15.5 → 4.5
-  microseconds), `toArray()` ~4.7x, and `foreach` up to ~1.3x. Numbers and
-  how the speedups work: [docs/performance.md](docs/performance.md)
+  microseconds), `toArray()` ~4.7x, and `foreach` up to ~1.3x. How the
+  speedups work: [docs/performance.md](docs/performance.md)
 
 ### Renamed
 

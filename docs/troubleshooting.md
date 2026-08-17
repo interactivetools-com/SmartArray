@@ -49,8 +49,8 @@ covers every variation of this.
 Raw mode has one version of the same trap: existing fields are plain
 values, but a missing or misspelled field returns a `SmartNull`
 placeholder, which is an object and therefore truthy, so a bare
-`if ($user->is_admin)` runs when the field doesn't exist. `isset()` and
-`??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
+`if ($user->is_admin)` runs when the field doesn't exist. PHP's `isset()`
+and `??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
 guard. Comparing without one isn't: `$user->is_admin == 1` is true for a
 missing field too, because PHP casts the placeholder object to `1`.
 
@@ -88,8 +88,8 @@ A row from your results was asked for a column it doesn't have. Usually
 one of two things: the column name is misspelled, or the query didn't
 select that column, so check the spelling first and the SELECT list
 second. For a key that legitimately may not exist, read it with `??`,
-which never warns: `$row->some_field ?? ''`. Two gotchas ride along with
-`??`: it doesn't fire on a stored `""` (an empty string is a value), and
+which never warns: `$row->some_field ?? ''`. Watch for two gotchas with
+`??`. It doesn't fire on a stored `""` (an empty string is a value), and
 the fallback skips HTML encoding, so keep fallbacks plain text.
 
 Only rows inside a result set warn. Lookups on keyed maps (from

@@ -92,7 +92,7 @@ between them: **what are you outputting?**
 
 That's the whole decision. Collection methods behave identically in both
 classes: callbacks, matching, and sorting always work on the original
-unencoded values, so filtering, reports, and calculations are at home in
+unencoded values, so filtering, reports, and calculations work fine in
 HTML mode:
 
 ```php

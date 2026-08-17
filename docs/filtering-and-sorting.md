@@ -31,7 +31,7 @@ $users = SmartArrayHtml::new([
     ['name' => 'Sam',  'status' => 'Active',   'role' => 'editor', 'newsletter' => 1],
 ]);
 
-$active = $users->where('status', 'Active');                        // Jean and Sam
+$active = $users->where('status', 'Active');                          // Jean and Sam
 $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Jean
 ```
 
@@ -53,8 +53,8 @@ $subscribed = $users->where('newsletter');  // Jean and Sam
 
 ## Excluding Rows: whereNot()
 
-The `whereNot()` method is the inverse of `where()`: it drops the matching
-rows and keeps everything else:
+The `whereNot()` method drops the matching rows and keeps everything else,
+the inverse of `where()`:
 
 ```php
 $nonAdmins = $users->whereNot('role', 'admin');  // just Sam
@@ -103,7 +103,7 @@ $ours = $tables->filter(fn($name) => str_starts_with($name, 'cms_'));  // cms_ac
 
 Called with no callback, `filter()` removes empty values (`""`, `"0"`, `0`,
 NULL, false). Keep in mind that zeros are removed even when they're real data
-(a $0 price, a sort order of 0, an unchecked tinyint MySQL handed back as
+(a `$0` price, a sort order of 0, an unchecked tinyint MySQL handed back as
 `"0"`); pass a callback when zeros should stay. Like
 PHP's `array_filter()`, kept rows keep their original keys; chain
 `values()` when you want them renumbered.
@@ -111,7 +111,7 @@ PHP's `array_filter()`, kept rows keep their original keys; chain
 ## Sorting: sortBy() and sort()
 
 Use `sortBy()` to order rows by a field. It returns a new sorted
-collection and never touches the original (PHP's own `sort()` modifies
+collection and never modifies the original (PHP's own `sort()` modifies
 arrays in place; SmartArray methods don't), so your result stays in query
 order and can be sorted different ways for different spots on the page:
 

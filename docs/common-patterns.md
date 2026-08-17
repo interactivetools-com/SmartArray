@@ -45,8 +45,8 @@ foreach ($articles as $article) {
 
 ## Select Dropdowns from Query Results
 
-Compare with the raw value to mark the current selection, echo the fields
-for encoded output:
+Compare with the raw value to mark the current selection, and echo the
+fields for encoded output:
 
 ```php
 $selectedId = (int)($_GET['author'] ?? 0);

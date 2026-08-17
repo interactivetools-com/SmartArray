@@ -35,7 +35,7 @@ versions are verified to produce byte-identical HTML before timing:
 | Scenario                                       | Plain array | SmartArray | Difference         |
 |------------------------------------------------|-------------|------------|--------------------|
 | List page (25 rows, encoded title+summary)     | 0.0271 ms   | 0.0288 ms  | +0.0017 ms (1.06x) |
-| Detail page (1 row, encoded 5KB body)          | 0.0120 ms   | 0.0047 ms  | 2.5x FASTER        |
+| Detail page (1 row, encoded 5KB body)          | 0.0120 ms   | 0.0047 ms  | **2.5x faster**    |
 | Raw loop (plain SmartArray, create + 50 reads) | 0.0004 ms   | 0.0070 ms  | +0.0066 ms         |
 
 SmartArray times include constructing the object from the plain records
@@ -93,7 +93,7 @@ query, a missing index, or an API call, not the array wrapper.
 
 The exception is when you're deliberately optimizing for milliseconds - a
 rendering budget of a few ms, or one request processing tens of thousands
-of rows. For that case, here is where the cost lives. Construction is
+of rows. For that case, here is the cost breakdown. Construction is
 nearly all of it; everything after is close to free:
 
 | Operation (25 rows, plain SmartArray) | Cost        |

@@ -202,8 +202,8 @@ It carries the source's mysqli metadata and load handler.
 ## Single Elements
 
 ```php
-first(): row|field|SmartNull                     // first element
-last(): row|field|SmartNull                      // last element
+first(): row|field|SmartNull                               // first element
+last(): row|field|SmartNull                                // last element
 at(int|SmartString|SmartNull $index): row|field|SmartNull  // by position, ignoring keys: 0 first, -1 last
 ```
 
@@ -311,7 +311,7 @@ print_r($collection);   // element data only; the class name identifies the mode
 ```
 
 `debug()` output is `<xmp>`-wrapped in the browser and plain text on the
-command line. `print_r()`/`var_dump()` output raw values with no wrapper -
+command line. PHP's `print_r()`/`var_dump()` output raw values with no wrapper -
 in a browser use `debug()`.
 
 ## Errors and Exceptions
@@ -398,7 +398,7 @@ RuntimeException (strict mode for new installs).
   `indexBy()`, ...) warns from any nested collection.
 - In raw mode a MISSING field returns `SmartNull`, an object, and objects
   are always truthy: bare `if ($user->is_admin)` runs when the field is
-  absent or misspelled. `isset()` and `??` see missing keys correctly;
+  absent or misspelled. PHP's `isset()` and `??` see missing keys correctly;
   use them or `->value()` for logic.
 - HTML encoding makes values safe as HTML text and quoted attribute
   values only. It does NOT make them safe as `javascript:`-scheme hrefs

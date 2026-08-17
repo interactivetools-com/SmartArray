@@ -79,7 +79,8 @@ unset($user->nickname);              // removes the key
 echo $user->status;                  // Active
 ```
 
-Row positions are computed the first time a row is asked, so a row added
+Row positions are computed the first time a row is asked for its
+position, so a row added
 later reports its real position; once computed, a row's `position()` is
 kept and doesn't recalculate when rows are added or removed after that.
 
@@ -115,7 +116,7 @@ wrappers, and loop layout.*
 | `->whereNot($field, $value)`    | Drops rows where `$field` matches `$value` (same rules as `where()`); rows without the field are kept. With `$field` alone, keeps rows where it's empty or missing                                                                                                |
 | `->whereInList($field, $value)` | Keeps rows whose tab-separated `$field` contains `$value` (CMS Builder checkbox and multi-select format); matches whole values, never substrings                                                                                                                  |
 | `->filter($callback)`           | Keeps elements where `$callback` returns true (closures receive plain PHP values as `($value, $key)`); with no callback, removes falsy values (PHP falsy rule: `""`, `"0"`, 0, NULL, false); keys are kept                                                        |
-| `->sort($flags)`                | Sorts a flat list ascending by value, renumbering keys; `$flags` choose how values compare (default `SORT_REGULAR`); `SORT_ASC`/`SORT_DESC` throw, sort descending in SQL                                                                                         |
+| `->sort($flags)`                | Sorts a flat list ascending by value, renumbering keys; `$flags` choose how values compare (default `SORT_REGULAR`); `SORT_ASC`/`SORT_DESC` throw (sort descending in SQL instead)                                                                                         |
 | `->sortBy($field, $flags)`      | Sorts rows ascending by `$field`; pass `SORT_NATURAL` to sort numbers the way people read them                                                                                                                                                                    |
 | `->unique()`                    | Removes duplicate values from a flat list, keeping the first of each and preserving keys (compares as text, so 1 and `'1'` match); chain `->values()` to renumber                                                                                                 |
 

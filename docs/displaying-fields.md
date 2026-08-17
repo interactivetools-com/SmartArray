@@ -14,7 +14,7 @@ Contents:
 - [When Data Is Missing](#when-data-is-missing)
 - [Requiring Data: The Guards](#requiring-data-the-guards)
 - [Checking a Single Field](#checking-a-single-field)
-- [Keys Property Syntax Can't Type](#keys-property-syntax-cant-type)
+- [Keys That Property Syntax Can't Type](#keys-that-property-syntax-cant-type)
 
 ## Reading Fields
 
@@ -162,7 +162,7 @@ SmartString's
 [Conditionals and Error Checking](https://github.com/interactivetools-com/SmartString/blob/main/docs/conditionals-and-error-checking.md)
 page.
 
-## Keys Property Syntax Can't Type
+## Keys That Property Syntax Can't Type
 
 You won't need this on day one, but it comes up: some queries return keys
 that aren't valid property names, most often table-prefixed columns from

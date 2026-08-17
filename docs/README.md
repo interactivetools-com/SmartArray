@@ -1,6 +1,6 @@
 # SmartArray Documentation
 
-Welcome to the SmartArray docs. SmartArray wraps your database rows so
+SmartArray wraps your database rows so
 template code gets shorter and safer at once: filter, sort, and group with
 chainable methods, and echo fields directly. Fields HTML-encode themselves
 the moment you output them.

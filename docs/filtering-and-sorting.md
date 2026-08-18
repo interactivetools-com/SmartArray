@@ -19,8 +19,8 @@ there's no point fetching rows you won't use. These methods are for the
 result you already have: one loaded collection sliced different ways for
 different parts of the page, with no extra queries.
 
-Use `where()` to keep the rows where a field matches a value. Chain it to
-match on more than one field:
+The `where()` method keeps the rows where a field matches a value. Chain it
+to match on more than one field:
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;
@@ -64,8 +64,8 @@ false, 0, `"0"`, `""`, or the field missing from the row entirely.
 
 This one is specific to CMS Builder, which stores checkbox groups and
 multi-select fields as tab-separated lists in a single column (a page shown
-in two places stores `"\tmenu\tfooter\t"`). Use `whereInList()` to match
-one value inside those fields; it matches whole values, never substrings.
+in two places stores `"\tmenu\tfooter\t"`). The `whereInList()` method matches
+one value inside those fields, whole values only, never substrings.
 The whole where-family chains on one loaded result:
 
 ```php
@@ -98,14 +98,14 @@ $ours = $tables->filter(fn($name) => str_starts_with($name, 'cms_'));  // cms_ac
 ```
 
 Called with no callback, `filter()` removes empty values (`""`, `0`, NULL,
-false). Keep in mind that `0` is removed even when it's real data (a $0
-price, a sort order of 0); pass a callback when zeros should stay. Like
+false). That includes a `0` that is real data (a $0 price, a sort order of
+0); pass a callback when zeros should stay. Like
 PHP's `array_filter()`, kept rows keep their original keys; chain
 `values()` when you want them renumbered.
 
 ## Sorting: sortBy() and sort()
 
-Use `sortBy()` to order rows by a field. It returns a new sorted
+The `sortBy()` method orders rows by a field. It returns a new sorted
 collection and never touches the original (PHP's own `sort()` modifies
 arrays in place; SmartArray methods don't), so your result stays in query
 order and can be sorted different ways for different spots on the page:
@@ -134,7 +134,7 @@ echo $tags->sort()->implode(', ');  // Apache, MySQL, PHP
 
 ## Duplicates and Membership: unique() and contains()
 
-Use `unique()` to drop repeated values from a flat list, keeping the first
+The `unique()` method drops repeated values from a flat list, keeping the first
 of each, and `contains()` to ask whether a value is in the list at all.
 Both compare loosely, so `1` and `'1'` count as the same value:
 

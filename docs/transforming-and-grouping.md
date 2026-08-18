@@ -15,8 +15,8 @@ Contents:
 
 ## Pulling One Column: column()
 
-Use `column()` to get a flat list of one field from every row (like PHP's
-`array_column()`, including the keyed form below):
+The `column()` method returns a flat list of one field from every row, like
+PHP's `array_column()` (including the keyed form below):
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;
@@ -41,7 +41,7 @@ echo $nameById->{7};  // Alice Munro
 
 ## Keying Rows for Lookups: indexBy()
 
-Use `indexBy()` to key whole rows by a field, turning "loop until you find
+The `indexBy()` method keys whole rows by a field, turning "loop until you find
 it" into a direct lookup:
 
 ```php
@@ -93,7 +93,7 @@ foreach ($articles->groupBy('category') as $category => $stories) {
 
 ## Reshaping Rows: map()
 
-Use `map()` to rebuild each element with a callback. Like `filter()`, the
+The `map()` method rebuilds each element with a callback. Like `filter()`, the
 callback receives plain PHP values, so you write ordinary PHP inside it:
 
 ```php

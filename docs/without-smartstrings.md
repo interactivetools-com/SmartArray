@@ -45,7 +45,7 @@ foreach ($products as $product) {
 }
 ```
 
-One thing to know: `??` doesn't fire on stored `""`, because an empty
+The `??` operator doesn't fire on stored `""`, because an empty
 string is a stored value. On the HTML side, use `or()` instead; it covers
 `""` and keeps fallbacks encoded (see
 [Displaying Fields](displaying-fields.md)).

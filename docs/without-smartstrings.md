@@ -50,9 +50,9 @@ above: every selected column exists on every row, so a truly missing key
 means a typo, and typos on result rows warn on their own. Missing keys as a
 normal case only come up in arrays you assemble yourself.
 
-The `??` operator doesn't fire on stored `""`, because an empty string is a
-stored value. On the HTML side, use `or()` instead; it covers `""` and keeps
-fallbacks encoded (see [Displaying Fields](displaying-fields.md)).
+`??` doesn't fire on stored `""`, because an empty string is a stored value.
+On the HTML side, use `or()` instead; it covers `""` and keeps fallbacks
+encoded (see [Displaying Fields](displaying-fields.md)).
 
 In hand-built arrays, stick with `??` rather than a truthiness check: a
 key that doesn't exist at all comes back as a placeholder object so

@@ -156,12 +156,12 @@ class DocsExamplesTest extends SmartArrayTestCase
             }
 
             foreach ($users as $user) {
-                echo "<li>$user->name - {$user->phone->or('no phone on file')}</li>\n";
+                echo "<li>$user->name - {$user->phone->or('(no phone)')}</li>\n";
             }
         });
 
         $this->assertSame(
-            "<li>Jean O&apos;Brien - 604-555-1234</li>\n<li>Sam Smith - no phone on file</li>\n",
+            "<li>Jean O&apos;Brien - 604-555-1234</li>\n<li>Sam Smith - (no phone)</li>\n",
             $output
         );
     }

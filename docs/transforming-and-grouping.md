@@ -13,8 +13,8 @@ Contents:
 
 ## Pulling One Column: column()
 
-The `column()` method returns a flat list of one field from every row, like
-PHP's `array_column()` (including the keyed form below):
+`column()` returns a flat list of one field from every row, like PHP's
+`array_column()` (including the keyed form below):
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;
@@ -39,8 +39,8 @@ echo $nameById->{7};  // Alice Munro
 
 ## Keying Rows for Lookups: indexBy()
 
-The `indexBy()` method keys whole rows by a field, turning "loop until you find
-it" into a direct lookup:
+`indexBy()` keys whole rows by a field, turning "loop until you find it" into
+a direct lookup:
 
 ```php
 $authorsById = $authors->indexBy('author_id');
@@ -100,8 +100,8 @@ keys are trusted values you defined yourself.
 
 ## Reshaping Rows: map()
 
-The `map()` method rebuilds each element with a callback. Like `filter()`, the
-callback receives plain PHP values, so you write ordinary PHP inside it:
+`map()` rebuilds each element with a callback. Like `filter()`, the callback
+receives plain PHP values, so you write ordinary PHP inside it:
 
 ```php
 $labels = $authors->map(fn($a) => "$a[name] ($a[city])");

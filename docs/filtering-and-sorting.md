@@ -19,8 +19,8 @@ there's no point fetching rows you won't use. These methods are for the
 result you already have: one loaded collection sliced different ways for
 different parts of the page, with no extra queries.
 
-The `where()` method keeps the rows where a field matches a value. Chain it
-to match on more than one field:
+`where()` keeps the rows where a field matches a value. Chain it to match on
+more than one field:
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;
@@ -115,10 +115,10 @@ original keys; chain `values()` when you want them renumbered.
 
 ## Sorting: sortBy() and sort()
 
-The `sortBy()` method orders rows by a field. It returns a new sorted
-collection and never modifies the original (PHP's own `sort()` modifies
-arrays in place; SmartArray methods don't), so your result stays in query
-order and can be sorted different ways for different spots on the page:
+`sortBy()` orders rows by a field. It returns a new sorted collection and
+never modifies the original (PHP's own `sort()` modifies arrays in place;
+SmartArray methods don't), so your result stays in query order and can be
+sorted different ways for different spots on the page:
 
 ```php
 $funds = SmartArrayHtml::new([
@@ -144,10 +144,10 @@ echo $tags->sort()->implode(', ');  // Apache, MySQL, PHP
 
 ## Duplicates and Membership: unique() and contains()
 
-The `unique()` method drops repeated values from a flat list, keeping the first
-of each, and `contains()` to ask whether a value is in the list at all.
-Both treat `1` and `'1'` as the same value (`contains()` follows the same
-matching rules as `where()`):
+`unique()` drops repeated values from a flat list, keeping the first of each,
+and `contains()` to ask whether a value is in the list at all. Both treat `1`
+and `'1'` as the same value (`contains()` follows the same matching rules as
+`where()`):
 
 ```php
 $tags = SmartArrayHtml::new(['PHP', 'MySQL', 'PHP', 'Apache']);

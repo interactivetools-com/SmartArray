@@ -97,10 +97,10 @@ if ($users->isEmpty()) {
 }
 
 foreach ($users as $user) {
-    echo "<li>$user->name - {$user->phone->or('no phone on file')}</li>\n";
+    echo "<li>$user->name - {$user->phone->or('(no phone)')}</li>\n";
 }
 // <li>Jean O&​apos;Brien - 604-555-1234</li>
-// <li>Sam Smith - no phone on file</li>
+// <li>Sam Smith - (no phone)</li>
 ```
 
 No `else` is needed: a `foreach` over an empty collection runs zero times.

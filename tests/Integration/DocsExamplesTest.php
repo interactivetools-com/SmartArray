@@ -140,6 +140,47 @@ class DocsExamplesTest extends SmartArrayTestCase
     }
 
     //endregion
+    //region Getting Started: Empty Results and Blank Fields
+
+    public function testGettingStartedIsEmptyGuardAndOrFallback(): void
+    {
+        $users = SmartArrayHtml::new([
+            ['name' => "Jean O'Brien", 'city' => 'Vancouver', 'phone' => '604-555-1234'],
+            ['name' => 'Sam Smith',    'city' => 'Calgary',   'phone' => ''],
+        ]);
+
+        [, $output] = $this->captureOutput(static function () use ($users): void {
+            if ($users->isEmpty()) {
+                echo "<p>No users found.</p>";
+            }
+
+            foreach ($users as $user) {
+                echo "<li>$user->name - {$user->phone->or('no phone on file')}</li>\n";
+            }
+        });
+
+        $this->assertSame(
+            "<li>Jean O&apos;Brien - 604-555-1234</li>\n<li>Sam Smith - no phone on file</li>\n",
+            $output
+        );
+    }
+
+    public function testGettingStartedForeachOverEmptyCollectionRunsZeroTimes(): void
+    {
+        $none = SmartArrayHtml::new([]);
+
+        $this->assertTrue($none->isEmpty());
+
+        [, $output] = $this->captureOutput(static function () use ($none): void {
+            foreach ($none as $user) {
+                echo "<li>$user->name</li>\n";
+            }
+        });
+
+        $this->assertSame('', $output);
+    }
+
+    //endregion
     //region Getting Started: The Mental Model
 
     public function testGettingStartedLogicUsesOriginalValuesAndOutputStillEncodes(): void

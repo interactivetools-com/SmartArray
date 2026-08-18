@@ -78,6 +78,34 @@ Every SmartString method is available this way: `textOnly()`, `maxChars()`,
 `numberFormat()`, and the rest of the
 [SmartString API](https://github.com/interactivetools-com/SmartString).
 
+## Empty Results and Blank Fields
+
+A result can come back empty, and individual fields can be blank. Collections
+answer the first with `isEmpty()`; fields answer the second with `or()`, which
+fires on NULL and `""`:
+
+```php
+$users = SmartArrayHtml::new([
+    ['name' => "Jean O'Brien", 'city' => 'Vancouver', 'phone' => '604-555-1234'],
+    ['name' => 'Sam Smith',    'city' => 'Calgary',   'phone' => ''],
+]);
+
+if ($users->isEmpty()) {
+    echo "<p>No users found.</p>";
+}
+
+foreach ($users as $user) {
+    echo "<li>$user->name - {$user->phone->or('no phone on file')}</li>\n";
+}
+// <li>Jean O&​apos;Brien - 604-555-1234</li>
+// <li>Sam Smith - no phone on file</li>
+```
+
+No `else` is needed: a `foreach` over an empty collection runs zero times.
+
+[Displaying Fields](displaying-fields.md) covers both in full, along with the
+guards that stop the page when a required record is missing.
+
 ## The Mental Model
 
 SmartArray is two classes with the same methods, and one question picks

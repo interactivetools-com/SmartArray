@@ -2,8 +2,16 @@
 
 # Transforming and Grouping
 
-How to reshape a loaded result: pull one column out, key rows for instant
-lookups, group them for section headings, and rebuild rows into new shapes.
+How to reshape a loaded result into the structure a template needs.
+
+Contents:
+
+- [Pulling One Column: column()](#pulling-one-column-column)
+- [Keying Rows for Lookups: indexBy()](#keying-rows-for-lookups-indexby)
+- [Using Fields as Lookup Keys](#using-fields-as-lookup-keys)
+- [Grouping Rows: groupBy()](#grouping-rows-groupby)
+- [Reshaping Rows: map()](#reshaping-rows-map)
+- [Keys and Values](#keys-and-values)
 
 ## Pulling One Column: column()
 

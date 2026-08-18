@@ -6,6 +6,16 @@ Common error messages and how to fix them, plus the gotchas that don't
 produce an error at all. Headings quote the message or symptom so you can
 find them by search.
 
+Contents:
+
+- [empty() and if() checks on fields don't work as expected](#empty-and-if-checks-on-fields-dont-work-as-expected)
+- [A === null check never matches](#a--null-check-never-matches)
+- [Warning: Can't convert SmartArrayHtml to string](#warning-cant-convert-smartarrayhtml-to-string)
+- [Warning: some_field is undefined in listings.php:12](#warning-some_field-is-undefined-in-listingsphp12)
+- [Casting with (array) returns internal object data](#casting-with-array-returns-internal-object-data)
+- [json_encode() returns an object instead of an array](#json_encode-returns-an-object-instead-of-an-array)
+- [A lookup using a field as the key renders blank](#a-lookup-using-a-field-as-the-key-renders-blank)
+
 ### empty() and if() checks on fields don't work as expected
 
 In HTML mode a field is an object wrapping your value, and PHP's `empty()`

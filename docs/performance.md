@@ -24,6 +24,13 @@ cost hundreds of times more.
 The rest of this page is the measurements behind those claims, and the one
 case where the overhead is worth thinking about.
 
+Contents:
+
+- [What a Page Costs](#what-a-page-costs)
+- [Memory](#memory)
+- [When to Care](#when-to-care)
+- [Reproducing the Numbers](#reproducing-the-numbers)
+
 ## What a Page Costs
 
 A news site with 25 records (60-char title, 300-char summary, 5KB content),

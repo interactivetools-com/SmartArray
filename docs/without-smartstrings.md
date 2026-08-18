@@ -7,6 +7,14 @@ web page output. When the output isn't HTML (a JSON response, a CSV export,
 email text, a command-line script), use `SmartArray` instead: same methods,
 but fields come back as plain PHP values in their original types.
 
+Contents:
+
+- [Creating Raw Collections](#creating-raw-collections)
+- [Fallbacks with ??](#fallbacks-with)
+- [Getting Data Out: json_encode() and toArray()](#getting-data-out-json_encode-and-toarray)
+- [Converting Between Modes](#converting-between-modes)
+- [Type Hints That Accept Both Modes](#type-hints-that-accept-both-modes)
+
 ## Creating Raw Collections
 
 ```php

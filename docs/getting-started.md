@@ -16,15 +16,6 @@ Contents:
 - [Converting to Plain Arrays](#converting-to-plain-arrays)
 - [Debugging](#debugging)
 
-Contents:
-
-- [Installation](#installation)
-- [Your First SmartArray](#your-first-smartarray)
-- [The Mental Model](#the-mental-model)
-- [Working with ZenDB and CMS Builder](#working-with-zendb-and-cms-builder)
-- [Converting to Plain Arrays](#converting-to-plain-arrays)
-- [Debugging](#debugging)
-
 ## Installation
 
 **Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?**

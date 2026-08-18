@@ -12,16 +12,6 @@ Contents:
 - [When Data Is Missing](#when-data-is-missing)
 - [Requiring Data: The Guards](#requiring-data-the-guards)
 - [Checking a Single Field](#checking-a-single-field)
-- [Keys Property Syntax Can't Type](#keys-property-syntax-cant-type)
-
-Contents:
-
-- [Reading Fields](#reading-fields)
-- [Fallbacks with or()](#fallbacks-with-or)
-- [Showing a "No Results" Message](#showing-a-no-results-message)
-- [When Data Is Missing](#when-data-is-missing)
-- [Requiring Data: The Guards](#requiring-data-the-guards)
-- [Checking a Single Field](#checking-a-single-field)
 - [Keys That Property Syntax Can't Type](#keys-that-property-syntax-cant-type)
 
 ## Reading Fields

@@ -8,13 +8,6 @@ and the deliberate ways around it.
 Contents:
 
 - [How Auto-Encoding Works](#how-auto-encoding-works)
-- [Trusted HTML: rawHtml()](#trusted-html-rawhtml)
-- [Loop Layout: isFirst(), isLast(), position()](#loop-layout-isfirst-islast-position)
-- [Keys Are Never Encoded](#keys-are-never-encoded)
-
-Contents:
-
-- [How Auto-Encoding Works](#how-auto-encoding-works)
 - [Where Encoding Ends](#where-encoding-ends)
 - [Trusted HTML: rawHtml()](#trusted-html-rawhtml)
 - [Loop Layout: isFirst(), isLast(), position()](#loop-layout-isfirst-islast-position)

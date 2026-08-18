@@ -11,15 +11,6 @@ Contents:
 - [Reshaping Rows: map()](#reshaping-rows-map)
 - [Keys and Values](#keys-and-values)
 
-Contents:
-
-- [Pulling One Column: column()](#pulling-one-column-column)
-- [Keying Rows for Lookups: indexBy()](#keying-rows-for-lookups-indexby)
-- [Using Fields as Lookup Keys](#using-fields-as-lookup-keys)
-- [Grouping Rows: groupBy()](#grouping-rows-groupby)
-- [Reshaping Rows: map()](#reshaping-rows-map)
-- [Keys and Values](#keys-and-values)
-
 ## Pulling One Column: column()
 
 The `column()` method returns a flat list of one field from every row, like

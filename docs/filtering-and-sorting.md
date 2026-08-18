@@ -12,15 +12,6 @@ Contents:
 - [Sorting: sortBy() and sort()](#sorting-sortby-and-sort)
 - [Duplicates and Membership: unique() and contains()](#duplicates-and-membership-unique-and-contains)
 
-Contents:
-
-- [Matching Rows: where()](#matching-rows-where)
-- [Excluding Rows: whereNot()](#excluding-rows-wherenot)
-- [CMS Builder List Fields: whereInList()](#cms-builder-list-fields-whereinlist)
-- [Custom Tests: filter()](#custom-tests-filter)
-- [Sorting: sortBy() and sort()](#sorting-sortby-and-sort)
-- [Duplicates and Membership: unique() and contains()](#duplicates-and-membership-unique-and-contains)
-
 ## Matching Rows: where()
 
 Choosing which rows to load is the query's job (SQL's WHERE clause);

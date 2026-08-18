@@ -10,8 +10,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 /**
  * Array information: count()/Countable, isEmpty(), isNotEmpty(), contains().
  *
- * contains() is documented loose == comparison; the footgun cases from the
- * review are pinned here so a refactor can't change them silently.
+ * contains() uses the where-family matching rule (strings exact, numbers
+ * numeric, null only null, bools as 1/0); the edge cases are pinned here so
+ * a refactor can't change them silently.
  */
 class InfoTest extends SmartArrayTestCase
 {
@@ -63,15 +64,31 @@ class InfoTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testContainsUsesLooseComparison(string $class): void
+    public function testContainsMatchingRules(string $class): void
     {
-        // Documented == footguns, pinned deliberately (see contains() docblock)
-        $this->assertTrue($class::new([1])->contains('1'), "'1' == 1");
-        $this->assertTrue($class::new([true])->contains('1'), "'1' == true");
-        $this->assertTrue($class::new([''])->contains(null), "null == ''");
-        $this->assertTrue($class::new([false])->contains(null), 'null == false');
+        // Numbers match numerically in either direction
+        $this->assertTrue($class::new([1])->contains('1'), "'1' matches int 1");
+        $this->assertTrue($class::new(['1.00'])->contains(1), "int 1 matches DECIMAL-style '1.00'");
         $this->assertFalse($class::new([0])->contains('abc'), "PHP 8: 0 == 'abc' is false");
         $this->assertFalse($class::new([''])->contains(0), "PHP 8: 0 == '' is false");
+
+        // Strings match as exact text
+        $this->assertFalse($class::new(['0e99'])->contains('0e12'), 'hash-like numeric strings are exact text');
+        $this->assertFalse($class::new(['1000'])->contains('1e3'), 'no scientific-notation crossover for string pairs');
+        $this->assertTrue($class::new(['0e99'])->contains('0e99'), 'identical strings still match');
+
+        // null matches only null (SQL IS NULL semantics)
+        $this->assertTrue($class::new([null])->contains(null));
+        $this->assertFalse($class::new([''])->contains(null), "null does not match ''");
+        $this->assertFalse($class::new([false])->contains(null), 'null does not match false');
+        $this->assertFalse($class::new([null])->contains(''), "'' does not match a stored null");
+
+        // Bools compare as 1/0
+        $this->assertTrue($class::new([1])->contains(true));
+        $this->assertTrue($class::new(['1'])->contains(true));
+        $this->assertTrue($class::new(['0'])->contains(false));
+        $this->assertFalse($class::new(['abc'])->contains(true), "true means 1, not 'any truthy value'");
+        $this->assertFalse($class::new([''])->contains(false), "false means 0, and 0 == '' is false in PHP 8");
     }
 
     #[DataProvider('modeProvider')]

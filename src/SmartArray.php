@@ -1,11 +1,14 @@
 <?php
-/** @noinspection SenselessProxyMethodInspection */
 declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
-use InvalidArgumentException;
+use IteratorAggregate;
 use Itools\SmartString\SmartString;
+use JetBrains\PhpStorm\Deprecated;
+
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function func_get_args, is_array;
 
 /**
  * SmartArray - Collection returning raw PHP values (string, int, float, bool, null).
@@ -17,13 +20,20 @@ use Itools\SmartString\SmartString;
  * - Nested arrays return SmartArray, use ->toArray() for raw arrays
  * - Missing keys return SmartNull, use ->value() for raw null
  *
- * PhpStorm 2025.3.1: Repeated "@implements" needed - union types in Iterator generics don't work reliably for foreach inference
- * @implements \Iterator<mixed, SmartArray>
- * @implements \Iterator<mixed, string>
- * @implements \Iterator<mixed, int>
- * @implements \Iterator<mixed, float>
- * @implements \Iterator<mixed, bool>
- * @implements \Iterator<mixed, null>
+ * Full API and docs: SmartArrayBase. The @method tags below narrow return types
+ * to this mode (raw values here, SmartStrings in SmartArrayHtml); only new(),
+ * asRaw(), and asHtml() have per-class behavior.
+ *
+ * PhpStorm: repeated single-type @implements lines - it keeps only one object
+ * member per generic union, so foreach over a union loses the second type
+ * @implements IteratorAggregate<mixed, SmartArray>
+ * @implements IteratorAggregate<mixed, string|int|float|bool|null>
+ *
+ * @method static|SmartNull|string|int|float|bool|null first()
+ * @method static|SmartNull|string|int|float|bool|null last()
+ * @method static|SmartNull|string|int|float|bool|null at(int|SmartString|SmartNull $index)
+ * @method string implode(string $separator = '')
+ * @method static|SmartNull|string|int|float|bool|null offsetGet(mixed $offset)
  */
 class SmartArray extends SmartArrayBase
 {
@@ -35,31 +45,17 @@ class SmartArray extends SmartArrayBase
      * Sets position metadata on child rows.
      *
      * @param array $array The input array to convert into a SmartArray.
-     * @param bool|array|null $properties An associative array of custom internal properties (legacy boolean accepted but deprecated).
+     * @param bool|array|null $properties An associative array of custom internal properties, or null for none (legacy boolean accepted but deprecated).
      */
     public function __construct(array $array = [], bool|array|null $properties = [])
     {
-        // Handle deprecated boolean parameter: true contradicts this class (throw),
-        // false is redundant (deprecation only)
-        if ($properties === true) {
-            self::logDeprecation('Creating a SmartArray with useSmartStrings=true is deprecated. Use SmartArrayHtml::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
-        }
-        if ($properties === false) {
-            self::logDeprecation('Passing false to SmartArray is deprecated. Just use SmartArray::new($data)');
-            $properties = [];
-        }
-
-        // Handle deprecated useSmartStrings in array
-        if (is_array($properties) && ($properties['useSmartStrings'] ?? false) === true) {
-            self::logDeprecation('Creating a SmartArray with useSmartStrings=true is deprecated. Use SmartArrayHtml::new($data) instead.');
-            throw new InvalidArgumentException('Cannot create SmartArray with useSmartStrings=true. Use SmartArrayHtml::new($data) instead.');
+        // Deprecated legacy forms: boolean argument, or an explicit useSmartStrings key
+        if (!is_array($properties) || isset($properties['useSmartStrings'])) {
+            $properties = $this->deprecatedUseSmartStringsArg($properties, requiredMode: false);
         }
 
         // Force useSmartStrings to false for raw values
         $properties['useSmartStrings'] = false;
-
-        // Pass through to parent with all properties
         parent::__construct($array, $properties);
     }
 
@@ -104,144 +100,28 @@ class SmartArray extends SmartArrayBase
     }
 
     //endregion
-    //region Value Access
+    //region Deprecated Access
 
-    /** {@inheritDoc} */
-    public function first(): static|SmartNull|string|int|float|bool|null
+    /**
+     * {@inheritDoc}
+     * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
+     *             can't type. For a missing-key default use ->key ?? $default.
+     */
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|string|int|float|bool|null
     {
-        return parent::first();
+        // func_get_args: get() branches on whether $default was passed, so forward the real arg count
+        return parent::get(...func_get_args());
     }
 
-    /** {@inheritDoc} */
-    public function last(): static|SmartNull|string|int|float|bool|null
+    /**
+     * {@inheritDoc}
+     * @deprecated Use ->at() - same behavior, new name
+     */
+    #[Deprecated(reason: 'renamed to at()', replacement: '%class%->at()')]
+    public function nth(int $index): static|SmartNull|string|int|float|bool|null
     {
-        return parent::last();
-    }
-
-    /** {@inheritDoc} */
-    public function at(int|SmartString|SmartNull $index): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::at($index);
-    }
-
-    //endregion
-    //region Sorting & Filtering
-
-    /** {@inheritDoc} */
-    public function sort(int $flags = SORT_REGULAR): static
-    {
-        return parent::sort($flags);
-    }
-
-    /** {@inheritDoc} */
-    public function sortBy(string $field, int $flags = SORT_REGULAR): static
-    {
-        return parent::sortBy($field, $flags);
-    }
-
-    /** {@inheritDoc} */
-    public function unique(): static
-    {
-        return parent::unique();
-    }
-
-    /** {@inheritDoc} */
-    public function filter(?callable $callback = null): static
-    {
-        return parent::filter($callback);
-    }
-
-    /** {@inheritDoc} */
-    public function where(array|string $field, mixed $value = null): static
-    {
-        return parent::where(...func_get_args());  // real arg count picks the one- vs two-argument form
-    }
-
-    /** {@inheritDoc} */
-    public function whereNot(string $field, mixed $value = null): static
-    {
-        return parent::whereNot(...func_get_args());  // real arg count picks the one- vs two-argument form
-    }
-
-    /** {@inheritDoc} */
-    public function whereInList(string $field, mixed $value): static
-    {
-        return parent::whereInList($field, $value);
-    }
-
-    //endregion
-    //region Array Transformation
-
-    /** {@inheritDoc} */
-    public function keys(): static
-    {
-        return parent::keys();
-    }
-
-    /** {@inheritDoc} */
-    public function values(): static
-    {
-        return parent::values();
-    }
-
-    /** {@inheritDoc} */
-    public function indexBy(string $field): static
-    {
-        return parent::indexBy($field);
-    }
-
-    /** {@inheritDoc} */
-    public function groupBy(string $field): static
-    {
-        return parent::groupBy($field);
-    }
-
-    /** {@inheritDoc} */
-    public function columnAt(int $index): static
-    {
-        return parent::columnAt($index);
-    }
-
-    /** {@inheritDoc} */
-    public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
-    {
-        return parent::column($columnKey, $indexKey);
-    }
-
-    /** {@inheritDoc} */
-    public function implode(string $separator = ''): string
-    {
-        return parent::implode($separator);
-    }
-
-    /** {@inheritDoc} */
-    public function map(callable $callback): static
-    {
-        return parent::map($callback);
-    }
-
-    /** {@inheritDoc} */
-    public function merge(array|SmartArrayBase|SmartNull ...$arrays): static
-    {
-        return parent::merge(...$arrays);
-    }
-
-    //endregion
-    //region Database Operations
-
-    /** {@inheritDoc} */
-    public function load(string $field): static|SmartNull
-    {
-        return parent::load($field);
-    }
-
-    //endregion
-    //region Deprecated Array Access
-
-    /** {@inheritDoc} */
-    public function offsetGet(mixed $offset): static|SmartNull|string|int|float|bool|null
-    {
-        return parent::offsetGet($offset);
+        return parent::nth($index);
     }
 
     //endregion

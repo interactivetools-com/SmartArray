@@ -45,15 +45,19 @@ foreach ($articles as $article) {
 
 ## Select Dropdowns from Query Results
 
-Compare with the raw value to mark the current selection, echo the fields
-for encoded output:
+Compare with the raw value to mark the current selection, and echo the
+fields for encoded output:
 
 ```php
+$authors = SmartArrayHtml::new([
+    ['author_id' => 7,  'name' => 'Alice Munro'],
+    ['author_id' => 12, 'name' => 'Bob Gibson'],
+]);
 $selectedId = (int)($_GET['author'] ?? 0);
 
 echo "<select name='author'>\n";
 foreach ($authors as $author) {
-    $selected = $author->author_id->value() == $selectedId ? ' selected' : '';
+    $selected = $author->author_id->value() == $selectedId ? ' selected' : '';  // == so ids match whether the DB returns int or string
     echo "<option value='$author->author_id'$selected>$author->name</option>\n";
 }
 echo "</select>\n";
@@ -70,6 +74,11 @@ Dashboards and sidebars show the first few rows and link to the rest.
 Rows know their `position()`, so no counter variable is needed:
 
 ```php
+$articles = SmartArrayHtml::new([
+    ['title' => 'Runaway'], ['title' => 'Local Trails'], ['title' => 'Harbour Lights'],
+    ['title' => 'Night Ferry'], ['title' => 'Winter Roads'],
+]);
+
 foreach ($articles as $article) {
     if ($article->position() > 3) {
         echo "<li><a href='articles.php'>more...</a></li>\n";
@@ -77,6 +86,10 @@ foreach ($articles as $article) {
     }
     echo "<li>$article->title</li>\n";
 }
+// <li>Runaway</li>
+// <li>Local Trails</li>
+// <li>Harbour Lights</li>
+// <li><a href='articles.php'>more...</a></li>
 ```
 
 ## Grouped Headings with Counts
@@ -85,6 +98,8 @@ A `groupBy()` bucket is a normal collection, so `count()` and every other
 method work on it:
 
 ```php
+use Itools\SmartString\SmartString;
+
 $listings = SmartArrayHtml::new([
     ['title' => 'Fall Fair Sept 20-21', 'category' => 'Events'],
     ['title' => 'New Trail Maps',       'category' => 'Parks'],
@@ -92,6 +107,7 @@ $listings = SmartArrayHtml::new([
 ]);
 
 foreach ($listings->groupBy('category') as $category => $rows) {
+    $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
     echo "<h3>$category ({$rows->count()})</h3>\n";
     foreach ($rows as $row) {
         echo "   <li>$row->title</li>\n";

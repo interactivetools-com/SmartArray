@@ -31,7 +31,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * CLI limits: xmpWrap() short-circuits to plain output under CLI (PHP_SAPI),
  * so every expectation here pins the unwrapped format. The <xmp>-wrapped web
- * path can't be simulated in-process.
+ * path can't be simulated in-process; one test reaches it through PHP's
+ * built-in server (requestViaBuiltInServer).
  */
 class DebugTest extends SmartArrayTestCase
 {
@@ -98,6 +99,29 @@ class DebugTest extends SmartArrayTestCase
                     'null'    => null
                     'isFirst' => Q
                 ]
+            ]
+
+            __TEXT__;
+
+        $this->assertSame($expected, $this->rtrimLines($output));
+    }
+
+    public function testDebugLevelZeroKeepsDataTrailingComma(): void
+    {
+        // compact values print raw and unquoted, so the formatter's trailing-comma
+        // cleanup must not reach a comma that ends the data itself - that comma is
+        // exactly what debug() would be used to find
+        $sa = SmartArray::new(['num' => 5, 'csv' => 'apples, oranges, bananas,']);
+
+        [, $output] = $this->captureOutput(fn() => $sa->debug());
+
+        $expected = <<<'__TEXT__'
+
+            Itools\SmartArray\SmartArray - Values are returned **as-is** on access (no extra encoding)
+
+            [
+                'num' => 5
+                'csv' => apples, oranges, bananas,
             ]
 
             __TEXT__;
@@ -348,6 +372,21 @@ class DebugTest extends SmartArrayTestCase
     }
 
     /**
+     * The <xmp> web branch is reachable under PHP's built-in server (SAPI
+     * cli-server), so this is the one test that asserts the wrapped path: a
+     * stored </xmp> can't end the block early - it displays as <\/xmp>, the
+     * same escaping as CMSB's xmp_safe().
+     */
+    public function testDebugEscapesXmpClosingTagOnWebResponses(): void
+    {
+        [, $body] = $this->requestViaBuiltInServer(dirname(__DIR__) . '/Support/bin', 'xmp-breakout.php');
+
+        $this->assertStringContainsString('<xmp>', $body);
+        $this->assertStringContainsString('<\/xmp><script>alert(1)</script>', $body, 'payload displays escaped');
+        $this->assertSame(1, substr_count($body, '</xmp>'), 'only the wrapper itself closes the block');
+    }
+
+    /**
      * A global showme() wrapper is the common CMSB debug idiom; this pins that
      * debug() inside it produces clean plain output in a subprocess. (The
      * showme() skip inside xmpWrap() is web-only and unreachable from CLI
@@ -362,7 +401,7 @@ class DebugTest extends SmartArrayTestCase
             showme(\Itools\SmartArray\SmartArray::new(['a' => 1]));
             __PHP__;
 
-        [$stdout, $stderr, $exitCode] = $this->runPhp($code);
+        [$stdout, $stderr, $exitCode] = $this->runCommand([PHP_BINARY, '-r', $code]);
 
         $this->assertSame('', $stderr);
         $this->assertSame(0, $exitCode);
@@ -461,7 +500,7 @@ class DebugTest extends SmartArrayTestCase
         $this->assertStringContainsString('Itools\SmartArray\SmartArray', $output);
         $this->assertStringContainsString('name', $output);
         $this->assertStringContainsString('Amy', $output);
-        foreach (['useSmartStrings', 'loadHandler', 'mysqli', 'root', 'isLast', 'position'] as $internal) {
+        foreach (['useSmartStrings', 'loadHandler', 'mysqli', 'root', 'parent', 'position'] as $internal) {
             $this->assertStringNotContainsString($internal, $output, "var_dump should not expose $internal");
         }
     }
@@ -473,18 +512,9 @@ class DebugTest extends SmartArrayTestCase
      */
     public function testVarExportStillShowsInternalPropertiesAndWarnsOnRoot(): void
     {
-        $sa       = SmartArray::new(['name' => 'Amy']);
-        $warnings = [];
+        $sa = SmartArray::new(['name' => 'Amy']);
 
-        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
-            $warnings[] = $errstr;
-            return true;
-        }, E_WARNING);
-        try {
-            [, $output] = $this->captureOutput(fn() => var_export($sa));
-        } finally {
-            restore_error_handler();
-        }
+        [[, $output], $warnings] = $this->captureErrors(fn() => $this->captureOutput(fn() => var_export($sa)), E_WARNING);
 
         $this->assertSame(['var_export does not handle circular references'], $warnings);
         $this->assertStringContainsString('Itools\SmartArray\SmartArray::__set_state(array(', $output);
@@ -589,26 +619,6 @@ class DebugTest extends SmartArrayTestCase
             'author_id' => [['id' => 7, 'name' => 'Amy'], ['query' => 'SELECT * FROM authors WHERE id = 7']],
             default     => false,
         };
-    }
-
-    /**
-     * Run PHP code in a subprocess. Returns [stdout, stderr, exit code].
-     *
-     * @return array{0: string, 1: string, 2: int}
-     */
-    private function runPhp(string $code): array
-    {
-        $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-
-        $process = proc_open([PHP_BINARY, '-r', $code], $descriptors, $pipes);
-        $this->assertNotFalse($process, 'could not start php subprocess');
-
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        return [$stdout, $stderr, proc_close($process)];
     }
 
     //endregion

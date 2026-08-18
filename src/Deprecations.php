@@ -10,6 +10,10 @@ use RuntimeException;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
 
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function array_chunk, array_key_exists, array_keys, array_map, func_num_args, get_debug_type, implode, in_array, is_array, is_bool, is_float, is_int, is_null, is_scalar, is_string, preg_match, sprintf, str_replace, strtolower, trigger_error;
+use const E_USER_DEPRECATED;
+
 /**
  * Old and retired method names, phased out in stages.
  *
@@ -32,12 +36,18 @@ use JetBrains\PhpStorm\Deprecated;
  * removed method is an undefined name like any other, at best keeping a
  * "did you mean" entry. Moving a method down the ladder is a cut-paste to the
  * next region plus updating its runtime line (Silent: none, Logged:
- * logDeprecation(), Fatal: a match arm in __call).
+ * logDeprecation(), Visible: triggerArrayAccessDeprecation(), Fatal: a
+ * match arm in __call).
  *
  * The deprecated $array['key'] bracket syntax follows the same ladder via
  * SmartArrayBase::$onOffsetAccess: 'log', 'notify', and 'throw' correspond to
  * Logged, Visible, and Fatal. The default is 'notify', which is why the
  * offsetGet/offsetSet/offsetUnset/offsetExists methods are in the Visible region.
+ *
+ * A deprecated calling convention inside a live method (like where()'s array
+ * syntax) can't move here whole - the live method keeps its signature and a
+ * one-line dispatch - but the body does: extract it to a private method named
+ * deprecated*(), placed in the region matching its ladder stage.
  */
 trait Deprecations
 {
@@ -50,12 +60,13 @@ trait Deprecations
      * Offset access (`[]` syntax) is deprecated in favor of property access:
      * `$array->key` for reads, `$array->key = $value` for writes, and brace
      * syntax (`$array->{'users.id'}`) for keys property syntax can't type. This setting
-     * controls how the library signals that deprecation at runtime. It covers
-     * reads, writes, and unset(); existence checks (offsetExists) are signal-free
-     * because PHP also calls offsetGet() for `??` and empty(), which carries the
-     * one notice. Property forms (`$array->key`, `isset($array->key)`) are always
-     * signal-free, and so are bracket reads on SmartNull: missing-data chains like
-     * $row->missing['a']['b'] would signal once per level for one call site.
+     * controls how the library signals that deprecation at runtime.
+     *
+     * Reads, writes, and unset() complain once per bracket, so $row['a']['b']
+     * complains twice. Missing data works the same as real data, so
+     * $row->missing['a']['b'] also complains twice. Property syntax never
+     * complains, and neither does isset($array['key']): PHP calls offsetGet()
+     * behind `??` and empty(), so you'd hear about it twice.
      *
      *     'log'    - trigger_error(E_USER_DEPRECATED) only. Silent unless surfaced
      *                by PHP's error handling. Use for legacy codebases mid-migration.
@@ -82,6 +93,7 @@ trait Deprecations
     #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
     public function help(): void
     {
+        // Keep the text in sync with SmartNull::help() - it can't share this copy (no common parent)
         $docs = <<<'__TEXT__'
             SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
             Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
@@ -162,6 +174,11 @@ trait Deprecations
      * formatting; SmartArray does not. Always returns SmartArray (raw) so the
      * pre-formatted strings aren't re-encoded by later operations.
      *
+     * %c is not supported and throws: it converts numbers to raw characters
+     * (60 -> '<'), which could turn encoded values back into markup. All other
+     * sprintf directives work as usual - numeric conversions can only emit
+     * digits and letters.
+     *
      * @deprecated Use ->map() with an inline format string:
      *
      *     // SmartArray (raw, no encoding), old and new:
@@ -176,7 +193,7 @@ trait Deprecations
      *
      * @param string $format sprintf format string (supports {value}/{key} aliases)
      * @return SmartArray Pre-formatted strings that won't be re-encoded on output
-     * @throws InvalidArgumentException If called on a nested array
+     * @throws InvalidArgumentException If called on a nested array, or the format contains %c
      */
     #[Deprecated(reason: 'retired - use ->map() with an inline format string')]
     public function sprintf(string $format): SmartArray
@@ -186,10 +203,18 @@ trait Deprecations
         // Convert {value} and {key} aliases to sprintf positional format
         $format = str_replace(['{value}', '{key}'], ['%1$s', '%2$s'], $format);
 
+        // %c maps attacker-chosen numbers to raw characters (60 -> '<'), recreating
+        // markup after HTML encoding. Every other conversion emits only digits/letters
+        // or the substituted string, so only %c is blocked.
+        $scan = str_replace('%%', '', $format); // %% is literal text, not a directive
+        if (preg_match('/%(?:\d+\$)?(?:\'.|[-+ 0])*\d*(?:\.\d+)?c/', $scan)) {
+            throw new InvalidArgumentException("sprintf(): %c is not supported - it converts numbers to raw characters after HTML encoding");
+        }
+
         $newArray = [];
         foreach ($this as $key => $value) {
             $value      = $value instanceof SmartString ? $value->htmlEncode() : $value;
-            $encodedKey = $this->useSmartStrings ? self::htmlEncode((string)$key) : $key;
+            $encodedKey = $this->useSmartStrings ? self::h($key) : $key;
             $newArray[$key] = sprintf($format, $value, $encodedKey);
         }
 
@@ -210,13 +235,14 @@ trait Deprecations
      * fatal error.
      *
      * @deprecated Use property access: ->key, or ->{'users.id'} for keys property syntax
-     *             can't type. For a missing-key default use ->key ?? $default.
+     *             can't type. For defaults use ->key ?? $default in raw mode; in HTML mode
+     *             use ->key->or($default), which HTML-encodes - a ?? fallback skips encoding.
      *
      * @param int|string|SmartString|SmartNull $key The key to retrieve; Smart values unwrap first
      * @param mixed $default Returned when $key doesn't exist; treated like a stored value
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
-    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? for defaults")]
+    #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? (raw) or ->or() (HTML mode) for defaults")]
     public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
     {
         // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int
@@ -244,20 +270,8 @@ trait Deprecations
             };
         }
 
-        // skip if empty
-        if (empty($this->data)) {
-            return $this->newSmartNull();
-        }
-
-        // Return via getElement (no deprecation warning - Silent stage)
-        if (array_key_exists($key, $this->data)) {
-            return $this->getElement($key);
-        }
-
-        // Show warning if key doesn't exist (only when no default provided)
-        $this->warnIfMissing($key, isOffset: true);
-
-        return $this->newSmartNull();
+        // Silent stage: no deprecation signal. getElement() handles the missing-key warning and SmartNull
+        return $this->getElement($key);
     }
 
     /**
@@ -398,6 +412,81 @@ trait Deprecations
         return new static(array_chunk($this->toArray(), $size), $this->getInternalProperties());
     }
 
+    /**
+     * The legacy where(['field' => value, ...]) array syntax - where() dispatches
+     * here when its first argument is an array. Validates the pairs, logs the
+     * migration nag, then runs the conditions as chained ->where('field', value)
+     * calls (conditions AND together).
+     *
+     * Unlike the aliases above, this backs a deprecated calling convention rather
+     * than a deprecated method name, so callers never see this name and it is free
+     * to label itself. On removal, where()'s first parameter narrows to string and
+     * the dispatch line goes with it.
+     */
+    private function deprecatedWhereArraySyntax(array $field): static
+    {
+        $conditions = array_map([self::class, 'getRawValue'], $field);
+        $h          = self::h(...); // SECURITY: keys and values are data - handlers often echo exception and deprecation messages into pages
+        foreach ($conditions as $key => $listValue) {
+            if (is_int($key)) { // a list like where(['featured']) has no field names to match on
+                $hint = is_string($listValue) ? " Did you mean ->where('{$h($listValue)}') to match rows where '{$h($listValue)}' is non-empty?" : "";
+                throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
+            }
+        }
+        $formatValue = fn($v) => match (true) {
+            is_string($v) => "'{$h($v)}'",
+            is_bool($v)   => $v ? 'true' : 'false',
+            $v === null   => 'null',
+            is_scalar($v) => (string) $v,  // int/float
+            default       => '[...]',      // arrays never match anything, but don't warn while nagging
+        };
+        $whereCalls = array_map(fn($k, $v) => "->where('{$h($k)}', {$formatValue($v)})", array_keys($conditions), $conditions);
+        self::logDeprecation("Replace ->where([...]) with " . implode('', $whereCalls));
+
+        $result = $this;
+        foreach ($conditions as $key => $value) {
+            $result = $result->where($key, $value);
+        }
+
+        return $result;
+    }
+
+    /**
+     * The legacy constructor arguments - the boolean form (new SmartArray($data, true))
+     * and an explicit useSmartStrings key in the properties array. The SmartArray and
+     * SmartArrayHtml constructors dispatch here when either form is present. A value
+     * contradicting the constructed class throws (the caller wants the other class).
+     * A redundant boolean logs a deprecation. A redundant useSmartStrings key passes
+     * through silently (sprintf() passes one internally). Returns the properties as a
+     * plain array.
+     *
+     * Protected, not private like the method above: the dispatching constructors are
+     * in the subclasses. On removal, the constructors' $properties parameter narrows
+     * to array and the dispatch lines go with it.
+     */
+    protected function deprecatedUseSmartStringsArg(bool|array|null $properties, bool $requiredMode): array
+    {
+        // Class names come from the mode, not static::class: subclasses (SmartArrayRaw)
+        // should be pointed at the canonical class
+        $class      = $requiredMode ? 'SmartArrayHtml' : 'SmartArray';
+        $otherClass = $requiredMode ? 'SmartArray' : 'SmartArrayHtml';
+        $wrongWord  = $requiredMode ? 'false' : 'true';
+        $rightWord  = $requiredMode ? 'true' : 'false';
+
+        // Contradicts the constructed class: boolean form or explicit useSmartStrings key
+        if ($properties === !$requiredMode || (is_array($properties) && ($properties['useSmartStrings'] ?? $requiredMode) === !$requiredMode)) {
+            self::logDeprecation("Creating a $class with useSmartStrings=$wrongWord is deprecated. Use $otherClass::new(\$data) instead.");
+            throw new InvalidArgumentException("Cannot create $class with useSmartStrings=$wrongWord. Use $otherClass::new(\$data) instead.");
+        }
+
+        // Redundant boolean: matches the class, deprecation only
+        if ($properties === $requiredMode) {
+            self::logDeprecation("Passing $rightWord to $class is deprecated. Just use $class::new(\$data)");
+            return [];
+        }
+        return is_array($properties) ? $properties : [];
+    }
+
     //endregion
     //region Visible Notices
 
@@ -406,18 +495,16 @@ trait Deprecations
     /**
      * Sets a value in the SmartArray using array syntax.
      *
-     * Note: If you add a key after the array is created the position properties will not be updated.
-     * If needed you can recreate the array like this: $newArray = SmartArray::new($oldArray->toArray());
-     *
      * @deprecated Use ->key = $value or ->{'key'} = $value instead of $array['key'] = $value
      * @param mixed $offset The key to set. If null, the value is appended to the array.
-     * @param mixed $value The value to set. Will be converted to SmartString or SmartArray as appropriate.
+     * @param mixed $value The value to set. Scalars and nulls are stored as-is; arrays become a child SmartArray of this array's mode; Smart values are unwrapped first.
      *
      * @throws InvalidArgumentException If an unsupported value type is provided.
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->triggerArrayAccessDeprecation($offset, 'set');
+        $offset = self::coerceOffset($offset);   // null stays null: $arr[] = $value appends
+        self::triggerArrayAccessDeprecation($offset, 'set');
         $this->setElement($offset, $value);
     }
 
@@ -428,13 +515,8 @@ trait Deprecations
      */
     public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
     {
-        // PHP array key semantics: $arr[null] reads '', floats truncate ($arr[1.5] reads 1), bools read 1/0
-        $offset = match (true) {
-            $offset === null                     => '',
-            is_float($offset), is_bool($offset)  => (int) $offset,
-            default                              => $offset,
-        };
-        $this->triggerArrayAccessDeprecation($offset, 'get');
+        $offset = self::coerceOffset($offset) ?? '';   // PHP array key semantics: $arr[null] reads key ''
+        self::triggerArrayAccessDeprecation($offset, 'get');
         return $this->getElement($offset);
     }
 
@@ -449,7 +531,7 @@ trait Deprecations
         // No notice here: PHP calls offsetExists() then offsetGet() for `??` and empty(),
         // and offsetGet() already notifies, so one here would print every message twice.
         // A bare isset() with no read stays silent; any access that reads data notifies.
-        return isset($this->data[$offset]);
+        return isset($this->data[self::coerceOffset($offset) ?? '']);   // PHP array key semantics: isset($arr[null]) checks key ''
     }
 
     /**
@@ -459,24 +541,53 @@ trait Deprecations
      */
     public function offsetUnset(mixed $offset): void
     {
-        $this->triggerArrayAccessDeprecation($offset, 'unset');
-        $this->sourceRows       = null;   // same staleness rule as setElement()
-        $this->root->sourceRows = null;
+        $offset = self::coerceOffset($offset);
+        self::triggerArrayAccessDeprecation($offset, 'unset');
+        $this->invalidateSourceRows();
         unset($this->data[$offset]);
+    }
+
+    /**
+     * PHP array key semantics for bracket offsets: floats truncate ($arr[1.5] is $arr[1])
+     * and bools read 1/0, same as a plain array. Ints, strings, and null pass through
+     * (null appends in offsetSet and reads key '' elsewhere).
+     *
+     * We cast up front because letting PHP coerce doesn't work here: setElement() is
+     * typed int|string|null under strict_types, so a raw float or bool throws a
+     * TypeError, and the native isset/unset lookups would coerce but emit PHP's
+     * "Implicit conversion from float" deprecation (and, since 8.5, "Using null as
+     * an array offset") naming this file, not the caller.
+     */
+    private static function coerceOffset(mixed $offset): mixed
+    {
+        return match (true) {
+            is_float($offset), is_bool($offset) => (int) $offset,
+            default                             => $offset,
+        };
     }
 
     /**
      * Surface a deprecation notice for array access syntax, dispatched per $onOffsetAccess mode.
      *
+     * Public static so SmartNull, which defines its own ArrayAccess methods, dispatches
+     * through the same rules and modes.
+     *
+     * @internal not part of the supported API
      * @see SmartArrayBase::$onOffsetAccess
      */
-    private function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
+    public static function triggerArrayAccessDeprecation(mixed $key, string $operation = 'get'): void
     {
         // SECURITY: the key can be user input (e.g. $arr[$_GET['sort']]) and 'notify' mode echoes
         // the message into the page, so encode it. $key is display-only from here on; the actual
-        // data access already happened with the original key.
+        // data access already happened with the original key. Unwrap Smart* offsets so they
+        // display like plain keys; everything else (Stringables, arrays) was never a valid
+        // offset, so throw before any of it can reach the page.
+        $key = self::getRawValue($key); // throws on unsupported objects
+        if (!is_scalar($key) && $key !== null) {
+            throw new InvalidArgumentException("Unsupported array offset type: " . get_debug_type($key));
+        }
         if (is_string($key)) {
-            $key = self::htmlEncode($key);
+            $key = self::h($key);
         }
         $keyStr          = is_string($key) ? "'$key'" : (string) $key;
         $isValidPropName = is_string($key) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key);
@@ -541,6 +652,7 @@ trait Deprecations
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $suggestion = self::didYouMean($method) ?? "see the SmartArray docs for available methods.";
         $className  = self::stripNamespace(static::class);
+        $method     = self::h($method); // SECURITY: encode the caller-supplied name - handlers often echo exception messages into pages
         throw new Error("Call to undefined method $className->$method(), $suggestion\n" . self::occurredInFile());
     }
 
@@ -551,6 +663,7 @@ trait Deprecations
     {
         // PHP Default Error: Fatal error: Uncaught Error: Call to undefined method class::method() in /path/file.php:123
         $className = self::stripNamespace(static::class);
+        $method    = self::h($method); // SECURITY: encode the caller-supplied name - handlers often echo exception messages into pages
         throw new Error("Call to undefined method $className::$method(), see the SmartArray docs for available methods.\n" . self::occurredInFile());
     }
 

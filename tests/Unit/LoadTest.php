@@ -304,7 +304,7 @@ class LoadTest extends SmartArrayTestCase
             $this->fail('expected Error');
         } catch (Error $e) {
             $expected = "Load handler doesn't support field 'products'\n"
-                . "Occurred in " . __FILE__ . ":$expectedLine in " . self::class . "->" . __FUNCTION__ . "()\n"
+                . "Occurred in " . basename(__FILE__) . ":$expectedLine in " . self::class . "->" . __FUNCTION__ . "()\n"
                 . "Reported";
             $this->assertSame($expected, $e->getMessage());
         }
@@ -346,14 +346,14 @@ class LoadTest extends SmartArrayTestCase
         // is the only thing the caller sees - no "Undefined array key 1" warning
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $field) => [['id' => 10]]]);
 
-        $thrown   = null;
-        $warnings = $this->captureWarnings(function () use ($sa, &$thrown) {
+        $thrown        = null;
+        [, $warnings]  = $this->captureErrors(function () use ($sa, &$thrown) {
             try {
                 $sa->load('products');
             } catch (Error $e) {
                 $thrown = $e;
             }
-        });
+        }, E_WARNING);
 
         $this->assertSame([], $warnings);
         $this->assertInstanceOf(Error::class, $thrown);
@@ -406,12 +406,15 @@ class LoadTest extends SmartArrayTestCase
     }
 
     #[DataProvider('invalidFieldNameProvider')]
-    public function testLoadRejectsEverythingElseAndEchoesTheFieldBack(string $field): void
+    public function testLoadRejectsEverythingElseAndEchoesTheFieldBackEncoded(string $field): void
     {
         $sa = SmartArray::new(['id' => 1], ['loadHandler' => fn($row, $f) => [[], []]]);
 
+        // The field is echoed back HTML-encoded: handlers often echo exception messages into pages
+        $encodedField = htmlspecialchars($field, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
+
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Field name contains invalid characters: $field");
+        $this->expectExceptionMessage("Field name contains invalid characters: $encodedField");
 
         $sa->load($field);
     }
@@ -424,30 +427,6 @@ class LoadTest extends SmartArrayTestCase
         $this->assertFalse(method_exists(SmartArrayBase::class, 'setLoadHandler'), 'the handler is a constructor property now');
         $this->assertFalse(method_exists(SmartArray::class, 'setLoadHandler'));
         $this->assertFalse(method_exists(SmartArrayHtml::class, 'setLoadHandler'));
-    }
-
-    //endregion
-    //region Helpers
-
-    /**
-     * Run $fn collecting E_WARNING messages, so a PHP warning raised inside the
-     * library can be asserted instead of leaking into the suite output.
-     *
-     * @return string[]
-     */
-    private function captureWarnings(callable $fn): array
-    {
-        $messages = [];
-        set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
-            $messages[] = $errstr;
-            return true;
-        }, E_WARNING);
-        try {
-            $fn();
-        } finally {
-            restore_error_handler();
-        }
-        return $messages;
     }
 
     //endregion

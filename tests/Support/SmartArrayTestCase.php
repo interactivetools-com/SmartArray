@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Base class for the Unit and Integration suites.
  *
- * Conventions (full list in __test-plan.md):
+ * Conventions:
  * - Behaviors run against both SmartArray and SmartArrayHtml via modeProvider()
  * - Warnings and deprecation notices are echoed output by design: tests assert
  *   the text or assert silence, never capture-and-discard
@@ -21,6 +21,8 @@ use PHPUnit\Framework\TestCase;
  */
 abstract class SmartArrayTestCase extends TestCase
 {
+    use SharedTestHelpers;
+
     //region Modes
 
     /**
@@ -59,40 +61,13 @@ abstract class SmartArrayTestCase extends TestCase
     //region Output and Error Capture
 
     /**
-     * Run $fn capturing echoed output. Returns [result, output].
-     *
-     * @return array{0: mixed, 1: string}
-     */
-    protected function captureOutput(callable $fn): array
-    {
-        ob_start();
-        try {
-            $result = $fn();
-        } finally {
-            $output = ob_get_clean();
-        }
-        return [$result, $output];
-    }
-
-    /**
-     * Run $fn collecting E_USER_DEPRECATED messages. The library sends these via
-     * @trigger_error, so only an error handler can observe them. Returns [result, messages].
+     * Run $fn collecting E_USER_DEPRECATED messages. Returns [result, messages].
      *
      * @return array{0: mixed, 1: string[]}
      */
     protected function captureDeprecations(callable $fn): array
     {
-        $messages = [];
-        set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
-            $messages[] = $errstr;
-            return $errno === E_USER_DEPRECATED; // always true given the mask; anything else falls through to PHP
-        }, E_USER_DEPRECATED);
-        try {
-            $result = $fn();
-        } finally {
-            restore_error_handler();
-        }
-        return [$result, $messages];
+        return $this->captureErrors($fn, E_USER_DEPRECATED);
     }
 
     //endregion

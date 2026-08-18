@@ -14,6 +14,16 @@ Contents:
 - [Checking a Single Field](#checking-a-single-field)
 - [Keys Property Syntax Can't Type](#keys-property-syntax-cant-type)
 
+Contents:
+
+- [Reading Fields](#reading-fields)
+- [Fallbacks with or()](#fallbacks-with-or)
+- [Showing a "No Results" Message](#showing-a-no-results-message)
+- [When Data Is Missing](#when-data-is-missing)
+- [Requiring Data: The Guards](#requiring-data-the-guards)
+- [Checking a Single Field](#checking-a-single-field)
+- [Keys That Property Syntax Can't Type](#keys-that-property-syntax-cant-type)
+
 ## Reading Fields
 
 A SmartArray is an object, not an array, so you read fields with the arrow
@@ -91,6 +101,8 @@ An empty result displays as nothing. You can chain and echo without
 checking first:
 
 ```php
+use Itools\ZenDB\DB;
+
 $users = DB::select('users');  // suppose the table is empty
 
 echo $users->first()->name;    // prints nothing
@@ -101,7 +113,7 @@ you get a warning naming the key and your file and line, so typos surface
 the first time the page runs:
 
 ```php
-$user = $users->first();
+$user = DB::select('users')->first();  // this time the table has rows
 
 echo $user->nmae;
 // Warning: nmae is undefined in listings.php:12
@@ -160,7 +172,7 @@ SmartString's
 [Conditionals and Error Checking](https://github.com/interactivetools-com/SmartString/blob/main/docs/conditionals-and-error-checking.md)
 page.
 
-## Keys Property Syntax Can't Type
+## Keys That Property Syntax Can't Type
 
 You won't need this on day one, but it comes up: some queries return keys
 that aren't valid property names, most often table-prefixed columns from
@@ -175,8 +187,8 @@ echo $row->{0};             // zero (numeric keys)
 ```
 
 SmartArrays are writable too, with the same syntax in reverse:
-`$user->status = 'Active'`. Template code rarely needs it; see the
-[Method Reference](method-reference.md) when you do.
+`$user->status = 'Active'`. Template code rarely needs it; see
+[Writing Values](method-reference.md#writing-values) when you do.
 
 ---
 

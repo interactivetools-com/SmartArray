@@ -12,6 +12,15 @@ Contents:
 - [Sorting: sortBy() and sort()](#sorting-sortby-and-sort)
 - [Duplicates and Membership: unique() and contains()](#duplicates-and-membership-unique-and-contains)
 
+Contents:
+
+- [Matching Rows: where()](#matching-rows-where)
+- [Excluding Rows: whereNot()](#excluding-rows-wherenot)
+- [CMS Builder List Fields: whereInList()](#cms-builder-list-fields-whereinlist)
+- [Custom Tests: filter()](#custom-tests-filter)
+- [Sorting: sortBy() and sort()](#sorting-sortby-and-sort)
+- [Duplicates and Membership: unique() and contains()](#duplicates-and-membership-unique-and-contains)
+
 ## Matching Rows: where()
 
 Choosing which rows to load is the query's job (SQL's WHERE clause);
@@ -31,13 +40,23 @@ $users = SmartArrayHtml::new([
     ['name' => 'Sam',  'status' => 'Active',   'role' => 'editor', 'newsletter' => 1],
 ]);
 
-$active = $users->where('status', 'Active');                        // Jean and Sam
+$active = $users->where('status', 'Active');                          // Jean and Sam
 $admins = $users->where('status', 'Active')->where('role', 'admin');  // just Jean
 ```
 
-Databases and forms often hand numbers back as strings, so `where()`
-compares loosely: `'1'` matches `1`. When you need a strict match,
-`filter()` (below) takes a callback where you can compare with `===`.
+The rule behind every case: `where()` gives the same answers a SQL WHERE
+does, with two exceptions - strings stay case-sensitive, and a non-numeric
+string never equals 0. In practice:
+
+- Numbers match numeric strings: `'1'` matches `1`, and `where('price', 1)`
+  matches a DECIMAL column's `'1.00'` (databases and forms often hand
+  numbers back as strings).
+- Two strings must match exactly.
+- Null only matches null.
+- True/false mean 1/0.
+
+When you need full type-sensitive matching, `filter()` (below) takes a
+callback where you can compare with `===`.
 
 With just a field name, `where()` keeps the rows where that field has a
 truthy value, following PHP's `empty()` rules (NULL, false, 0, `"0"`, and
@@ -49,8 +68,8 @@ $subscribed = $users->where('newsletter');  // Jean and Sam
 
 ## Excluding Rows: whereNot()
 
-The `whereNot()` method is the inverse of `where()`: it drops the matching
-rows and keeps everything else:
+The `whereNot()` method drops the matching rows and keeps everything else,
+the inverse of `where()`:
 
 ```php
 $nonAdmins = $users->whereNot('role', 'admin');  // just Sam
@@ -97,16 +116,16 @@ $tables = SmartArrayHtml::new(['cms_accounts', 'wp_posts', 'cms_orders']);
 $ours = $tables->filter(fn($name) => str_starts_with($name, 'cms_'));  // cms_accounts, cms_orders
 ```
 
-Called with no callback, `filter()` removes empty values (`""`, `0`, NULL,
-false). That includes a `0` that is real data (a $0 price, a sort order of
-0); pass a callback when zeros should stay. Like
-PHP's `array_filter()`, kept rows keep their original keys; chain
-`values()` when you want them renumbered.
+Called with no callback, `filter()` removes empty values (`""`, `"0"`, `0`,
+NULL, false). That includes zeros that are real data (a `$0` price, a sort
+order of 0, an unchecked tinyint MySQL handed back as `"0"`); pass a callback
+when zeros should stay. Like PHP's `array_filter()`, kept rows keep their
+original keys; chain `values()` when you want them renumbered.
 
 ## Sorting: sortBy() and sort()
 
 The `sortBy()` method orders rows by a field. It returns a new sorted
-collection and never touches the original (PHP's own `sort()` modifies
+collection and never modifies the original (PHP's own `sort()` modifies
 arrays in place; SmartArray methods don't), so your result stays in query
 order and can be sorted different ways for different spots on the page:
 
@@ -136,7 +155,8 @@ echo $tags->sort()->implode(', ');  // Apache, MySQL, PHP
 
 The `unique()` method drops repeated values from a flat list, keeping the first
 of each, and `contains()` to ask whether a value is in the list at all.
-Both compare loosely, so `1` and `'1'` count as the same value:
+Both treat `1` and `'1'` as the same value (`contains()` follows the same
+matching rules as `where()`):
 
 ```php
 $tags = SmartArrayHtml::new(['PHP', 'MySQL', 'PHP', 'Apache']);

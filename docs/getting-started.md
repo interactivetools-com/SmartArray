@@ -16,19 +16,30 @@ Contents:
 - [Converting to Plain Arrays](#converting-to-plain-arrays)
 - [Debugging](#debugging)
 
+Contents:
+
+- [Installation](#installation)
+- [Your First SmartArray](#your-first-smartarray)
+- [The Mental Model](#the-mental-model)
+- [Working with ZenDB and CMS Builder](#working-with-zendb-and-cms-builder)
+- [Converting to Plain Arrays](#converting-to-plain-arrays)
+- [Debugging](#debugging)
+
 ## Installation
 
-Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?
-SmartArray is already installed; skip to
-[Your First SmartArray](#your-first-smartarray).
+**Using CMS Builder or [ZenDB](https://github.com/interactivetools-com/ZenDB)?**
+SmartArray is already installed, and query results already arrive as
+SmartArrays; skip to [Your First SmartArray](#your-first-smartarray) to see
+how they behave.
 
 ```bash
 composer require itools/smartarray
 ```
 
-Requires PHP 8.1+.
-[SmartString](https://github.com/interactivetools-com/SmartString) (the class
-behind the self-encoding fields) installs automatically as a dependency.
+Requires PHP 8.1+ and
+[SmartString](https://github.com/interactivetools-com/SmartString) 3.0+ (the
+class behind the self-encoding fields; installs automatically as a
+dependency).
 
 ## Your First SmartArray
 
@@ -118,7 +129,7 @@ between them: **what are you outputting?**
 
 That's the whole decision. Collection methods behave identically in both
 classes: callbacks, matching, and sorting always work on the original
-unencoded values, so filtering, reports, and calculations are at home in
+unencoded values, so filtering, reports, and calculations work fine in
 HTML mode:
 
 ```php
@@ -178,7 +189,8 @@ $users->debug();  // contents, current mode, and query metadata
 ```
 
 Plain `print_r($users)` works too and shows just the element data; the class
-name in its output tells you the mode.
+name in its output tells you the mode. Unlike `debug()`, its output isn't
+`<xmp>`-wrapped, so in a browser it's raw and unformatted - prefer `debug()`.
 
 ---
 

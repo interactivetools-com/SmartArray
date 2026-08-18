@@ -35,8 +35,10 @@ foreach ($articles->where('featured') as $article) {
 }
 ```
 
-Query results from ZenDB and CMS Builder already arrive as SmartArrays; for
-anything else, wrap once with `SmartArrayHtml::new($rows)`.
+SmartArray works on any array, but it's built and documented around the most
+common case: database rows. Query results from ZenDB and CMS Builder already
+arrive as SmartArrays; for anything else, wrap once with
+`SmartArrayHtml::new($rows)`.
 
 - **Two modes, one API.** `SmartArray` returns plain PHP values for logic and
   data processing; `SmartArrayHtml` returns
@@ -62,7 +64,7 @@ Full guides and references ([browse on GitHub](https://github.com/interactivetoo
 - **Lookup**
     - [Method Reference](docs/method-reference.md) - every method, grouped by what it returns
     - [Troubleshooting](docs/troubleshooting.md) - common error messages and gotchas, with fixes
-    - [Performance](docs/performance.md) - what SmartArray costs vs plain arrays: about 0.003 ms and 270 bytes per row on a typical page
+    - [Performance](docs/performance.md) - what SmartArray costs vs plain arrays: about 0.002 ms per 25-row page and 300 bytes per row
     - [AI Reference](docs/ai-reference.md) - the complete API in one dense file, written for AI coding assistants
 
 ## You're Never Locked In

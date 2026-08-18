@@ -2,17 +2,17 @@
 
 Most old code keeps working after an upgrade:
 
-- **Renamed methods are removed slowly, never silently.** Old names keep
-  working while they step through deprecation stages over multiple releases
-  (IDE strikethrough, logged notice, visible notice, then a clear Error),
-  always naming their replacement.
-- **Breaking changes produce clear errors.** Removed features and wrong named
-  arguments throw an Error with your file and line, and deprecated calls raise
-  a deprecation notice with their exact replacement, e.g. "Replace
-  ->toRaw() with ->asRaw() in listings.php:14" - error handlers like
-  CMS Builder's developer log catch these.
-- **Only the silent changes need checking.** This file lists them per
-  version, each with a search.
+- **If it breaks, it tells you.** Old names phase out over multiple
+  releases - IDE strikethrough, then a quietly logged notice with your file
+  and line (CMS Builder shows these in the Developer Log), then a clear
+  error - always naming the replacement.
+- **Everything worth checking is listed here.** Silent behavior changes,
+  deprecations, and optional renames, per version, each with a search that
+  finds affected code.
+
+Upgrading SmartArray also upgrades SmartString, and SmartArrayHtml returns its
+values as SmartString objects, so check its
+[upgrade notes](https://github.com/interactivetools-com/SmartString/blob/main/UPGRADING.md) too.
 
 Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 
@@ -21,7 +21,9 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 ## v3.0.0
 
 *Follow this section when upgrading from SmartArray before v3.0.0
-(or CMS Builder before 3.85).*
+(or CMS Builder before 3.85). Requires PHP 8.1+ and SmartString 3.0+
+(earlier releases accepted any SmartString version); Composer updates it
+automatically unless your composer.json pins `itools/smartstring` lower.*
 
 ### Boolean argument to `new()` or the constructor
 
@@ -55,8 +57,10 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >   `new SmartArray($data, ['loadHandler' => $handler])`. Setting it after
 >   construction never worked on record sets - rows are built during
 >   construction and never saw a handler set later.
+> - `newSmartNull()` - now protected; it built the internal missing-value
+>   placeholders and had no use outside the library
 >
-> Search: `usingSmartStrings|setLoadHandler`
+> Search: `usingSmartStrings|setLoadHandler|newSmartNull`
 
 ### sortBy() parameter renamed for named arguments
 
@@ -107,6 +111,65 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > Regex: `->\w+ \?\?` - also search `isset(` and `empty(` on row fields
 
+### Matching rules for `where()`, `whereNot()`, `whereInList()`, and `contains()`
+
+> Most calls behave the same: numbers still match numeric strings, so
+> `where('id', 5)` matches `'5'` and `where('price', 1)` matches `'1.00'`.
+> Three edge cases now match fewer rows:
+>
+> ```php
+> $rows->where('code', '0e123');  // before: also matched '0e999' (PHP read both strings as numbers)
+>                                 // after:  strings must match exactly ('01' vs '1' changed the same way)
+>
+> $rows->where('field', null);    // before: matched null, '', 0, and false
+>                                 // after:  matches only null, like SQL IS NULL
+>
+> $rows->where('active', true);   // before: matched anything truthy, even 'abc'
+>                                 // after:  true means 1, so it matches 1 and '1'
+> ```
+>
+> Fix:
+>
+> - For empty/non-empty checks, use `where($field)` / `whereNot($field)`
+> - When you mean a number, pass a number: `where('price', (float)$_GET['price'])`
+>
+> Regex: `->(where|whereNot|contains)\([^)]*(null|true|false)\s*\)`
+
+### Float key values throw in indexBy(), groupBy(), and column()
+
+> Keying rows by a float field now throws instead of using PHP's
+> float-to-int key truncation (`19.99` and `19.50` both keyed as `19`,
+> losing a row, plus a PHP deprecation notice):
+>
+> ```php
+> $products->indexBy('price');
+> // InvalidArgumentException: indexBy(): 'price' has float values,
+> // convert them to strings first
+> ```
+>
+> Convert the field to a string first: `CAST(price AS CHAR)` in SQL, or
+> format it in PHP before keying.
+
+### Row-only methods throw on mixed arrays
+
+> `where()`, `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`,
+> `groupBy()`, `column()`, and `columnAt()` now require every element to be
+> a row. An array mixing rows and scalar values throws
+> `InvalidArgumentException` naming the element, instead of silently
+> skipping the scalars:
+>
+> ```php
+> $data = SmartArrayHtml::new(['count' => 5, 'items' => [['id' => 1]]]);
+> $data->where('id', 1);  // before: returned 0-1 rows, 'count' silently ignored
+>                         // after:  throws "where(): Expected a nested array of
+>                         //         rows, but element 'count' is not a row (int)"
+> ```
+>
+> Database results and empty arrays are unaffected - this only fires on
+> hand-built arrays that mix shapes. The error usually means the array was
+> wrapped one level too high (`->items` was the intended collection) or a
+> scalar was assigned onto a result set.
+
 ### Silent changes
 
 > - `print_r()` and `var_dump()` show just the array data, like dumping a
@@ -125,6 +188,29 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 > - `load()` throws `InvalidArgumentException` instead of `RuntimeException`
 > when the field name contains invalid characters, matching its empty-field
 > check. Only affects code catching `RuntimeException` around `load()`.
+> - Writes to a `SmartNull` (a missing key or empty result) throw
+> `RuntimeException` instead of silently discarding the value.
+> - Raw-mode arrays throw on SmartString-style fallbacks like `->or()` on a
+> missing key - use `??` instead.
+> - `orDie()` and `or404()` exit with status 1 instead of 0, so shell
+> scripts and cron jobs see the failure.
+
+### Optional renames
+
+No required changes: the old names still work with no runtime notice, and
+IDEs like PHPStorm show them in strikethrough with a one-click rename.
+
+| Old name (still works)  | Current name                                     |
+|-------------------------|--------------------------------------------------|
+| `->nth($n)`             | `->at($n)`                                       |
+| `->pluckNth($n)`        | `->columnAt($n)`                                 |
+| `->pluck($field)`       | `->column($field)`                               |
+| `->get($key, $default)` | `$row->key`, `$row->key ?? $default`             |
+| `->set($key, $value)`   | `$row->key = $value`                             |
+| `->each($fn)`           | a plain `foreach` loop                           |
+| `->sprintf($format)`    | `->map(fn($v) => "<li>$v</li>")`                 |
+| `->help()`              | the docs on GitHub                               |
+| `sortBy(type: ...)`     | `sortBy(flags: ...)` (named-argument calls only) |
 
 ## v2.7.0
 
@@ -194,8 +280,8 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 >
 > - Follow the file and line in each notice and switch to `->key` or
 >   `->{'key'}`
-> - Sites mid-migration can silence the echo (notices still reach error
->   logs): `SmartArrayBase::$onOffsetAccess = 'log';`
+> - Sites mid-migration can silence the echo (your error handler still
+>   receives the notices): `SmartArrayBase::$onOffsetAccess = 'log';`
 
 ### Removed settings (added v2.2.2, removed v2.6.7)
 
@@ -214,14 +300,15 @@ No required changes: the old names still work and raise a deprecation notice
 naming their replacement (visible in error handlers like CMS Builder's
 developer log). Renaming is optional cleanup.
 
-| Old name (still works) | Current name                          |
-|------------------------|---------------------------------------|
-| `->toRaw()`            | `->asRaw()`                           |
-| `->toHtml()`           | `->asHtml()`                          |
-| `->smartMap()`         | `->map()`                             |
-| `SmartArrayRaw` class  | `SmartArray`                          |
-| `->chunk()`            | deprecated, no replacement planned    |
-| `->isMultipleOf($n)`   | `->position() % $n === 0`             |
+| Old name (still works)      | Current name                            |
+|-----------------------------|-----------------------------------------|
+| `->toRaw()`                 | `->asRaw()`                             |
+| `->toHtml()`                | `->asHtml()`                            |
+| `->smartMap()`              | `->map()`                               |
+| `SmartArrayRaw` class       | `SmartArray`                            |
+| `->chunk()`                 | deprecated, no replacement planned      |
+| `->isMultipleOf($n)`        | `->position() % $n === 0`               |
+| `->where([...])` array form | chained `->where($field, $value)` calls |
 
 ## v2.4.0
 
@@ -261,8 +348,6 @@ developer log). Renaming is optional cleanup.
 > - Search `new SmartArray(` and `SmartArray::new(` - anywhere the values
 >   are echoed into HTML, create with `SmartArrayHtml::new()` instead
 > - ZenDB query results are unaffected: they already come back HTML-safe
->
-> Also in this release: `join()` renamed to `implode()` (old name still works).
 
 ---
 

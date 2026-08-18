@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
+use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
@@ -438,6 +439,28 @@ class GlobalSettingsTest extends SmartArrayTestCase
         $this->assertStringContainsString('[1]', $deprecations[0], 'notice shows the coerced key');
     }
 
+    public function testFloatAndBoolOffsetWritesExistsAndUnsetCoerceLikePhpArrayKeys(): void
+    {
+        // Same PHP array key semantics as reads, on every offset operation:
+        // $arr[1.5] = 'x' writes key 1, isset/unset truncate the same way
+        $sa = SmartArray::new(['a', 'b', 'c']);
+
+        [[$exists, ], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(function () use ($sa) {
+                $sa[1.5]  = 'B';
+                $sa[false] = 'A';
+                $found = isset($sa[2.9]);
+                unset($sa[2.5]);
+                return $found;
+            })
+        ));
+
+        $this->assertTrue($exists, 'isset($sa[2.9]) truncates to key 2');
+        $this->assertSame(['A', 'B'], $sa->toArray(), 'writes landed on keys 0 and 1, unset removed key 2');
+        $this->assertCount(3, $deprecations, 'one notice per write/unset; isset stays silent');
+        $this->assertStringContainsString('[1]', $deprecations[0], 'notice shows the coerced key');
+    }
+
     public function testNullOffsetExistsAndUnsetUseTheEmptyStringKey(): void
     {
         $sa = SmartArray::new(['' => 'blank']);
@@ -495,6 +518,60 @@ class GlobalSettingsTest extends SmartArrayTestCase
             "Replace ['user'] with ->user in FILE:LINE.",
             "Replace ['name'] with ->name in FILE:LINE.",
         ], $this->normalizeCaller($deprecations));
+    }
+
+    //endregion
+    //region SmartNull (missing keys and empty results)
+
+    #[DataProvider('modeProvider')]
+    public function testSmartNullBracketReadDispatchesLikeARealRow(string $class): void
+    {
+        // Missing-data paths signal too, so a migration sweep also finds the
+        // bracket call sites that only run when a result is empty
+        $smartNull = $class::new([])->first();
+
+        [[$result, $output], $deprecations] = $this->withOffsetAccess('notify', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(fn() => $smartNull['name'])
+        ));
+
+        $this->assertInstanceOf(SmartNull::class, $result, 'the read still chains');
+        $this->assertSame($this->expectedEcho(["Replace ['name'] with ->name"]), $this->normalizeCaller($output));
+        $this->assertSame($this->expectedMessages(["Replace ['name'] with ->name"]), $this->normalizeCaller($deprecations));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSmartNullBracketAccessThrowsInThrowMode(string $class): void
+    {
+        $smartNull = $class::new([])->first();
+
+        $read = $this->withOffsetAccess('throw', fn() => $this->catchThrowable(fn() => $smartNull['name']));
+        $this->assertInstanceOf(RuntimeException::class, $read);
+        $this->assertSame("Replace ['name'] with ->name in FILE:LINE.", $this->normalizeCaller($read->getMessage()));
+
+        $write = $this->withOffsetAccess('throw', fn() => $this->catchThrowable(fn() => $smartNull['name'] = 'x'));
+        $this->assertInstanceOf(RuntimeException::class, $write);
+        $this->assertSame("Replace ['name'] with ->name = \$value in FILE:LINE.", $this->normalizeCaller($write->getMessage()));
+
+        $unset = $this->withOffsetAccess('throw', fn() => $this->catchThrowable(function () use ($smartNull) {
+            unset($smartNull['name']);
+        }));
+        $this->assertInstanceOf(RuntimeException::class, $unset);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSmartNullExistenceChecksStaySilent(string $class): void
+    {
+        // offsetExists stays silent like SmartArrayBase's, so isset() and ??
+        // don't signal on missing-data paths either - even in throw mode
+        $smartNull = $class::new([])->first();
+
+        [[$results, $output], $deprecations] = $this->withOffsetAccess('throw', fn() => $this->captureDeprecations(
+            fn() => $this->captureOutput(fn() => [isset($smartNull['name']), $smartNull['name'] ?? 'default'])
+        ));
+
+        $this->assertSame([false, 'default'], $results);
+        $this->assertSame('', $output);
+        $this->assertSame([], $deprecations);
     }
 
     //endregion

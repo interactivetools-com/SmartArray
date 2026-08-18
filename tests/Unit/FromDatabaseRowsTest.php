@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
 
+use InvalidArgumentException;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
@@ -58,6 +59,21 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
             $positions[] = [$row->position(), $row->isFirst(), $row->isLast()];
         }
         $this->assertSame([[1, true, false], [2, false, false], [3, false, true]], $positions);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testCallerPassedPositionDoesNotLeakIntoRows(string $class): void
+    {
+        // The child template is cloned from the result set, which carries any
+        // position passed via properties - each row must still resolve its own
+        $trusted = $class::fromDatabaseRows(self::newsRows(), ['position' => 5]);
+
+        $positions = [];
+        foreach ($trusted as $row) {
+            $positions[] = [$row->position(), $row->isFirst(), $row->isLast()];
+        }
+        $this->assertSame([[1, true, false], [2, false, false], [3, false, true]], $positions);
+        $this->assertSame(5, $trusted->position(), 'the result set itself keeps the passed position');
     }
 
     #[DataProvider('modeProvider')]
@@ -141,6 +157,123 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
         unset($trusted->{0});
 
         $this->assertSame([1, 2], array_keys($trusted->toArray()));
+    }
+
+    //endregion
+    //region Prototype cache
+
+    #[DataProvider('modeProvider')]
+    public function testRepeatCallsStartFresh(string $class): void
+    {
+        // Mutating one collection must never affect the next fromDatabaseRows() call
+        $first = $class::fromDatabaseRows(self::newsRows(), ['mysqli' => ['insert_id' => 42]]);
+        $first->first()->title = 'Mutated';
+        $first->{3}            = ['id' => 4, 'title' => 'Added', 'views' => 1, 'rating' => 0.0, 'notes' => null];
+
+        $second = $class::fromDatabaseRows([['id' => 7, 'title' => 'Fresh', 'views' => 0, 'rating' => 0.0, 'notes' => null]]);
+
+        $this->assertSame(1, $second->count());
+        $this->assertSame('Fresh', $second->toArray()[0]['title']);
+        $this->assertSame([], $second->mysqli());
+        $this->assertSame($second, $second->root());
+        $this->assertSame(0, $second->position());
+    }
+
+    public function testInterleavedClassesKeepTheirClass(): void
+    {
+        $raw   = SmartArray::fromDatabaseRows(self::newsRows());
+        $html  = SmartArrayHtml::fromDatabaseRows(self::newsRows());
+        $raw2  = SmartArray::fromDatabaseRows(self::newsRows());
+
+        $this->assertInstanceOf(SmartArray::class, $raw->first());
+        $this->assertInstanceOf(SmartArrayHtml::class, $html->first());
+        $this->assertModeValue("Mayor Says 'No'", $raw2->first()->title, SmartArray::class);
+        $this->assertModeValue("Mayor Says 'No'", $html->first()->title, SmartArrayHtml::class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testPropertiesLandOnResultSetAndRows(string $class): void
+    {
+        $handler = fn(SmartArrayBase $row, string $field) => [['related' => $field], ['query' => 'SELECT related']];
+        $trusted = $class::fromDatabaseRows(self::newsRows(), [
+            'loadHandler' => $handler,
+            'mysqli'      => ['query' => 'SELECT * FROM news', 'insert_id' => 5],
+        ]);
+
+        $this->assertSame('SELECT * FROM news', $trusted->mysqli('query'));
+        $this->assertSame(5, $trusted->mysqli('insert_id'));
+        $this->assertSame('SELECT * FROM news', $trusted->first()->mysqli('query'));
+
+        // load() on a row proves loadHandler carried into the children
+        $this->assertModeValue('orders', $trusted->first()->load('orders')->related, $class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testExplicitUseSmartStringsKeepsConstructorBehavior(string $class): void
+    {
+        // An explicit key matching the class default behaves like the constructor
+        $matching = $class === SmartArrayHtml::class;
+        $forced   = $class::fromDatabaseRows(self::newsRows(), ['useSmartStrings' => $matching]);
+
+        $this->assertSame((new $class(self::newsRows()))->toArray(), $forced->toArray());
+        $this->assertModeValue("Mayor Says 'No'", $forced->first()->title, $class);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testExplicitUseSmartStringsMismatchThrows(string $class): void
+    {
+        // A key contradicting the class still gets the constructor's validation
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('useSmartStrings');
+
+        $class::fromDatabaseRows(self::newsRows(), ['useSmartStrings' => $class !== SmartArrayHtml::class]);
+    }
+
+    //endregion
+    //region fromDatabaseRow() - first row directly
+
+    #[DataProvider('modeProvider')]
+    public function testRowMatchesFromDatabaseRowsFirst(string $class): void
+    {
+        // Same graph as fromDatabaseRows()->first(): the row, its siblings, and root
+        $rows = self::newsRows();
+        $row  = $class::fromDatabaseRow($rows, ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertEquals($class::fromDatabaseRows($rows, ['mysqli' => ['query' => 'SELECT 1']])->first(), $row);
+        $this->assertInstanceOf($class, $row);
+        $this->assertModeValue("Mayor Says 'No'", $row->title, $class);
+        $this->assertSame([1, true, false], [$row->position(), $row->isFirst(), $row->isLast()]);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowRootIsTheFullResultSet(string $class): void
+    {
+        $row = $class::fromDatabaseRow(self::newsRows(), ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertSame(3, $row->root()->count());
+        $this->assertSame(self::newsRows(), $row->root()->toArray());
+        $this->assertSame('SELECT 1', $row->root()->mysqli('query'));
+        $this->assertSame($row, $row->root()->first());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSingleRowIsFirstAndLast(string $class): void
+    {
+        $row = $class::fromDatabaseRow([self::newsRows()[0]]);
+
+        $this->assertSame([1, true, true], [$row->position(), $row->isFirst(), $row->isLast()]);
+        $this->assertSame(1, $row->root()->count());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testNoRowsReturnsEmptyCollection(string $class): void
+    {
+        $row = $class::fromDatabaseRow([], ['mysqli' => ['query' => 'SELECT 1']]);
+
+        $this->assertInstanceOf($class, $row);
+        $this->assertSame(0, $row->count());
+        $this->assertSmartNull($row->missing_field);
+        $this->assertSame('SELECT 1', $row->root()->mysqli('query'));
     }
 
     //endregion

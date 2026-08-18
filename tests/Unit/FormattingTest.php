@@ -76,6 +76,22 @@ class FormattingTest extends SmartArrayTestCase
         $class::new([['a' => 1]])->implode(', ');
     }
 
+    #[DataProvider('modeProvider')]
+    public function testImplodeWorksAfterOnlyRowIsUnset(string $class): void
+    {
+        // Storing a row marks the array as maybe-nested, and unset doesn't clear
+        // the mark - the flat check rescans, finds no rows, and passes
+        $sa = $class::new(['row' => ['a' => 1], 'x' => 'one', 'y' => 'two']);
+
+        [$result, ] = $this->captureOutput(function () use ($sa) {
+            unset($sa['row']); // bracket unset echoes a deprecation, not under test here
+            return $sa->implode(', ');
+        });
+
+        $value = $result instanceof SmartString ? $result->value() : $result;
+        $this->assertSame('one, two', $value);
+    }
+
     //endregion
     //region sprintf()
 

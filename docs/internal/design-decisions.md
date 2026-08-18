@@ -14,9 +14,10 @@ in signatures, docblocks, the changelog, and tests.
 
 - **Missing keys and empty lookups return SmartNull, not an empty
   SmartArray**, because the caller may treat the result as a value or as a
-  collection and SmartNull supports both: `->value()`/`->or()`/`== ''` on
-  the value side, `foreach`/`count()`/`keys()` on the array side. An empty
-  SmartArray from `first()` would fatal on `->value()`.
+  collection and SmartNull supports both: `->value()`, `->or()` (HTML mode
+  only), and `== ''` on the value side, `foreach`/`count()`/`keys()` on the
+  array side. An empty SmartArray from `first()` would fatal on
+  `->value()`.
 
 - **SmartNull propagates through SmartString transforms (2026-08-04).** In
   HTML mode, `__call` tries public SmartString methods first and classifies
@@ -85,3 +86,19 @@ in signatures, docblocks, the changelog, and tests.
   SmartArray docs" rather than linking. These can render on
   private-labeled production sites, where a vendor URL in the page is not
   ours to put there.
+
+- **HTML composition helpers live on SmartString, not here (2026-08-10).**
+  SmartString's `appendHtml()`/`wrapHtml()` are the whole answer to wrapping
+  a present value in markup, and HTML-mode fields are SmartStrings so they
+  get both directly. Rejected across the family: SmartArray-side `*Html()`
+  variants, a SmartHtml type, encode-on-append, and entity-sniffing. If
+  richer safe-HTML composition is ever needed, the design is a dedicated
+  safe-HTML type (see SmartString's design-decisions entry).
+
+- **The `@` on `trigger_error()` stays (2026-08-10).** Warnings and
+  deprecations go out as `@trigger_error(...)`, and the `@` mutes PHP's own
+  display *and* its logging, so only a `set_error_handler()` ever sees them.
+  That is the intent: sites report through their own handler (CMS Builder's
+  developer log), never through PHP's default error log. It also means
+  `$onOffsetAccess = 'log'` is named for that handler, and on a site with no
+  handler it is silent. Don't remove the `@` to make PHP log these.

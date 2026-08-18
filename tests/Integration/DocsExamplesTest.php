@@ -7,6 +7,7 @@ use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
+use Itools\SmartString\SmartString;
 
 /**
  * Every executable example in README.md and docs/, run as written.
@@ -709,6 +710,7 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(static function () use ($articles): void {
             foreach ($articles->groupBy('category') as $category => $stories) {
+                $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
                 echo "<h3>$category</h3>\n";
                 foreach ($stories as $story) {
                     echo "   <li>$story->title</li>\n";
@@ -744,7 +746,9 @@ class DocsExamplesTest extends SmartArrayTestCase
     {
         $authorsById = SmartArrayHtml::new(self::transformingAuthors())->indexBy('author_id');
 
-        $this->assertSame('7, 12, 15', $authorsById->keys()->implode(', ')->value());
+        [, $output] = $this->captureOutput(static fn() => print($authorsById->keys()->implode(', ')));
+
+        $this->assertSame('7, 12, 15', $output);
     }
 
     public function testTransformingValuesRenumbersSoJsonStaysAnArray(): void
@@ -940,7 +944,8 @@ class DocsExamplesTest extends SmartArrayTestCase
     public function testCommonPatternsTopNBreaksAfterThreeRows(): void
     {
         $articles = SmartArrayHtml::new([
-            ['title' => 'One'], ['title' => 'Two'], ['title' => 'Three'], ['title' => 'Four'], ['title' => 'Five'],
+            ['title' => 'Runaway'], ['title' => 'Local Trails'], ['title' => 'Harbour Lights'],
+            ['title' => 'Night Ferry'], ['title' => 'Winter Roads'],
         ]);
 
         [, $output] = $this->captureOutput(static function () use ($articles): void {
@@ -954,7 +959,7 @@ class DocsExamplesTest extends SmartArrayTestCase
         });
 
         $this->assertSame(
-            "<li>One</li>\n<li>Two</li>\n<li>Three</li>\n<li><a href='articles.php'>more...</a></li>\n",
+            "<li>Runaway</li>\n<li>Local Trails</li>\n<li>Harbour Lights</li>\n<li><a href='articles.php'>more...</a></li>\n",
             $output,
         );
     }
@@ -972,6 +977,7 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(static function () use ($listings): void {
             foreach ($listings->groupBy('category') as $category => $rows) {
+                $category = SmartString::new($category);  // foreach keys come back plain; this makes them encode like fields
                 echo "<h3>$category ({$rows->count()})</h3>\n";
                 foreach ($rows as $row) {
                     echo "   <li>$row->title</li>\n";
@@ -1055,6 +1061,21 @@ class DocsExamplesTest extends SmartArrayTestCase
 
         $this->assertSame('Jean', SmartArray::getRawValue($field));
         $this->assertSame('plain', SmartArray::getRawValue('plain'));
+    }
+
+    /** The Writing Values block: assignment, nested arrays, unset. */
+    public function testMethodReferenceWritingValuesStoresFieldsRowsAndRemovesKeys(): void
+    {
+        $user = SmartArrayHtml::new(['status' => 'Pending', 'nickname' => 'Jay']);
+
+        $user->status = 'Active';
+        $user->tags   = ['staff', 'admin'];
+        unset($user->nickname);
+
+        $this->assertSame('Active', (string)$user->status);
+        $this->assertInstanceOf(SmartArrayHtml::class, $user->tags);
+        $this->assertSame(['staff', 'admin'], $user->tags->toArray());
+        $this->assertSame(['status' => 'Active', 'tags' => ['staff', 'admin']], $user->toArray());
     }
 
     //endregion

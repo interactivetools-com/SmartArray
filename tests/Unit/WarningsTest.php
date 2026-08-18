@@ -50,16 +50,7 @@ class WarningsTest extends SmartArrayTestCase
      */
     private function captureWarnings(callable $fn): array
     {
-        $messages = [];
-        set_error_handler(static function (int $errno, string $errstr) use (&$messages): bool {
-            $messages[] = $errstr;
-            return true;
-        }, E_USER_WARNING);
-        try {
-            [, $output] = $this->captureOutput($fn);
-        } finally {
-            restore_error_handler();
-        }
+        [[, $output], $messages] = $this->captureErrors(fn() => $this->captureOutput($fn), E_USER_WARNING);
         return [$output, $messages];
     }
 
@@ -186,18 +177,6 @@ class WarningsTest extends SmartArrayTestCase
         [, $output] = $this->captureOutput(fn() => $rows->where('zzz', 1));
 
         $this->assertSame('', $output, 'an empty array has no rows to check the field against');
-    }
-
-    #[DataProvider('modeProvider')]
-    public function testArgumentWarningSkippedWhenFirstElementIsNotARow(string $class): void
-    {
-        // Mixed data (scalar config keys alongside array fields) has no first row
-        // to sample, so the check is skipped rather than reporting a false miss
-        $mixed = $class::new(['tableName' => 'users', 'fields' => ['a' => 1]]);
-
-        [, $output] = $this->captureOutput(fn() => $mixed->sortBy('zzz'));
-
-        $this->assertSame('', $output);
     }
 
     #[DataProvider('modeProvider')]
@@ -350,6 +329,20 @@ class WarningsTest extends SmartArrayTestCase
         $this->assertSame(1, substr_count($output, 'Warning:'));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testRowsAddedAfterConstructionAlsoWarn(string $class): void
+    {
+        // A late-set row sits inside a parent collection like any other row, so
+        // its keys are column names and a miss warns (before positions resolved
+        // lazily, late rows had no position metadata and stayed silent)
+        $rows = $class::new([['name' => 'Bob']]);
+        $rows->set('late', ['name' => 'Sue']);
+
+        [, $output] = $this->captureOutput(fn() => $rows->late->zzz);
+
+        $this->assertSame(1, substr_count($output, 'Warning:'));
+    }
+
     //endregion
     //region __toString
 
@@ -417,7 +410,8 @@ class WarningsTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => (string)$sa);
 
-        $this->assertStringContainsString(__FILE__, $output);
+        $this->assertStringContainsString('in ' . basename(__FILE__) . ' on line', $output);
+        $this->assertStringNotContainsString(__DIR__, $output, 'the warning shows the basename only, never the full path');
         $this->assertStringNotContainsString('SmartArrayBase.php', $output);
     }
 

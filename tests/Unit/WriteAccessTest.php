@@ -247,25 +247,65 @@ class WriteAccessTest extends SmartArrayTestCase
         $this->assertCount(1, $deprecations);
     }
 
+    #[DataProvider('modeProvider')]
+    public function testOffsetSetAndUnsetRejectUnsupportedOffsetTypesBeforeAnyOutput(string $class): void
+    {
+        // The notice echoes the offset in 'notify' mode, so unsupported types
+        // (whose text the library doesn't control) must throw before printing
+        $sa         = $class::new(['name' => 'Bob']);
+        $stringable = new class {
+            public function __toString(): string
+            {
+                return '<img src=x onerror=alert(1)>';
+            }
+        };
+
+        [$e, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                $sa[$stringable] = 'x';
+            } catch (InvalidArgumentException $e) {
+                return $e;
+            }
+            return null;
+        });
+        $this->assertInstanceOf(InvalidArgumentException::class, $e, 'set must throw');
+        $this->assertStringNotContainsString('onerror', $e->getMessage());
+        $this->assertSame('', $output, 'nothing printed before the set throw');
+
+        [$e, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                unset($sa[$stringable]);
+            } catch (InvalidArgumentException $e) {
+                return $e;
+            }
+            return null;
+        });
+        $this->assertInstanceOf(InvalidArgumentException::class, $e, 'unset must throw');
+        $this->assertStringNotContainsString('onerror', $e->getMessage());
+        $this->assertSame('', $output, 'nothing printed before the unset throw');
+
+        $this->assertSame(['name' => 'Bob'], $sa->toArray(), 'collection unchanged');
+    }
+
     //endregion
     //region Position metadata on late writes
 
     #[DataProvider('modeProvider')]
-    public function testLateWritesDoNotRecalculatePositions(string $class): void
+    public function testLateWritesSeeCurrentPositions(string $class): void
     {
-        // Position metadata is set at construction only (documented in offsetSet):
-        // a row added later reads position 0 / isFirst false / isLast false,
-        // and existing siblings keep their original metadata
+        // Position metadata is computed on first call from the row's place in its
+        // parent: a row added later resolves its real position, and the row that
+        // was last at build stops reporting isLast()
         $sa = $class::new([['a' => 1], ['a' => 2]]);
 
         $sa->set('late', ['a' => 3]);
 
         $late = $sa->late;
-        $this->assertSame(0, $late->position());
+        $this->assertSame(3, $late->position());
         $this->assertFalse($late->isFirst());
-        $this->assertFalse($late->isLast());
+        $this->assertTrue($late->isLast());
 
-        $this->assertTrue($sa->at(1)->isLast(), 'original last row keeps isLast even though it no longer is');
+        $this->assertFalse($sa->at(1)->isLast(), 'row that was last at build is not last anymore');
     }
 
     //endregion

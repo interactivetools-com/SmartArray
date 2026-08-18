@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray;
 
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function basename, debug_backtrace, dirname, headers_list, htmlspecialchars, implode, in_array, preg_match, str_ireplace, str_replace, strtolower, trait_exists, trigger_error, trim;
+use const DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_DEPRECATED, PHP_SAPI;
+
 /**
  * SharedHelpers - common functions used across our libraries.
  *
@@ -33,22 +37,40 @@ trait SharedHelpers
     }
 
     /**
-     * Find the first caller outside the library's own directory.
+     * Find the first caller outside the libraries' own directories.
      *
-     * Walks the debug backtrace to find the first frame that isn't in the same
-     * directory as this file, giving us the actual calling code location.
+     * Walks the debug backtrace to find the first frame that isn't in
+     * SmartString's or SmartArray's src directory, giving us the actual calling
+     * code location.
      * 'method' is the caller's enclosing function or class method, or '' at the top level.
      *
-     * @return array{path: string, file: string, line: int|string, function: string, method: string}
+     * 'file' is a basename only: these strings reach page output, so they never
+     * carry full paths. Stack traces and logs report full paths on their own.
+     *
+     * @return array{file: string, line: int|string, function: string, method: string}
      */
     private static function getExternalCaller(): array
     {
+        // Both libraries count as internal: they delegate to each other (SmartArray's
+        // SmartNull forwards method calls to SmartString), so the first frame outside
+        // this file's directory can be the other library's file, not the developer's
+        // code. Each library keeps its copy of this trait in its own src directory
+        // (see the class docblock) and every class that can appear in a backtrace
+        // uses it, so the loaded traits map out both directories. trait_exists(...,
+        // false) never autoloads - a library that isn't loaded can't be in the
+        // backtrace anyway.
+        $internalDirs = [];
+        foreach ([\Itools\SmartString\SharedHelpers::class, \Itools\SmartArray\SharedHelpers::class] as $sharedHelpers) {
+            if (trait_exists($sharedHelpers, false)) {
+                $internalDirs[] = dirname((new \ReflectionClass($sharedHelpers))->getFileName());
+            }
+        }
+
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
         foreach ($backtrace as $index => $caller) {
-            if (!empty($caller['file']) && dirname($caller['file']) !== __DIR__) {
+            if (!empty($caller['file']) && !in_array(dirname($caller['file']), $internalDirs, true)) {
                 $nextFrame = $backtrace[$index + 1] ?? [];
                 return [
-                    'path'     => $caller['file'],
                     'file'     => basename($caller['file']),
                     'line'     => $caller['line'] ?? "unknown",
                     'function' => $caller['function'] ?? "unknown",
@@ -56,7 +78,7 @@ trait SharedHelpers
                 ];
             }
         }
-        return ['path' => "unknown", 'file' => "unknown", 'line' => "unknown", 'function' => "unknown", 'method' => ''];
+        return ['file' => "unknown", 'line' => "unknown", 'function' => "unknown", 'method' => ''];
     }
 
     /**
@@ -71,7 +93,7 @@ trait SharedHelpers
     {
         $caller   = self::getExternalCaller();
         $inMethod = $caller['method'] !== '' ? " in {$caller['method']}()" : "";
-        $output   = "Occurred in {$caller['path']}:{$caller['line']}$inMethod\nReported"; // "Reported" is a prefix - trigger_error() appends " in file on line X"
+        $output   = "Occurred in {$caller['file']}:{$caller['line']}$inMethod\nReported"; // "Reported" is a prefix - trigger_error() appends " in file on line X"
 
         // Add Reported in file:line (if requested)
         if ($addReportedFileLine) {
@@ -79,12 +101,30 @@ trait SharedHelpers
             $class        = $backtrace[1]['class'] ?? '';
             $shortClass   = $class ? self::stripNamespace($class) : '';
             $method       = $shortClass . ($backtrace[1]['type'] ?? '') . ($backtrace[1]['function'] ?? '');
-            $reportedFile = $backtrace[0]['file'] ?? "unknown";
+            $reportedFile = basename($backtrace[0]['file'] ?? "unknown");
             $reportedLine = $backtrace[0]['line'] ?? "unknown";
             $output       .= " in $reportedFile:$reportedLine in $method()\n";
         }
 
         return $output;
+    }
+
+    /**
+     * HTML-encode a value for safe output, same name and flags as CMS Builder's h().
+     * ENT_DISALLOWED substitutes code points HTML5 forbids (C1 controls, noncharacters)
+     * with � so they can't hide in page source.
+     *
+     * Every error, warning, or exception message encodes the values it interpolates
+     * (keys, identifiers, method names - anything that isn't safe by construction):
+     * handlers often echo messages into pages. Assign it to a variable to encode
+     * inline in interpolated strings:
+     *
+     *     $h = self::h(...);
+     *     throw new RuntimeException("Unknown key '{$h($key)}', expected a column name");
+     */
+    protected static function h(string|int|float|null $input): string
+    {
+        return htmlspecialchars((string)$input, ENT_QUOTES | ENT_SUBSTITUTE | ENT_DISALLOWED | ENT_HTML5, 'UTF-8');
     }
 
     /**
@@ -127,13 +167,14 @@ trait SharedHelpers
             return $plain;
         }
 
-        // showme() debug helper adds its own <xmp>
-        $backtraceFunctions = array_map('strtolower', array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'));
-        if (in_array('showme', $backtraceFunctions, true)) {
+        // showme() debug helper adds its own <xmp>. Only the immediate external caller
+        // counts - an unrelated showme() higher up the stack can't disable the wrapping.
+        if (strtolower(self::getExternalCaller()['method']) === 'showme') {
             return $plain;
         }
 
-        return "\n<xmp>\n$output\n</xmp>\n";
+        // escape "</xmp" so output can't break out of the block, same as CMSB's xmp_safe()
+        return "\n<xmp>\n" . str_ireplace('</xmp', '<\/xmp', $output) . "\n</xmp>\n";
     }
 
 }

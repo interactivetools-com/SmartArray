@@ -7,29 +7,32 @@
 # SmartArray AI Reference
 
 This is a consolidated reference for AI coding assistants: the complete API
-in one file, covering SmartArray 3.0. For human-friendly docs with tutorials and
-explanations, see [Getting Started](getting-started.md).
+in one file, covering SmartArray 3.0. For human-friendly docs with tutorials
+and explanations, see
+[Getting Started](https://github.com/interactivetools-com/SmartArray/blob/main/docs/getting-started.md)
+on GitHub (this is the only docs file shipped in the Composer package, so
+links here are absolute).
 
 Contents:
 
-- What is SmartArray
-- Class Hierarchy and Type Hints
-- Creating Collections
-- Reading and Writing Fields
-- Missing Keys and SmartNull
-- Iteration and Keys
-- Mode Conversion and Plain Arrays
-- Single Elements - first(), last(), at()
-- Collection Checks - count(), isEmpty(), isNotEmpty(), contains()
-- Row Position - isFirst(), isLast(), position()
-- Filtering and Sorting - where(), whereNot(), whereInList(), filter(), sort(), sortBy(), unique()
-- Transforming and Grouping - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
-- Guards - or404(), orDie(), orThrow(), orRedirect()
-- Database Metadata - mysqli(), load()
-- Debugging - debug()
-- Errors and Exceptions
-- Deprecated Names
-- Gotchas Quick Reference
+- [What is SmartArray](#what-is-smartarray)
+- [Class Hierarchy and Type Hints](#class-hierarchy-and-type-hints)
+- [Creating Collections](#creating-collections)
+- [Reading and Writing Fields](#reading-and-writing-fields)
+- [Missing Keys and SmartNull](#missing-keys-and-smartnull)
+- [Iteration and Keys](#iteration-and-keys)
+- [Mode Conversion and Plain Arrays](#mode-conversion-and-plain-arrays)
+- [Single Elements](#single-elements) - first(), last(), at()
+- [Collection Checks](#collection-checks) - count(), isEmpty(), isNotEmpty(), contains()
+- [Row Position](#row-position) - isFirst(), isLast(), position()
+- [Filtering and Sorting](#filtering-and-sorting) - where(), whereNot(), whereInList(), filter(), sort(), sortBy(), unique()
+- [Transforming and Grouping](#transforming-and-grouping) - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
+- [Guards](#guards) - or404(), orDie(), orThrow(), orRedirect()
+- [Database Metadata](#database-metadata) - mysqli(), load()
+- [Debugging](#debugging) - debug()
+- [Errors and Exceptions](#errors-and-exceptions)
+- [Deprecated Names](#deprecated-names)
+- [Gotchas Quick Reference](#gotchas-quick-reference)
 
 ---
 
@@ -80,7 +83,7 @@ Key definitions used throughout:
 ## Class Hierarchy and Type Hints
 
 ```
-SmartBase (interface)     anything the library hands back
+SmartBase (interface)     every collection type plus SmartNull (not SmartString)
 ├── SmartArrayBase        abstract base - type-hint this to accept either mode
 │   ├── SmartArray            raw mode
 │   └── SmartArrayHtml        HTML mode
@@ -147,14 +150,21 @@ depends on WHERE you read (changed in 3.0):
   maps, standalone arrays, empty collections): silent. A miss is a normal
   no-match, so fallbacks chain cleanly: `$authorById->{$id}->or('Unknown')`.
 
+Separate rule for method ARGUMENTS: a field name passed to `where()`,
+`whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`, `groupBy()`, or
+`column()` that doesn't exist in the first row warns from ANY nested
+collection, result set or not, with the format
+`funcName(): 'field' doesn't exist` (caller's file:line appended).
+
 SmartNull behavior: `echo` → `""`; `value()` → null; `count()` → 0;
 `foreach` iterates zero times; `toArray()` → `[]`; `json_encode()` → null;
 SmartArray methods return empty results; SmartString methods (HTML mode)
 behave as on null, except transforms return the same SmartNull (chain stays
 missing, accepts value or collection endings) and `map()` skips its callback
 (a NULL value in an existing key still runs it); guards (`or404()` etc.)
-FIRE (empty = missing); one-argument `set($value)` produces that value; all
-other writes throw `RuntimeException` ("Cannot set values on SmartNull").
+FIRE (empty = missing); one-argument `set($value)` produces that value in
+HTML mode only (raw mode throws like any write); all other writes throw
+`RuntimeException` ("Cannot set values on SmartNull").
 It carries the source's mysqli metadata and load handler.
 
 ## Iteration and Keys
@@ -184,18 +194,20 @@ It carries the source's mysqli metadata and load handler.
   returning false.
 - `(array)$collection` exposes internal object properties (PHP has no cast
   hook) - never use it; use `toArray()`. Spread `[...$collection]` works
-  for flat lists (top level only).
+  for flat lists (top level only) but keeps element mode: SmartString
+  objects in HTML mode, plain values in raw mode. For plain original
+  values, use `toArray()`.
 
 ## Single Elements
 
 ```php
-first(): row|field|SmartNull                     // first element
-last(): row|field|SmartNull                      // last element
-at(int|SmartString $index): row|field|SmartNull  // by position, ignoring keys: 0 first, -1 last
+first(): row|field|SmartNull                               // first element
+last(): row|field|SmartNull                                // last element
+at(int|SmartString|SmartNull $index): row|field|SmartNull  // by position, ignoring keys: 0 first, -1 last
 ```
 
 All three return `SmartNull` silently when there is no such element
-(empty collection, out-of-range index).
+(empty collection, out-of-range index, `SmartNull` index).
 
 ## Collection Checks
 
@@ -203,7 +215,7 @@ All three return `SmartNull` silently when there is no such element
 count(): int                  // also works via count($collection) (Countable)
 isEmpty(): bool               // no elements
 isNotEmpty(): bool            // any elements
-contains(mixed $value): bool  // any element == $value (loose; Smart args unwrap)
+contains(mixed $value): bool  // any element matches $value (where() rules; Smart args unwrap)
 ```
 
 Field-level checks (`isMissing()`, `isEmpty()`, `or()`, ...) are SmartString
@@ -218,37 +230,39 @@ isLast(): bool     // true for the last row
 position(): int    // 1-based position in parent; 0 on top-level/derived collections
 ```
 
-Set at construction on nested rows; preserved through `asHtml()`/`asRaw()`.
+Computed on first call and then kept; preserved through `asHtml()`/`asRaw()`.
 Rows in a DERIVED collection (a `where()` result) get fresh positions in
 the new collection.
 
 ## Filtering and Sorting
 
-All return a new collection; nested-only methods throw
-`InvalidArgumentException` on flat arrays and vice versa.
+All return a new collection; nested-only methods require every element to be
+a row and throw `InvalidArgumentException` on flat arrays or on mixed arrays
+where an element is not a row (empty arrays pass); flat-only methods likewise
+throw on nested input.
 
 | Method                                                     | Behavior                                                                                                                                                                |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field == $value` (loose; `'1'` matches 1; Smart args unwrap). Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter is a loose == null match |
-| `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field == $value`; rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
+| `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field` matches `$value`: strings match as exact text (`'0e12'` never matches `'0e99'`), numbers match numerically in either direction (`'1'` matches 1, 1 matches `'1.00'`), null matches only null (SQL IS NULL), bools compare as 1/0 on either side. Smart args unwrap. Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter matches only stored NULLs |
+| `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field` matches `$value` (same matching rules as `where()`); rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
 | `whereInList(string $field, mixed $value): static`         | Nested only. Keeps rows where tab-separated `$field` contains `$value` as a whole value (`"\tmenu\tfooter\t"` format, CMS Builder checkbox/multi-select fields) or equals it as a plain single value. Never substring matching |
-| `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
-| `sort(int $flags = SORT_REGULAR): static`                  | Flat only. Sorts by value, renumbers keys                                                                                                                               |
-| `sortBy(string $field, int $flags = SORT_REGULAR): static` | Nested only. Ascending by `$field`; rows missing the field sort first (like MySQL ORDER BY) and are kept unchanged. Numeric row keys renumber, string keys preserved. `SORT_NATURAL` for human number order |
+| `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, `"0"`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
+| `sort(int $flags = SORT_REGULAR): static`                  | Flat only. Sorts ascending by value, renumbers keys. `$flags` choose comparison only; `SORT_ASC`/`SORT_DESC` throw `InvalidArgumentException` (sort descending in SQL)  |
+| `sortBy(string $field, int $flags = SORT_REGULAR): static` | Nested only. Ascending by `$field`; rows missing the field sort first (like MySQL ORDER BY) and are kept unchanged. Numeric row keys renumber, string keys preserved. `SORT_NATURAL` for human number order; `SORT_ASC`/`SORT_DESC` throw |
 | `unique(): static`                                         | Flat only. Removes duplicates keeping the first, keys preserved; compares as strings (`array_unique()`), so 1 and `'1'` are duplicates                                  |
 
 ## Transforming and Grouping
 
 | Method                                                                             | Behavior                                                                                                                     |
 |------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Like `array_column()`: one field per row; `$indexKey` keys results by another field; `column(null, $indexKey)` keys whole rows with `indexBy()` rules (missing field keys under `''`, last wins) |
+| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Like `array_column()`: one field per row; `$indexKey` keys results by another field using `indexBy()` rules (missing field keys under `''`, floats throw, bools key as 1/0); `column(null, $indexKey)` keys whole rows, same as `indexBy()` |
 | `columnAt(int $index): static`                                                     | The column at a position from each row, ignoring key names (0 first, -1 last)                                                |
-| `indexBy(string $field): static`                                                   | Whole rows keyed by `$field`; duplicate keys keep the LAST row                                                               |
-| `groupBy(string $field): static`                                                   | Rows grouped by `$field`: one child collection per distinct value                                                            |
+| `indexBy(string $field): static`                                                   | Whole rows keyed by `$field`; duplicate keys keep the LAST row. Null/missing field keys under `''`; floats throw (convert to strings first), booleans key as 1/0 |
+| `groupBy(string $field): static`                                                   | Rows grouped by `$field`: one child collection per distinct value; same keying rules as `indexBy()`                          |
 | `keys(): static`                                                                   | The keys as a new collection (encode on output in HTML mode)                                                                 |
 | `values(): static`                                                                 | The values, keys renumbered from 0                                                                                           |
-| `map(callable $callback): static`                                                  | New collection from `$callback($rawValue)` per element; rows arrive as plain arrays; returned arrays become rows again       |
-| `merge(array\|SmartArrayBase ...$arrays): static`                                  | Appends: numeric keys renumber, string keys overwrite (later wins)                                                           |
+| `map(callable $callback): static`                                                  | New collection from `$callback` per element: closures receive raw `($value, $key)`, PHP built-ins receive `$value` only; rows arrive as plain arrays; returned arrays become rows again |
+| `merge(array\|SmartArrayBase\|SmartNull ...$arrays): static`                       | Appends: numeric keys renumber, string keys overwrite (later wins); `SmartNull` merges as empty                              |
 | `implode(string $separator = ''): SmartString\|string`                             | Flat only. Joins values; returns `SmartString` in HTML mode (encodes on output), plain `string` in raw mode                  |
 
 ## Guards
@@ -284,7 +298,9 @@ this automatically.
   `$field` via the configured `loadHandler`. Returns `SmartNull` when the
   collection is empty; throws `RuntimeException` when no handler is set or
   when called on a record set (call it on a row). Handler contract: return
-  `[rows, mysqliProperties]` or `false` (anything else throws).
+  `[rows, mysqliProperties]`, or `false` to reject the field, which throws a
+  PHP native `Error` naming it. Any other return throws a PHP native `Error`
+  describing what came back instead.
 
 ## Debugging
 
@@ -293,24 +309,34 @@ $collection->debug();   // contents, current mode, mysqli metadata; debug(1) add
 print_r($collection);   // element data only; the class name identifies the mode
 ```
 
-Output is `<xmp>`-wrapped in the browser and plain text on the command line.
+`debug()` output is `<xmp>`-wrapped in the browser and plain text on the
+command line. PHP's `print_r()`/`var_dump()` output raw values with no wrapper -
+in a browser use `debug()`.
 
 ## Errors and Exceptions
 
 - **InvalidArgumentException**: unsupported value types in constructor or
   writes (objects/resources), flat/nested shape mismatches (`sort()` on
-  nested, `where()` on flat), `getRawValue()` on unsupported objects,
-  invalid `load()` field names.
+  nested, `where()` on flat), `SORT_ASC`/`SORT_DESC` passed to
+  `sort()`/`sortBy()`, `getRawValue()` on unsupported objects, invalid
+  `load()` field names.
 - **RuntimeException**: `orThrow()` (message HTML-encoded), `orRedirect()`
   with headers already sent, writes to `SmartNull`, `load()` without a
-  handler or with a bad handler return.
-- **Error** (PHP native): undefined method calls, with did-you-mean
-  suggestions and the caller's file:line.
+  handler or called on a record set.
+- **Error** (PHP native): undefined method calls (caller's file:line, plus
+  a did-you-mean suggestion when the name matches a known old method,
+  otherwise a docs pointer); `load()` handler returning anything but
+  `[rows, mysqliProperties]`, including `false`.
+- **TypeError**: a strict callback passed to `map()` or `filter()` throws
+  PHP's own TypeError when an element doesn't match its signature (e.g.
+  `strtoupper(...)` on a null or int element).
 - **E_USER_WARNING** (echoed + trigger_error): missing key on a result-set
-  row; string conversion of a collection (`echo "$users"` yields `""`, page
-  continues, message suggests `"{$var->method()}"` braces).
-- **E_USER_DEPRECATED**: deprecated names and `$arr['key']` array syntax
-  (see below).
+  row; missing field-name argument to `where()`/`sortBy()`/`indexBy()` and
+  friends (any nested collection, see Missing Keys above); string
+  conversion of a collection (`echo "$users"` yields `""`, page continues,
+  message suggests `"{$var->method()}"` braces).
+- **E_USER_DEPRECATED**: `$arr['key']` array syntax, and deprecated names that
+  have reached the notice stage (see below).
 
 ## Deprecated Names
 
@@ -321,7 +347,7 @@ signal. When reading old code, translate:
 | Deprecated                                               | Use instead                                            |
 |----------------------------------------------------------|--------------------------------------------------------|
 | `$arr['key']`, `$arr['key'] = $v` (array syntax)         | `$arr->key`, `$arr->key = $v` (braces for odd keys)    |
-| `get($key)` / `get($key, $default)`                      | `->key` / `->{'key'}`; `?? $default` for defaults (NOTE: `??` also fires on stored NULLs; `get()`'s default only fired on missing keys) |
+| `get($key)` / `get($key, $default)`                      | `->key` / `->{'key'}`; for defaults use `->or($default)` in HTML mode (encoded; `??` fallbacks skip encoding) or `?? $default` in raw mode (NOTE: both fire on stored NULLs too; `get()`'s default only fired on missing keys) |
 | `set($key, $value)`                                      | `->key = $value` / `->{'key'} = $value`                |
 | `pluck($field)` / `pluck($field, $keyField)`             | `column($field)` / `column($field, $keyField)`         |
 | `pluckNth($index)`                                       | `columnAt($index)`                                     |
@@ -332,12 +358,16 @@ signal. When reading old code, translate:
 | `each($callback)`                                        | a `foreach` loop                                       |
 | `sprintf($format)`                                       | `map()` with an inline format string                   |
 | `where(['field' => $value, ...])` (array arg)            | chained `where('field', $value)` calls                 |
-| `isMultipleOf($n)`, `chunk($size)`                       | retired, no replacement                                |
+| `isMultipleOf($n)`                                       | `->position() % $n === 0`                              |
+| `chunk($size)`                                           | deprecated, no replacement planned                     |
+| `help()`                                                 | retired; read the docs on GitHub                       |
+| `SmartArrayRaw`, `SmartArrayRaw::new()`                  | `SmartArray`, `SmartArray::new()` (it extends `SmartArray`, so instanceof checks still pass) |
 
 How the deprecated array syntax is reported is configurable via
 `SmartArrayBase::$onOffsetAccess`: `'notify'` (default) echoes a notice into
-the page and logs it, `'log'` logs only (for legacy sites mid-migration),
-`'throw'` throws a RuntimeException (strict mode for new installs).
+the page and passes it to your error handler, `'log'` passes it to your error
+handler only (for legacy sites mid-migration), `'throw'` throws a
+RuntimeException (strict mode for new installs).
 
 ## Gotchas Quick Reference
 
@@ -362,11 +392,22 @@ the page and logs it, `'log'` logs only (for legacy sites mid-migration),
 - `implode()` in HTML mode returns a SmartString: interpolating it into a
   raw-SQL string would encode the joined text; call `->string()` first or
   use raw mode for SQL.
-- Missing-key warnings fire only on result-set rows; map and standalone
-  lookups are silent by design.
+- Missing-key READS warn only on result-set rows; standalone lookups are
+  silent by design. A missing field-name ARGUMENT (`where()`, `sortBy()`,
+  `indexBy()`, ...) warns from any nested collection.
+- In raw mode a MISSING field returns `SmartNull`, an object, and objects
+  are always truthy: bare `if ($user->is_admin)` runs when the field is
+  absent or misspelled. PHP's `isset()` and `??` see missing keys correctly;
+  use them or `->value()` for logic.
+- HTML encoding makes values safe as HTML text and quoted attribute
+  values only. It does NOT make them safe as `javascript:`-scheme hrefs
+  (check the scheme first), inside `<script>` or `<style>` blocks (use
+  `jsonEncode()`), or as URL query parameters (use `urlEncode()`, which
+  returns `""` on a NULL field where `urlencode($x->value())` raises a
+  deprecation; for a path segment use `rawurlencode($x->value())`).
 - `echo $collection` / `"$users"` never works (collections have no string
   form); echo fields or `implode()`.
 
 ---
 
-[← Documentation Index](README.md) | [← Prev: Troubleshooting](troubleshooting.md)
+[← Documentation Index](https://github.com/interactivetools-com/SmartArray/blob/main/docs/README.md) | [← Prev: Performance](https://github.com/interactivetools-com/SmartArray/blob/main/docs/performance.md)

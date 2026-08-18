@@ -12,12 +12,20 @@ Contents:
 - [Loop Layout: isFirst(), isLast(), position()](#loop-layout-isfirst-islast-position)
 - [Keys Are Never Encoded](#keys-are-never-encoded)
 
+Contents:
+
+- [How Auto-Encoding Works](#how-auto-encoding-works)
+- [Where Encoding Ends](#where-encoding-ends)
+- [Trusted HTML: rawHtml()](#trusted-html-rawhtml)
+- [Loop Layout: isFirst(), isLast(), position()](#loop-layout-isfirst-islast-position)
+- [Keys Are Never Encoded](#keys-are-never-encoded)
+
 ## How Auto-Encoding Works
 
 A field holds your original value, exactly as it came from the database,
 and produces the HTML-encoded version only at the moment you output it.
-That means what you display is safe, what you compare or calculate with is
-still the real value, and no time is spent encoding fields you never show:
+That means what you display is safe, the original is still there when you
+need it with `value()`, and no time is spent encoding fields you never show:
 
 ```php
 use Itools\SmartArray\SmartArrayHtml;
@@ -31,6 +39,19 @@ echo $article->title->value();  // Tips & Tricks (the original value, for logic)
 That covers every string context, so there's no encoding call to remember
 and no way to forget one. The rest of this page is about the places where
 you want something other than the default.
+
+## Where Encoding Ends
+
+HTML encoding makes values safe as HTML text and inside quoted attribute
+values. A few contexts need more than encoding:
+
+- **User-supplied link URLs**: encoding doesn't stop a stored
+  `javascript:alert(1)` from running as an href; check the scheme before
+  outputting a URL that came from user input.
+- **Inside `<script>` blocks**: use `jsonEncode()` to pass values to
+  JavaScript; encoded text is not valid JS.
+- **URL query strings**: use `urlEncode()` so `&` and `=` inside values
+  don't split parameters.
 
 ## Trusted HTML: rawHtml()
 

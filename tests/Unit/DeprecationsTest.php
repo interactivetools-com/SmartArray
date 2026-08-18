@@ -75,6 +75,7 @@ class DeprecationsTest extends SmartArrayTestCase
             'sprintf',
             'toHtml',
             'toRaw',
+            'triggerArrayAccessDeprecation',   // not an alias: the offset-syntax dispatcher, public so SmartNull can call it
             'withSmartStrings',
         ], $methods);
     }
@@ -295,6 +296,34 @@ class DeprecationsTest extends SmartArrayTestCase
         $sa = $class::new(['x' => 'alpha']);
 
         $this->assertSame(['x' => 'alpha/x'], $sa->sprintf('%1$s/%2$s')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSprintfRejectsPercentC(string $class): void
+    {
+        // %c turns numbers into raw characters (60 -> '<') after HTML encoding,
+        // the one directive where the data picks the output character
+        $sa = $class::new([60, 62]);
+
+        foreach (['%c', '%1$c', '%2$c', "%'x5c", '%-5c'] as $format) {
+            try {
+                $sa->sprintf($format);
+                $this->fail("Expected InvalidArgumentException for format $format");
+            } catch (InvalidArgumentException $e) {
+                $this->assertStringContainsString('%c is not supported', $e->getMessage());
+            }
+        }
+
+        // %%c is a literal "%c", not a directive
+        $this->assertSame(['%c', '%c'], $sa->sprintf('%%c')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSprintfAllowsLiteralPercents(string $class): void
+    {
+        $sa = $class::new(['v']);
+
+        $this->assertSame(['100% of v'], $sa->sprintf('100%% of {value}')->toArray());
     }
 
     #[DataProvider('modeProvider')]
@@ -583,7 +612,7 @@ class DeprecationsTest extends SmartArrayTestCase
         } catch (Error $e) {
             $this->assertSame(
                 "Call to undefined method SmartArray->totallyUnknown(), see the SmartArray docs for available methods.\n"
-                . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownMethodThrowsWithTheCallersFileAndLine()\nReported",
+                . 'Occurred in ' . basename(__FILE__) . ":$line in " . self::class . "->testUnknownMethodThrowsWithTheCallersFileAndLine()\nReported",
                 $e->getMessage(),
             );
         }
@@ -686,7 +715,7 @@ class DeprecationsTest extends SmartArrayTestCase
         } catch (Error $e) {
             $this->assertSame(
                 "Call to undefined method SmartArray::bogus(), see the SmartArray docs for available methods.\n"
-                . 'Occurred in ' . __FILE__ . ":$line in " . self::class . "->testUnknownStaticCallThrowsWithTheStaticSeparator()\nReported",
+                . 'Occurred in ' . basename(__FILE__) . ":$line in " . self::class . "->testUnknownStaticCallThrowsWithTheStaticSeparator()\nReported",
                 $e->getMessage(),
             );
         }
@@ -706,7 +735,7 @@ class DeprecationsTest extends SmartArrayTestCase
     {
         // Declared methods never reach __callStatic()
         $this->assertSame(
-            'Non-static method Itools\SmartArray\SmartArray::first() cannot be called statically',
+            'Non-static method Itools\SmartArray\SmartArrayBase::first() cannot be called statically',
             $this->firstLineOfError(static fn() => SmartArray::first()),
         );
     }

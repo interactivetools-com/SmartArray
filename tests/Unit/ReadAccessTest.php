@@ -292,6 +292,25 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertSmartNull($sa->at(new SmartString(null)));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testAtNonIntegerSmartStringIndexesReturnSmartNull(string $class): void
+    {
+        // is_numeric() used to let these through and (int) reshaped them:
+        // '1.9' selected position 1, '-0.5' position 0, '1e2' position 100
+        $sa = $class::new(['a', 'b', 'c']);
+
+        $this->assertSmartNull($sa->at(new SmartString('1.9')));
+        $this->assertSmartNull($sa->at(new SmartString('-0.5')));
+        $this->assertSmartNull($sa->at(new SmartString('1e2')));
+        $this->assertSmartNull($sa->at(new SmartString(' 1')));
+        $this->assertSmartNull($sa->at(new SmartString('+1')));
+        $this->assertSmartNull($sa->at(new SmartString('01')), 'exact integer spellings only');
+        $this->assertSmartNull($sa->at(new SmartString(1.9)));
+
+        // Non-string backing values still work when they spell an exact integer
+        $this->assertModeValue('c', $sa->at(new SmartString(2.0)), $class); // float 2.0 stringifies to '2'
+    }
+
     //endregion
     //region __get (property access)
 
@@ -368,6 +387,47 @@ class ReadAccessTest extends SmartArrayTestCase
         $this->assertStringContainsString("Replace ['zzz'] with ->zzz", $output);
         $this->assertStringContainsString('Warning: zzz is undefined', $output);
         $this->assertCount(1, $deprecations);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testOffsetGetRejectsUnsupportedOffsetTypesBeforeAnyOutput(string $class): void
+    {
+        // The notice echoes the offset in 'notify' mode, so unsupported types
+        // (whose text the library doesn't control) must throw before printing
+        $sa         = $class::new(['name' => 'Bob']);
+        $stringable = new class {
+            public function __toString(): string
+            {
+                return '<img src=x onerror=alert(1)>';
+            }
+        };
+
+        foreach ([$stringable, ['name']] as $badOffset) {
+            [$caught, $output] = $this->captureOutput(function () use ($sa, $badOffset) {
+                try {
+                    return [$sa[$badOffset], null];
+                } catch (InvalidArgumentException $e) {
+                    return [null, $e];
+                }
+            });
+            [, $e] = $caught;
+            $this->assertInstanceOf(InvalidArgumentException::class, $e);
+            $this->assertStringContainsString('Unsupported', $e->getMessage());
+            $this->assertStringNotContainsString('onerror', $e->getMessage());
+            $this->assertSame('', $output, 'nothing printed before the throw');
+        }
+
+        // SmartNull's own ArrayAccess methods dispatch through the same rules
+        [$caught, $output] = $this->captureOutput(function () use ($sa, $stringable) {
+            try {
+                return [$sa->missing[$stringable], null];
+            } catch (InvalidArgumentException $e) {
+                return [null, $e];
+            }
+        });
+        [, $e] = $caught;
+        $this->assertInstanceOf(InvalidArgumentException::class, $e);
+        $this->assertStringNotContainsString('onerror', $output, 'missing-key warning may print, but never the offset text');
     }
 
     //endregion

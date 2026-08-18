@@ -11,6 +11,7 @@ use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use Itools\SmartString\SmartString;
 use JetBrains\PhpStorm\Deprecated;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -24,15 +25,28 @@ use ReflectionMethod;
  * it is documented, and a newly deprecated one stops being required with no test
  * edit. There is no hand-maintained skip list.
  *
- * Reverse: every ->method() named in method-reference.md must exist as a callable
- * method on SmartArray, SmartArrayHtml, SmartNull, or SmartString, which catches
- * typos and references left behind after a rename.
+ * Reverse: every ->method() named in any document must exist as a callable method on
+ * SmartArray, SmartArrayHtml, SmartNull, or SmartString, which catches typos and
+ * references left behind after a rename. This runs over every docs/*.md page plus
+ * README.md, UPGRADING.md, and CHANGELOG.md, so a rename that misses a guide page
+ * fails here with the file named.
  */
 final class DocsCoverageTest extends SmartArrayTestCase
 {
     //region Configuration
 
-    private const METHOD_REFERENCE_PATH = __DIR__ . '/../../docs/method-reference.md';
+    private const REPO_ROOT             = __DIR__ . '/../../';
+    private const METHOD_REFERENCE_PATH = self::REPO_ROOT . 'docs/method-reference.md';
+    private const AI_REFERENCE_PATH     = self::REPO_ROOT . 'docs/ai-reference.md';
+
+    /** Root-level documents that name methods and get the same reverse check as docs/*.md */
+    private const ROOT_DOCS = ['README.md', 'UPGRADING.md', 'CHANGELOG.md'];
+
+    /**
+     * Names that stand in for "any method" in prose, so no real method has to exist.
+     * Keep this list short: anything here is a name the reverse check can never catch a typo in.
+     */
+    private const PLACEHOLDER_METHOD_NAMES = ['method'];
 
     /** Classes whose own public methods make up the documented surface. */
     private const API_CLASSES = [SmartArrayBase::class, SmartArray::class, SmartArrayHtml::class];
@@ -59,6 +73,13 @@ final class DocsCoverageTest extends SmartArrayTestCase
     public function testMethodReferenceDocumentsEveryPublicMethod(): void
     {
         $this->assertDocumentsEveryPublicMethod(self::METHOD_REFERENCE_PATH, 'docs/method-reference.md');
+    }
+
+    public function testAiReferenceDocumentsEveryPublicMethod(): void
+    {
+        // The one docs file shipped in the Composer bundle, and the file AGENTS.md
+        // tells AI agents to trust over training data - it must never go stale
+        $this->assertDocumentsEveryPublicMethod(self::AI_REFERENCE_PATH, 'docs/ai-reference.md');
     }
 
     /**
@@ -124,12 +145,13 @@ final class DocsCoverageTest extends SmartArrayTestCase
     /**
      * Catches doc typos and references to renamed or removed methods.
      */
-    public function testMethodReferenceMethodMentionsAreCallable(): void
+    #[DataProvider('documentProvider')]
+    public function testMethodMentionsAreCallable(string $path, string $label): void
     {
-        $text = self::readDoc(self::METHOD_REFERENCE_PATH);
+        $text = self::readDoc($path);
         preg_match_all('/->([a-zA-Z_][a-zA-Z0-9_]*)\(/', $text, $matches);
 
-        $callable = self::callableMethodNames();
+        $callable = array_merge(self::callableMethodNames(), self::PLACEHOLDER_METHOD_NAMES);
         $unknown  = [];
         foreach (array_unique($matches[1]) as $name) {
             if (!in_array($name, $callable, true)) {
@@ -138,7 +160,36 @@ final class DocsCoverageTest extends SmartArrayTestCase
         }
         sort($unknown);
 
-        $this->assertSame([], $unknown, 'docs/method-reference.md names methods that do not exist on SmartArray, SmartArrayHtml, SmartNull, or SmartString');
+        $this->assertSame([], $unknown, "$label names methods that do not exist on SmartArray, SmartArrayHtml, SmartNull, or SmartString");
+    }
+
+    /**
+     * A glob that stopped matching would make the reverse check pass without reading
+     * anything, so pin the count and the pages that must always be in it.
+     */
+    public function testDocumentProviderSeesEveryPage(): void
+    {
+        $labels = array_column(iterator_to_array(self::documentProvider()), 1);
+
+        $this->assertGreaterThan(12, count($labels), 'Document list looks truncated; check the docs/*.md glob');
+
+        foreach (['docs/method-reference.md', 'docs/ai-reference.md', 'docs/filtering-and-sorting.md', 'README.md', 'UPGRADING.md'] as $page) {
+            $this->assertContains($page, $labels, "$page should be reverse-checked");
+        }
+    }
+
+    /** @return iterable<string, array{string, string}> label => [path, label] */
+    public static function documentProvider(): iterable
+    {
+        $paths = array_merge(
+            glob(self::REPO_ROOT . 'docs/*.md') ?: [],
+            array_map(static fn(string $name): string => self::REPO_ROOT . $name, self::ROOT_DOCS),
+        );
+
+        foreach ($paths as $path) {
+            $label = str_contains($path, '/docs/') ? 'docs/' . basename($path) : basename($path);
+            yield $label => [$path, $label];
+        }
     }
 
     //endregion

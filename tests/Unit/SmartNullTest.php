@@ -146,8 +146,8 @@ class SmartNullTest extends SmartArrayTestCase
 
         [$result, $output] = $this->captureOutput(fn() => $smartNull['a']['b'][0]);
 
-        $this->assertSame($smartNull, $result, 'array reads on SmartNull are exempt from the offset-access deprecation');
-        $this->assertSame('', $output);
+        $this->assertSame($smartNull, $result, 'array reads return $this, so chains keep working');
+        $this->assertSame(3, substr_count($output, "\nDeprecated: "), 'bracket syntax notifies on missing-data paths like anywhere else');
     }
 
     #[DataProvider('modeProvider')]
@@ -158,7 +158,7 @@ class SmartNullTest extends SmartArrayTestCase
         [$result, $output] = $this->captureOutput(fn() => $smartNull['rows']->first()->name->value());
 
         $this->assertNull($result, 'the whole chain resolves to null with no fatal');
-        $this->assertSame('', $output);
+        $this->assertSame(1, substr_count($output, "\nDeprecated: "), 'the one bracket read notifies');
     }
 
     #[DataProvider('modeProvider')]
@@ -290,6 +290,65 @@ class SmartNullTest extends SmartArrayTestCase
         $this->assertSame('n/a', $smartNull->map('strtoupper')->or('n/a')->value(), 'chain stays open after map');
     }
 
+    public function testApplyAliasPropagatesLikeMapInHtmlMode(): void
+    {
+        // apply() is SmartString's deprecated alias for map(); both spellings
+        // propagate the same way on a missing key
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+        $calls     = 0;
+
+        $result = $smartNull->apply(function ($value) use (&$calls) {
+            $calls++;
+            return 'computed';
+        });
+
+        $this->assertSame($smartNull, $result);
+        $this->assertSame(0, $calls, 'the callback never runs on a missing key');
+        $this->assertSame('n/a', $smartNull->apply('strtoupper')->or('n/a')->value(), 'chain stays open after apply');
+    }
+
+    public function testOddCasedMapAndApplyPropagateLikeLowercaseInHtmlMode(): void
+    {
+        // PHP method dispatch ignores case (->dateformat() works), so ->Map() must
+        // propagate exactly like ->map() - not delegate and run the callback on null
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+        $calls     = 0;
+        $callback  = function ($value) use (&$calls) {
+            $calls++;
+            return 'computed';
+        };
+
+        $this->assertSame($smartNull, $smartNull->Map($callback));
+        $this->assertSame($smartNull, $smartNull->APPLY($callback));
+        $this->assertSame(0, $calls, 'the callback never runs on a missing key, whatever the casing');
+    }
+
+    public function testDeprecatedSmartStringShimsWorkOnMissingKeysInHtmlMode(): void
+    {
+        // noEncode/toString/jsEncode/stripTags only exist inside SmartString's
+        // __call, which method_exists() can't see, so they need their own list in
+        // SmartNull::__call. Each one answers like it would on a present null
+        // value and logs its normal deprecation instead of throwing.
+        $smartNull = $this->smartNullFrom(SmartArrayHtml::class);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->noEncode());
+        $this->assertNull($result, 'noEncode() returns null, same as on a present null value');
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('rawHtml()', $messages[0]);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->toString());
+        $this->assertSame('', $result);
+        $this->assertCount(1, $messages);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->jsEncode());
+        $this->assertSame('', $result);
+        $this->assertCount(1, $messages);
+
+        [$result, $messages] = $this->captureDeprecations(fn() => $smartNull->stripTags());
+        $this->assertSame($smartNull, $result, 'stripTags() propagates, chain stays open');
+        $this->assertCount(1, $messages);
+    }
+
     public function testMapStillRunsOnAKeyThatExistsWithANullValue(): void
     {
         // The boundary map() propagation must not cross: NULL is a present value
@@ -396,7 +455,7 @@ class SmartNullTest extends SmartArrayTestCase
             $this->fail('expected an Error');
         } catch (Error $e) {
             $line = __LINE__ - 3;
-            $this->assertStringContainsString("\nOccurred in " . __FILE__ . ":$line in " . self::class . '->' . __FUNCTION__ . "()\n", $e->getMessage());
+            $this->assertStringContainsString("\nOccurred in " . basename(__FILE__) . ":$line in " . self::class . '->' . __FUNCTION__ . "()\n", $e->getMessage());
         }
     }
 
@@ -459,7 +518,8 @@ class SmartNullTest extends SmartArrayTestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cannot set values on SmartNull - this value came from a missing key or empty result, check ->isNotEmpty() first');
 
-        $smartNull['key'] = 'value';
+        // the deprecated array-write syntax prints its notice before the guard throws
+        $this->captureOutput(fn() => $smartNull['key'] = 'value');
     }
 
     #[DataProvider('modeProvider')]

@@ -11,6 +11,9 @@ use JetBrains\PhpStorm\Deprecated;
 use JsonSerializable;
 use stdClass;
 
+// import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
+use function count, in_array, is_null, method_exists, property_exists, strtolower;
+
 /**
  * SmartNull - Chainable null object for missing elements.
  *
@@ -117,6 +120,7 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     #[Deprecated(reason: 'retired - read the docs on GitHub instead')]
     public function help(): void
     {
+        // Keep the text in sync with Deprecations::help() - no common parent to share it
         $output = <<<'__TEXT__'
             SmartArray docs:  https://github.com/interactivetools-com/SmartArray#readme
             Method reference: https://github.com/interactivetools-com/SmartArray/blob/main/docs/method-reference.md
@@ -181,9 +185,11 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     /**
      * Array reads on a missing value stay missing: returns $this so chains keep working.
+     * Bracket syntax is deprecated everywhere, so it dispatches per $onOffsetAccess first.
      */
     public function offsetGet(mixed $offset): SmartNull
     {
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'get');
         return $this;
     }
 
@@ -192,11 +198,13 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'set');
         $this->throwCannotSet();
     }
 
     /**
-     * No keys exist on a missing value.
+     * No keys exist on a missing value. Silent like SmartArrayBase::offsetExists,
+     * so isset() and ?? don't signal - the read carries the notice.
      */
     public function offsetExists(mixed $offset): bool
     {
@@ -205,7 +213,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     public function offsetUnset(mixed $offset): void
     {
-        // ArrayAccess requires this; a SmartNull has nothing to unset
+        // Nothing to unset, but the deprecated bracket syntax still signals
+        SmartArrayBase::triggerArrayAccessDeprecation($offset, 'unset');
     }
 
     //endregion
@@ -214,6 +223,8 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     /**
      * Get mysqli result information for the last database query.
      * Returns specified property (affected_rows, insert_id) or array of all properties if no property specified.
+     *
+     * Keep in sync with SmartArrayBase::mysqli() - SmartNull can't share it (no common parent).
      */
     public function mysqli(?string $property = null): int|string|null|array
     {
@@ -250,9 +261,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
     }
 
     /**
-     * One argument is SmartString's set($value): produce that value and end the
-     * chain, like or(). Two arguments is SmartArray's set($key, $value), a
-     * write, and all writes throw (see __set above).
+     * One argument in HTML mode is SmartString's set($value): produce that
+     * value and end the chain, like or(). Everything else is a write - two
+     * arguments is SmartArray's set($key, $value), and raw mode has no
+     * one-argument form - and all writes throw (see __set above).
      */
     public function set(mixed ...$args): mixed
     {
@@ -276,9 +288,9 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * result means nothing was produced, so the SmartNull itself returns and the
      * chain stays open for either ending, ->or('n/a') for a value or ->implode()
      * for a collection. Produced results (or() fallbacks, int() and other scalars)
-     * return as usual. map() propagates without running its callback: a missing
-     * key has no value to pass it, while a NULL value in an existing key still
-     * runs the callback.
+     * return as usual. map() and its deprecated alias apply() propagate without
+     * running their callback: a missing key has no value to pass it, while a
+     * NULL value in an existing key still runs the callback.
      *
      * Everything else delegates to an empty SmartArray/SmartArrayHtml of the same
      * mode. Unknown methods are forwarded too, so they throw the same undefined-method
@@ -296,13 +308,24 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
         // out: method_exists() reports them, but they aren't part of the API.
         // getIterator is defined by both classes and skips SmartString: a missing value
         // iterates like an empty collection, it doesn't throw SmartString's can't-foreach error
+        //
+        // Don't optimize: measured negligible - this only runs when a key is missing,
+        // so it's rarely called. And caching the method names breaks mixed-case calls:
+        // PHP doesn't care that it's ->dateFormat() not ->dateformat(), but an isset()
+        // lookup would.
+        // The in_array list mirrors the deprecated shims in SmartString::__call, which
+        // method_exists() can't see. Keep both sites in sync: when SmartString drops a
+        // shim, drop it here too.
+        $nameLower           = strtolower($name); // PHP method dispatch ignores case, so every name check here must too
         $isSmartStringMethod = $this->useSmartStrings
-            && $name !== 'getIterator'
-            && method_exists(SmartString::class, $name)
-            && (new ReflectionMethod(SmartString::class, $name))->isPublic();
+            && $nameLower !== 'getiterator'
+            && (
+                (method_exists(SmartString::class, $name) && (new ReflectionMethod(SmartString::class, $name))->isPublic())
+                || in_array($nameLower, ['noencode', 'tostring', 'jsencode', 'striptags'], true)
+            );
 
         if ($isSmartStringMethod) {
-            if ($name === 'map') {
+            if ($nameLower === 'map' || $nameLower === 'apply') {
                 return $this;
             }
             $result = SmartString::new(null)->$name(...$arguments);
@@ -340,6 +363,10 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
 
     /**
      * Get internal properties for passing to SmartArray/SmartArrayHtml constructors.
+     *
+     * Keep the key list in sync with SmartArrayBase::getInternalProperties() (its base
+     * list - SmartNull has no position metadata), or arrays spawned from a SmartNull
+     * silently lose the missing field.
      */
     private function getInternalProperties(): array
     {

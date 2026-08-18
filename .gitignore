@@ -14,4 +14,3 @@ phpunit.xml
 .claude/
 .idea/
 test.php
-*.sh

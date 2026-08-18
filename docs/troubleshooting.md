@@ -46,6 +46,15 @@ SmartString's
 [troubleshooting page](https://github.com/interactivetools-com/SmartString/blob/main/docs/troubleshooting.md)
 covers every variation of this.
 
+Raw mode has one version of the same trap: existing fields are plain
+values, but a missing or misspelled field returns a `SmartNull`
+placeholder, which is an object and therefore truthy, so a bare
+`if ($user->is_admin)` runs when the field doesn't exist. PHP's `isset()`
+and `??` treat missing keys as missing, so `$user->is_admin ?? 0` is a safe
+guard. Comparing without one isn't: `$user->is_admin == 1` is true for a
+missing field too, because PHP casts the placeholder object to `1` (and
+raises its own object-to-int notice).
+
 ### A === null check never matches
 
 In HTML mode, fields are always objects: a stored NULL comes back as a
@@ -80,7 +89,9 @@ A row from your results was asked for a column it doesn't have. Usually
 one of two things: the column name is misspelled, or the query didn't
 select that column, so check the spelling first and the SELECT list
 second. For a key that legitimately may not exist, read it with `??`,
-which never warns: `$row->some_field ?? ''`.
+which never warns: `$row->some_field ?? ''`. Watch for two gotchas with
+`??`. It doesn't fire on a stored `""` (an empty string is a value), and
+the fallback skips HTML encoding, so keep fallbacks plain text.
 
 Only rows inside a result set warn. Lookups on keyed maps (from
 `indexBy()` or `column()`) and standalone arrays render blank silently,
@@ -93,10 +104,12 @@ offers no way to override it), so the result is mangled keys instead of
 your data. Use `toArray()`:
 
 ```php
+$cities = SmartArrayHtml::new(['Vancouver', 'Ottawa']);
+
 $plain = (array)$cities;      // WRONG - internal properties with unusable keys
 $plain = $cities->toArray();  // RIGHT - plain array, original values
 
-$flat = [...$cities];         // spread also works for flat lists (top level only)
+$flat = [...$cities];         // spread works for flat lists but keeps element mode: SmartStrings in HTML mode
 ```
 
 ### json_encode() returns an object instead of an array
@@ -106,8 +119,11 @@ turns any array with key gaps into an object. Chain `values()` to
 renumber first:
 
 ```php
-echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
-echo json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
+$cities = SmartArrayHtml::new(['Vancouver', 'Ottawa']);
+
+header('Content-Type: application/json');
+$json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver'));            // {"1":"Ottawa"}
+$json = json_encode($cities->filter(fn($c) => $c !== 'Vancouver')->values());  // ["Ottawa"]
 ```
 
 ### A lookup using a field as the key renders blank
@@ -129,4 +145,4 @@ lookups work either way.
 
 ---
 
-[← Documentation Index](README.md) | [← Prev: Method Reference](method-reference.md)
+[← Documentation Index](README.md) | [← Prev: Method Reference](method-reference.md) | [Next: Performance →](performance.md)

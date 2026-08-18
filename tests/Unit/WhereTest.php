@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 /**
  * The where family: where(), whereNot(), whereInList().
  *
- * Pins the loose-comparison contract (documented ==) and the null/missing
- * matrix decided in the review (Q8):
+ * Pins the matching contract (strings exact, numbers numeric, null only null,
+ * bools as 1/0) and the null/missing matrix decided in the review (Q8):
  *
- *     row state        where()      whereNot()   whereInList()
- *     field missing    excluded     KEPT         excluded
- *     field is null    == applies   == applies   always excluded
+ *     row state        where()          whereNot()       whereInList()
+ *     field missing    excluded         KEPT             excluded
+ *     field is null    matches null     matches null     always excluded
  */
 class WhereTest extends SmartArrayTestCase
 {
@@ -44,45 +44,160 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereUsesLooseComparison(string $class): void
+    public function testWhereMatchesNumbersAcrossTypes(string $class): void
     {
-        // Documented == semantics for database/form data where numbers are often strings
+        // Database/form data often stores numbers as strings; a number on either
+        // side compares numerically
         $sa = $class::new([
             ['id' => 1],
             ['id' => '1'],
             ['id' => 2],
         ]);
 
-        $this->assertCount(2, $sa->where('id', 1), "'1' == 1");
-        $this->assertCount(2, $sa->where('id', '1'), "1 == '1'");
+        $this->assertCount(2, $sa->where('id', 1), "int 1 matches '1'");
+        $this->assertCount(2, $sa->where('id', '1'), "'1' matches int 1");
+
+        $prices = $class::new([
+            ['price' => '1.00'],   // DECIMAL columns come back as strings
+            ['price' => '19.99'],
+        ]);
+
+        $this->assertCount(1, $prices->where('price', 1), "int 1 matches DECIMAL '1.00'");
+        $this->assertCount(1, $prices->where('price', 19.99), "float 19.99 matches '19.99'");
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereNullValueMatchesLooseNullFamily(string $class): void
+    public function testWhereMatchesStringsAsExactText(string $class): void
     {
-        // A consequence of documented == semantics: null == '' == 0 == false in PHP 8
+        // Two strings never compare numerically: PHP's numeric-string == would
+        // match distinct hash-like values ('0e12' == '0e99' is true in raw PHP)
+        $sa = $class::new([
+            ['code' => '0e99'],
+            ['code' => '1000'],
+            ['code' => '01000'],
+            ['code' => 'Apple'],
+        ]);
+
+        $this->assertCount(0, $sa->where('code', '0e12'), 'hash-like strings are exact text');
+        $this->assertCount(1, $sa->where('code', '0e99'), 'identical strings match');
+        $this->assertCount(0, $sa->where('code', '1e3'), 'no scientific notation crossover');
+        $this->assertCount(1, $sa->where('code', '1000'), "leading-zero '01000' stays distinct from '1000'");
+        $this->assertCount(0, $sa->where('code', 'apple'), 'case-sensitive');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereNullMatchesOnlyNull(string $class): void
+    {
+        // SQL IS NULL semantics: null is "no value", not the empty-ish family
         $sa = $class::new([
             ['f' => null],
             ['f' => ''],
             ['f' => 0],
             ['f' => false],
-            ['f' => '0'],     // '0' != null (PHP 8: null == '0' is false)
+            ['f' => '0'],
             ['f' => 'x'],
         ]);
 
-        $this->assertSame([0, 1, 2, 3], $sa->where('f', null)->keys()->toArray());
+        $this->assertSame([0], $sa->where('f', null)->keys()->toArray(), 'null matches only null');
+        $this->assertSame([1], $sa->where('f', '')->keys()->toArray(), "'' does not match a stored null");
+        $this->assertSame([2, 3, 4], $sa->where('f', 0)->keys()->toArray(), "0 matches 0, false, and '0' but not null or ''");
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereExcludesRowsMissingFieldAndNonArrayRows(string $class): void
+    public function testWhereBoolsCompareAsOneAndZero(string $class): void
+    {
+        // MySQL stores checkbox/bool fields as tinyint 1/0, so true means 1, false means 0
+        $sa = $class::new([
+            1 => ['active' => 1],
+            2 => ['active' => '1'],
+            3 => ['active' => 0],
+            4 => ['active' => '0'],
+            5 => ['active' => 'abc'],
+            6 => ['active' => null],
+            7 => ['active' => ''],
+            8 => ['active' => true],
+            9 => ['active' => false],
+        ]);
+
+        $this->assertSame([1, 2, 8], $sa->where('active', true)->keys()->toArray(), "true means 1, not 'any truthy value'; stored true counts as 1");
+        $this->assertSame([3, 4, 9], $sa->where('active', false)->keys()->toArray(), 'false means 0; null and "" are not 0; stored false counts as 0');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereAndWhereNotPartitionForEveryValueType(string $class): void
+    {
+        // Falsification: when the field exists in every row, where() and whereNot()
+        // must split the set exactly in two for every value type the rule handles
+        $sa = $class::new([
+            ['f' => null], ['f' => ''], ['f' => 0], ['f' => '0'], ['f' => false],
+            ['f' => 1], ['f' => '1'], ['f' => '0e99'], ['f' => '1.00'], ['f' => 'Apple'],
+        ]);
+        $total = $sa->count();
+
+        foreach ([null, true, false, 0, 1, '', '0', '0e12', '0e99', 1.0, 'Apple', 'apple'] as $value) {
+            $kept    = $sa->where('f', $value)->count();
+            $dropped = $sa->whereNot('f', $value)->count();
+            $this->assertSame($total, $kept + $dropped, 'where + whereNot must cover all rows for value: ' . var_export($value, true));
+        }
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereExcludesRowsMissingField(string $class): void
     {
         $sa = $class::new([
-            'config' => 'scalar row',
-            'a'      => ['f' => 5],
-            'b'      => ['other' => 5],
+            'a' => ['f' => 5],
+            'b' => ['other' => 5],
         ]);
 
         [$result, ] = $this->captureOutput(fn() => $sa->where('f', 5));
+
+        $this->assertSame(['a' => ['f' => 5]], $result->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("where(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->where('f', 5);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereNotThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("whereNot(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->whereNot('f', 5);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListThrowsOnScalarRows(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['tags' => "\tred\t"]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("whereInList(): Expected a nested array of rows, but element 'config' is not a row (string)");
+
+        $sa->whereInList('tags', 'red');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereWorksAgainAfterScalarRowIsUnset(string $class): void
+    {
+        // Storing a scalar marks the array as not rows-only, and unset doesn't clear
+        // the mark - the assert rescans, proves all remaining elements are rows, and passes
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 0]]);
+
+        [$result, ] = $this->captureOutput(function () use ($sa) {
+            unset($sa['config']); // bracket unset echoes a deprecation, not under test here
+            return $sa->where('f', 5);
+        });
 
         $this->assertSame(['a' => ['f' => 5]], $result->toArray());
     }
@@ -113,6 +228,24 @@ class WhereTest extends SmartArrayTestCase
         $this->assertSame([['status' => 'active', 'role' => 'admin']], array_values($result->toArray()), 'array conditions AND together');
         $this->assertCount(1, $deprecations);
         $this->assertStringContainsString("->where('status', 'active')->where('role', 'admin')", $deprecations[0], 'deprecation shows the chained replacement');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereArraySyntaxDeprecationFormatsEveryValueType(string $class): void
+    {
+        $sa = $class::new([['ids' => '1', 'active' => 1, 'deleted' => null, 'count' => 5]]);
+
+        // the suggested replacement spells each value as PHP source: bools and null
+        // by name, arrays as a [...] placeholder (no "Array to string conversion")
+        [, $deprecations] = $this->captureDeprecations(
+            fn() => $sa->where(['ids' => ['1', '2'], 'active' => true, 'deleted' => null, 'count' => 5])
+        );
+
+        $this->assertCount(1, $deprecations);
+        $this->assertStringContainsString(
+            "->where('ids', [...])->where('active', true)->where('deleted', null)->where('count', 5)",
+            $deprecations[0],
+        );
     }
 
     #[DataProvider('modeProvider')]
@@ -176,11 +309,15 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereNotUsesLooseComparison(string $class): void
+    public function testWhereNotUsesSameMatchingRules(string $class): void
     {
         $sa = $class::new([['id' => 1], ['id' => '1'], ['id' => 2]]);
 
-        $this->assertSame([2 => ['id' => 2]], $sa->whereNot('id', '1')->toArray());
+        $this->assertSame([2 => ['id' => 2]], $sa->whereNot('id', '1')->toArray(), "'1' excludes both int 1 and '1'");
+
+        $codes = $class::new([['code' => '0e99'], ['code' => 'x']]);
+
+        $this->assertCount(2, $codes->whereNot('code', '0e12'), 'hash-like strings are exact text, nothing excluded');
     }
 
     #[DataProvider('modeProvider')]
@@ -300,11 +437,94 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testWhereInListMatchesPlainValuesAsExactText(string $class): void
+    {
+        // The plain-single-value compare follows where(): string fields are exact
+        // text, non-string fields still match a numeric search value
+        $sa = $class::new([
+            1 => ['code' => '0e99'],
+            2 => ['code' => '1000'],
+            3 => ['num'  => 2],
+        ]);
+
+        [$result, ] = $this->captureOutput(fn() => $sa->whereInList('code', '0e12'));
+        $this->assertCount(0, $result, 'hash-like strings are exact text');
+
+        [$result, ] = $this->captureOutput(fn() => $sa->whereInList('code', '1e3'));
+        $this->assertCount(0, $result, 'no scientific notation crossover');
+
+        [$result, ] = $this->captureOutput(fn() => $sa->whereInList('num', 2));
+        $this->assertSame([3], $result->keys()->toArray(), 'int field matches numeric search value');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListMatchesBoolsAsOneAndZero(string $class): void
+    {
+        // Same 1/0 rule as where(): a stored bool can't loose-match arbitrary
+        // strings (true == 'admin' is true in PHP, and used to match here)
+        $sa = $class::new([
+            1 => ['flag' => true],
+            2 => ['flag' => false],
+            3 => ['flag' => 'admin'],
+        ]);
+
+        $this->assertSame([1], $sa->whereInList('flag', true)->keys()->toArray());
+        $this->assertSame([1], $sa->whereInList('flag', 1)->keys()->toArray());
+        $this->assertSame([1], $sa->whereInList('flag', '1')->keys()->toArray());
+        $this->assertSame([2], $sa->whereInList('flag', false)->keys()->toArray());
+        $this->assertSame([2], $sa->whereInList('flag', 0)->keys()->toArray());
+        $this->assertSame([3], $sa->whereInList('flag', 'admin')->keys()->toArray(), 'stored true must not match arbitrary strings');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListNullAndEmptyStringSearchValuesStayDistinct(string $class): void
+    {
+        // Used to stringify the search value, so null and false collapsed to ''
+        $sa = $class::new([
+            1 => ['note' => ''],
+            2 => ['note' => null],
+            3 => ['note' => 'x'],
+        ]);
+
+        $this->assertSame([1], $sa->whereInList('note', '')->keys()->toArray(), "'' matches only '' fields");
+        $this->assertCount(0, $sa->whereInList('note', null), 'null matches nothing - null fields mean "nothing selected"');
+        $this->assertCount(0, $sa->whereInList('note', false), "false matches 0, not ''");
+    }
+
+    #[DataProvider('modeProvider')]
     public function testWhereInListUnwrapsSmartStringValues(string $class): void
     {
         $sa = $class::new([1 => ['show_on' => "\tmenu\t"]]);
 
         $this->assertCount(1, $sa->whereInList('show_on', new SmartString('menu')));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListRejectsTabsInSearchValue(string $class): void
+    {
+        // A tab is the list separator, so a tab-bearing value can never be one
+        // discrete value. Previously "menu\tfooter" built needle "\tmenu\tfooter\t"
+        // and matched a field storing separate menu and footer tokens.
+        $sa = $class::new([1 => ['show_on' => "\tmenu\tfooter\t"]]);
+
+        foreach (["menu\tfooter", "\tmenu", "menu\t", "\t"] as $badValue) {
+            try {
+                $sa->whereInList('show_on', $badValue);
+                $this->fail('Expected InvalidArgumentException for value ' . json_encode($badValue));
+            } catch (InvalidArgumentException $e) {
+                $this->assertSame('whereInList(): expected a single value to match, got a tab-separated list', $e->getMessage());
+            }
+        }
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListRejectsTabsInSmartStringSearchValue(string $class): void
+    {
+        // getRawValue() unwraps first, so a wrapped tab-list is caught too
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('whereInList(): expected a single value to match, got a tab-separated list');
+
+        $class::new([1 => ['show_on' => "\tmenu\t"]])->whereInList('show_on', new SmartString("menu\tfooter"));
     }
 
     #[DataProvider('modeProvider')]

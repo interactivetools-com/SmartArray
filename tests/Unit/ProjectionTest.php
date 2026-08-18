@@ -119,12 +119,14 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testColumnAtSkipsScalarRows(string $class): void
+    public function testColumnAtThrowsOnScalarRows(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no columns to extract
         $sa = $class::new([['a', 'b'], 'scalar', ['c', 'd']]);
 
-        $this->assertSame(['a', 'c'], $sa->columnAt(0)->toArray());
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("columnAt(): Expected a nested array of rows, but element '1' is not a row (string)");
+
+        $sa->columnAt(0);
     }
 
     //endregion
@@ -139,6 +141,38 @@ class ProjectionTest extends SmartArrayTestCase
         $this->assertSame($sa->pluck('name')->toArray(), $sa->column('name')->toArray());
         $this->assertSame($sa->pluck('name', 'id')->toArray(), $sa->column('name', 'id')->toArray());
         $this->assertSame($sa->indexBy('id')->toArray(), $sa->column(null, 'id')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testColumnIndexKeysFollowIndexByRules(string $class): void
+    {
+        // array_column() would auto-number rows missing the index field (keys that
+        // look like real data) - we key them under '' like indexBy(), last wins.
+        // Bools key as 1/0.
+        $sa = $class::new([
+            ['name' => 'Amy', 'dept' => 'sales'],
+            ['name' => 'Bob'],
+            ['name' => 'Cid', 'dept' => true],
+        ]);
+
+        $this->assertSame([
+            'sales' => 'Amy',
+            ''      => 'Bob',
+            1       => 'Cid',
+        ], $sa->column('name', 'dept')->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testColumnFloatIndexValuesThrow(string $class): void
+    {
+        // array_column() would truncate 19.99 to key 19 with a PHP deprecation
+        // naming library internals - floats throw like indexBy() instead
+        $sa = $class::new([['name' => 'Amy', 'price' => 19.99]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("column(): 'price' has float values, convert them to strings first");
+
+        $sa->column('name', 'price');
     }
 
     #[DataProvider('modeProvider')]
@@ -223,15 +257,9 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testIndexByFloatAndBoolKeys(string $class): void
+    public function testIndexByBoolKeys(string $class): void
     {
-        // Floats keep precision as string keys; bools key as 1/0 like plain PHP
-        $floats = $class::new([['price' => 19.99, 'n' => 'a'], ['price' => 19.50, 'n' => 'b']]);
-        $this->assertSame([
-            '19.99' => ['price' => 19.99, 'n' => 'a'],
-            '19.5'  => ['price' => 19.5, 'n' => 'b'],
-        ], $floats->indexBy('price')->toArray());
-
+        // Bools key as 1/0 like plain PHP
         $bools = $class::new([['ok' => true, 'n' => 'a'], ['ok' => false, 'n' => 'b']]);
         $this->assertSame([
             1 => ['ok' => true, 'n' => 'a'],
@@ -240,18 +268,27 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testIndexBySkipsScalarRows(string $class): void
+    public function testIndexByFloatValuesThrow(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no fields to index by
+        // No float-to-key conversion is safe (PHP truncates, string casts round),
+        // so the developer converts to strings first
+        $floats = $class::new([['price' => 19.99, 'n' => 'a'], ['price' => 19.50, 'n' => 'b']]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("indexBy(): 'price' has float values, convert them to strings first");
+
+        $floats->indexBy('price');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testIndexByThrowsOnScalarRows(string $class): void
+    {
         $sa = $class::new([['id' => 1, 'n' => 'a'], 'scalar', ['id' => 2, 'n' => 'b']]);
 
-        [$result, $output] = $this->captureOutput(fn() => $sa->indexBy('id'));
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("indexBy(): Expected a nested array of rows, but element '1' is not a row (string)");
 
-        $this->assertSame([
-            1 => ['id' => 1, 'n' => 'a'],
-            2 => ['id' => 2, 'n' => 'b'],
-        ], $result->toArray());
-        $this->assertSame('', $output);
+        $sa->indexBy('id');
     }
 
     //endregion
@@ -318,15 +355,9 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testGroupByFloatAndBoolKeys(string $class): void
+    public function testGroupByBoolKeys(string $class): void
     {
-        // Floats keep precision as string keys; bools key as 1/0 like plain PHP
-        $floats = $class::new([['price' => 19.99], ['price' => 19.50]]);
-        $this->assertSame([
-            '19.99' => [['price' => 19.99]],
-            '19.5'  => [['price' => 19.5]],
-        ], $floats->groupBy('price')->toArray());
-
+        // Bools key as 1/0 like plain PHP
         $bools = $class::new([['ok' => true, 'n' => 'a'], ['ok' => false, 'n' => 'b'], ['ok' => true, 'n' => 'c']]);
         $this->assertSame([
             1 => [['ok' => true, 'n' => 'a'], ['ok' => true, 'n' => 'c']],
@@ -335,15 +366,25 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testGroupBySkipsScalarRows(string $class): void
+    public function testGroupByFloatValuesThrow(string $class): void
     {
-        // One array value makes the array "nested"; scalar rows have no fields to group by
+        $floats = $class::new([['price' => 19.99], ['price' => 19.50]]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("groupBy(): 'price' has float values, convert them to strings first");
+
+        $floats->groupBy('price');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testGroupByThrowsOnScalarRows(string $class): void
+    {
         $sa = $class::new([['g' => 'a', 'v' => 1], 'scalar', ['g' => 'a', 'v' => 2]]);
 
-        [$result, $output] = $this->captureOutput(fn() => $sa->groupBy('g'));
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("groupBy(): Expected a nested array of rows, but element '1' is not a row (string)");
 
-        $this->assertSame(['a' => [['g' => 'a', 'v' => 1], ['g' => 'a', 'v' => 2]]], $result->toArray());
-        $this->assertSame('', $output);
+        $sa->groupBy('g');
     }
 
     //endregion

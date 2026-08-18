@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Itools\SmartArray\Tests\Unit;
 
+use ArrayIterator;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayHtml;
 use Itools\SmartString\SmartString;
@@ -61,7 +62,7 @@ class IterationTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testIterationIsSilentAndRepeatable(string $class): void
     {
-        // getIterator() returns a fresh generator per foreach, and iterating
+        // getIterator() returns a fresh iterator per foreach, and iterating
         // is not offset access - no deprecation notices, no warnings
         $sa = $class::new(['a' => 1, 'b' => 2]);
 
@@ -82,6 +83,24 @@ class IterationTest extends SmartArrayTestCase
         $this->assertSame($firstPass, $secondPass, 'second pass sees the same elements');
         $this->assertSame('', $output);
         $this->assertSame([], $deprecations);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testHeldIteratorIsCountableAndRewindable(string $class): void
+    {
+        // Every mode returns an ArrayIterator, so generic code that counts or
+        // re-traverses a held iterator behaves the same before and after asHtml()
+        $it = $class::new(['a', 'b', 'c'])->getIterator();
+
+        $this->assertInstanceOf(ArrayIterator::class, $it);
+        $this->assertSame(3, $it->count());
+
+        $unwrap = fn($value) => $value instanceof SmartString ? $value->value() : $value;
+        $first  = array_map($unwrap, iterator_to_array($it));
+        $second = array_map($unwrap, iterator_to_array($it));   // second traversal of the same object
+
+        $this->assertSame(['a', 'b', 'c'], $first);
+        $this->assertSame($first, $second, 'held iterator traverses again instead of throwing');
     }
 
     #[DataProvider('modeProvider')]

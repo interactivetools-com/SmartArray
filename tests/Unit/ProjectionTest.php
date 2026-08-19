@@ -119,14 +119,36 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testColumnAtThrowsOnScalarRows(string $class): void
+    public function testColumnAtIgnoresScalarElements(string $class): void
     {
         $sa = $class::new([['a', 'b'], 'scalar', ['c', 'd']]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("columnAt(): Expected a nested array of rows, but element '1' is not a row (string)");
+        $this->assertSame(['a', 'c'], $sa->columnAt(0)->toArray(), 'the scalar is ignored');
+    }
 
-        $sa->columnAt(0);
+    #[DataProvider('modeProvider')]
+    public function testColumnAtOnFlatThrows(string $class): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('columnAt(): Expected a nested array, but got a flat array');
+
+        $class::new(['a', 'b'])->columnAt(0);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testPluckIgnoresScalarElements(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', ['n' => 'a'], ['n' => 'b']]);
+
+        $this->assertSame(['a', 'b'], $sa->pluck('n')->toArray(), 'the scalar is ignored');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testPluckNthIgnoresScalarElements(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', ['a', 'b'], ['c', 'd']]);
+
+        $this->assertSame(['a', 'c'], $sa->pluckNth(0)->toArray(), 'the scalar is ignored');
     }
 
     //endregion
@@ -193,6 +215,30 @@ class ProjectionTest extends SmartArrayTestCase
         $this->expectExceptionMessage('column(): Expected a nested array, but got a flat array');
 
         $class::new(['a', 'b'])->column(null, 'x');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testColumnIgnoresScalarElements(string $class): void
+    {
+        $sa = $class::new([['id' => 1, 'n' => 'a'], 'scalar', ['id' => 2, 'n' => 'b']]);
+
+        $this->assertSame(['a', 'b'], $sa->column('n')->toArray(), 'the scalar is ignored');
+        $this->assertSame([1 => 'a', 2 => 'b'], $sa->column('n', 'id')->toArray(), 'the scalar is ignored in the keyed shape too');
+        $this->assertSame([
+            1 => ['id' => 1, 'n' => 'a'],
+            2 => ['id' => 2, 'n' => 'b'],
+        ], $sa->column(null, 'id')->toArray(), 'the indexBy() delegation shape also ignores the scalar');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowOnlyProjectionsOnEmptyArrayReturnEmpty(string $class): void
+    {
+        $sa = $class::new([]);
+
+        $this->assertSame([], $sa->column('n')->toArray());
+        $this->assertSame([], $sa->columnAt(0)->toArray());
+        $this->assertSame([], $sa->indexBy('id')->toArray());
+        $this->assertSame([], $sa->groupBy('g')->toArray());
     }
 
     //endregion
@@ -281,14 +327,14 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testIndexByThrowsOnScalarRows(string $class): void
+    public function testIndexByIgnoresScalarElements(string $class): void
     {
         $sa = $class::new([['id' => 1, 'n' => 'a'], 'scalar', ['id' => 2, 'n' => 'b']]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("indexBy(): Expected a nested array of rows, but element '1' is not a row (string)");
-
-        $sa->indexBy('id');
+        $this->assertSame([
+            1 => ['id' => 1, 'n' => 'a'],
+            2 => ['id' => 2, 'n' => 'b'],
+        ], $sa->indexBy('id')->toArray(), 'only the rows index, the scalar is ignored');
     }
 
     //endregion
@@ -377,14 +423,13 @@ class ProjectionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testGroupByThrowsOnScalarRows(string $class): void
+    public function testGroupByIgnoresScalarElements(string $class): void
     {
         $sa = $class::new([['g' => 'a', 'v' => 1], 'scalar', ['g' => 'a', 'v' => 2]]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("groupBy(): Expected a nested array of rows, but element '1' is not a row (string)");
-
-        $sa->groupBy('g');
+        $this->assertSame([
+            'a' => [['g' => 'a', 'v' => 1], ['g' => 'a', 'v' => 2]],
+        ], $sa->groupBy('g')->toArray(), 'only the rows group, the scalar is ignored');
     }
 
     //endregion

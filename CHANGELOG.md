@@ -87,9 +87,10 @@ the docs - IDEs show a strikethrough with the replacement.
 - **`isset()`, `empty()`, and `??` treat a stored NULL as missing** -
   matching plain PHP arrays, so `??` fallbacks now fire on NULL columns.
   See [UPGRADING.md](UPGRADING.md)
-- **Row-only methods throw on mixed arrays** - a scalar next to rows
-  (usually a wrapped API response) throws instead of being silently
-  skipped; database results are unaffected. See
+- **Row-only methods ignore non-row elements** - `where()`, `sortBy()`,
+  `indexBy()`, and the other row-only methods keep the rows and skip
+  scalars next to them (each method handled that mix differently before);
+  a non-empty array with no rows still throws. See
   [UPGRADING.md](UPGRADING.md)
 - **`SmartArray::new($data, true)` throws** - a boolean that contradicts
   the class was silently ignored, returning raw values where HTML-safe

@@ -202,15 +202,35 @@ class UpgradingExamplesTest extends SmartArrayTestCase
         SmartArray::new([['price' => 19.99], ['price' => 19.50]])->indexBy('price');
     }
 
-    /** UPGRADING "Row-only methods throw on mixed arrays" - the mixed-array error, message included. */
-    public function testMixedArraysThrowAndNameTheOffendingElement(): void
+    //endregion
+    //region v3.0.0: row-only methods ignore non-row elements
+
+    /** UPGRADING "Row-only methods ignore non-row elements" - the canonical example: rows filter and index, the scalar is ignored. */
+    public function testRowOnlyMethodsIgnoreNonRowElements(): void
     {
-        $data = SmartArrayHtml::new(['count' => 5, 'items' => [['id' => 1]]]);
+        $schema = SmartArray::new([
+            'menuName' => 'Products',                          // scalar setting
+            'name'     => ['type' => 'textfield', 'order' => 2],
+            'photo'    => ['type' => 'upload',    'order' => 1],
+        ]);
 
+        $uploads = $schema->where('type', 'upload');  // rows whose type matches; the scalar is ignored
+        $byType  = $schema->indexBy('type');          // v2.x: scalars kept under renumbered keys; v3.0: rows only
+
+        $this->assertSame(['photo' => ['type' => 'upload', 'order' => 1]], $uploads->toArray());
+        $this->assertSame([
+            'textfield' => ['type' => 'textfield', 'order' => 2],
+            'upload'    => ['type' => 'upload',    'order' => 1],
+        ], $byType->toArray());
+    }
+
+    /** UPGRADING "Row-only methods ignore non-row elements" - a non-empty array with no rows still throws. */
+    public function testRowOnlyMethodsStillThrowOnFlatArrays(): void
+    {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("where(): Expected a nested array of rows, but element 'count' is not a row (int)");
+        $this->expectExceptionMessage('where(): Expected a nested array, but got a flat array');
 
-        $data->where('id', 1);
+        SmartArray::new(['a', 'b'])->where('type', 'upload');
     }
 
     //endregion

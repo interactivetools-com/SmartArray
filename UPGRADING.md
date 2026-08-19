@@ -150,25 +150,33 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 > Convert the field to a string first: `CAST(price AS CHAR)` in SQL, or
 > format it in PHP before keying.
 
-### Row-only methods throw on mixed arrays
+### Row-only methods ignore non-row elements
 
 > `where()`, `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`,
-> `groupBy()`, `column()`, and `columnAt()` now require every element to be
-> a row. An array mixing rows and scalar values throws
-> `InvalidArgumentException` naming the element, instead of silently
-> skipping the scalars:
+> `groupBy()`, `column()`, and `columnAt()` now follow one rule: they work
+> on the rows (elements that are arrays) and ignore other elements. A
+> non-empty array with no rows throws `InvalidArgumentException`, same
+> as before; an empty array returns an empty result.
+>
+> In v2.x each method handled a scalar next to rows differently: the
+> `where()` family already skipped scalars (unchanged), `sortBy()` sorted
+> them in with the rows, and `indexBy()`, `groupBy()`, and `column()` kept
+> them under renumbered integer keys:
 >
 > ```php
-> $data = SmartArrayHtml::new(['count' => 5, 'items' => [['id' => 1]]]);
-> $data->where('id', 1);  // before: returned 0-1 rows, 'count' silently ignored
->                         // after:  throws "where(): Expected a nested array of
->                         //         rows, but element 'count' is not a row (int)"
+> $schema = SmartArray::new([
+>     'menuName' => 'Products',                          // scalar setting
+>     'name'     => ['type' => 'textfield', 'order' => 2],
+>     'photo'    => ['type' => 'upload',    'order' => 1],
+> ]);
+> $schema->where('type', 'upload');  // rows whose type matches; the scalar is ignored
+> $schema->indexBy('type');          // v2.x: scalars kept under renumbered keys; v3.0: rows only
 > ```
 >
-> Database results and empty arrays are unaffected - this only fires on
-> hand-built arrays that mix shapes. The error usually means the array was
-> wrapped one level too high (`->items` was the intended collection) or a
-> scalar was assigned onto a result set.
+> Database results are unaffected - every element is a row. Review only
+> hand-built arrays that mix scalars and rows: a scalar that used to reach
+> the result through `sortBy()`, `indexBy()`, `groupBy()`, or `column()`
+> is left out now.
 
 ### Silent changes
 

@@ -222,14 +222,19 @@ class FilterUniqueSortTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testSortByThrowsOnScalarRows(string $class): void
+    public function testSortByIgnoresScalarElements(string $class): void
     {
-        $sa = $class::new(['tableName' => 'users', 'fields' => ['a' => 1]]);
+        $sa = $class::new(['tableName' => 'users', 5 => ['n' => 'b'], 9 => ['n' => 'a']]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("sortBy(): Expected a nested array of rows, but element 'tableName' is not a row (string)");
+        $result = $sa->sortBy('n');
 
-        $sa->sortBy('a');
+        $this->assertSame([['n' => 'a'], ['n' => 'b']], $result->toArray(), 'only the rows sort, the scalar is ignored, numeric keys renumber');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testSortByOnEmptyArrayReturnsEmpty(string $class): void
+    {
+        $this->assertSame([], $class::new([])->sortBy('n')->toArray());
     }
 
     #[DataProvider('modeProvider')]

@@ -24,7 +24,6 @@ class ErrorMessageEncodingTest extends SmartArrayTestCase
     {
         return [
             'setElement key'         => [fn($class) => $class::new([])->{self::PAYLOAD} = new stdClass()],
-            'assertNestedArray key'  => [fn($class) => $class::new([self::PAYLOAD => 'scalar', 'row' => ['a' => 1]])->where('f', 'v')],
             '__call method'          => [fn($class) => $class::new([])->{self::PAYLOAD}()],
             '__callStatic method'    => [fn($class) => $class::{self::PAYLOAD}()],
             'where() list hint'      => [fn($class) => $class::new([['a' => 1]])->where([self::PAYLOAD])],

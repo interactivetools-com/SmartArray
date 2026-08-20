@@ -4,9 +4,11 @@ declare(strict_types=1);
 namespace Itools\SmartArray\Tests\Unit;
 
 use InvalidArgumentException;
+use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartString\SmartString;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionProperty;
 
 /**
  * The where family: where(), whereNot(), whereInList().
@@ -155,43 +157,64 @@ class WhereTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereThrowsOnScalarRows(string $class): void
+    public function testWhereIgnoresScalarElements(string $class): void
     {
-        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 7]]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("where(): Expected a nested array of rows, but element 'config' is not a row (string)");
+        $result = $sa->where('f', 5);
 
-        $sa->where('f', 5);
+        $this->assertSame(['a' => ['f' => 5]], $result->toArray(), 'matching rows keep their keys, the scalar is ignored');
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereNotThrowsOnScalarRows(string $class): void
+    public function testWhereNotIgnoresScalarElements(string $class): void
     {
-        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 7]]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("whereNot(): Expected a nested array of rows, but element 'config' is not a row (string)");
+        $result = $sa->whereNot('f', 5);
 
-        $sa->whereNot('f', 5);
+        $this->assertSame(['b' => ['f' => 7]], $result->toArray(), 'non-matching rows keep their keys, the scalar is ignored');
     }
 
     #[DataProvider('modeProvider')]
-    public function testWhereInListThrowsOnScalarRows(string $class): void
+    public function testWhereAndWhereNotOnMixedArrayCoverAllRows(string $class): void
     {
-        $sa = $class::new(['config' => 'scalar', 'a' => ['tags' => "\tred\t"]]);
+        // where() and whereNot() split the rows between them; the scalar appears in neither
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 7], 'c' => ['f' => 5]]);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("whereInList(): Expected a nested array of rows, but element 'config' is not a row (string)");
+        $kept    = $sa->where('f', 5)->toArray();
+        $dropped = $sa->whereNot('f', 5)->toArray();
 
-        $sa->whereInList('tags', 'red');
+        $this->assertSame(['a' => ['f' => 5], 'c' => ['f' => 5]], $kept);
+        $this->assertSame(['b' => ['f' => 7]], $dropped);
+        $this->assertCount(3, $kept + $dropped, 'every row lands in exactly one result');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereInListIgnoresScalarElements(string $class): void
+    {
+        $sa = $class::new(['config' => 'scalar', 'a' => ['tags' => "\tred\t"], 'b' => ['tags' => "\tblue\t"]]);
+
+        $result = $sa->whereInList('tags', 'red');
+
+        $this->assertSame(['a' => ['tags' => "\tred\t"]], $result->toArray(), 'matching rows keep their keys, the scalar is ignored');
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWhereFamilyOnEmptyArrayReturnsEmpty(string $class): void
+    {
+        $sa = $class::new([]);
+
+        $this->assertSame([], $sa->where('f', 5)->toArray());
+        $this->assertSame([], $sa->whereNot('f', 5)->toArray());
+        $this->assertSame([], $sa->whereInList('f', 'red')->toArray());
     }
 
     #[DataProvider('modeProvider')]
     public function testWhereWorksAgainAfterScalarRowIsUnset(string $class): void
     {
         // Storing a scalar marks the array as not rows-only, and unset doesn't clear
-        // the mark - the assert rescans, proves all remaining elements are rows, and passes
+        // the mark - the rows() scan proves all remaining elements are rows and repairs it
         $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5], 'b' => ['f' => 0]]);
 
         [$result, ] = $this->captureOutput(function () use ($sa) {
@@ -200,6 +223,32 @@ class WhereTest extends SmartArrayTestCase
         });
 
         $this->assertSame(['a' => ['f' => 5]], $result->toArray());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testRowsScanRepairsStaleRowsOnlyFlag(string $class): void
+    {
+        $rowsOnly = new ReflectionProperty(SmartArrayBase::class, 'rowsOnly');
+
+        // Building with a scalar sets rowsOnly false
+        $sa = $class::new(['config' => 'scalar', 'a' => ['f' => 5]]);
+        $this->assertFalse($rowsOnly->getValue($sa));
+
+        // While the scalar is present, row-only methods filter it out but must leave
+        // the flag false - it also gates SmartString wrapping in iteration
+        $sa->where('f', 5);
+        $this->assertFalse($rowsOnly->getValue($sa));
+
+        // Unset leaves the flag stale-false; the next rows() scan proves all
+        // remaining elements are rows and sets it true
+        $this->captureOutput(function () use ($sa) {
+            unset($sa['config']); // bracket unset echoes a deprecation, not under test here
+            return $sa->where('f', 5);
+        });
+        $this->assertTrue($rowsOnly->getValue($sa));
+
+        // With the flag repaired, the next call takes the O(1) fast path
+        $this->assertSame(['a' => ['f' => 5]], $sa->where('f', 5)->toArray());
     }
 
     #[DataProvider('modeProvider')]

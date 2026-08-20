@@ -36,9 +36,10 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * True while every value is a child SmartArray (or the array is empty), so
      * getIterator() can skip SmartString wrapping and iterate the fast way.
-     * Storing a scalar or null sets this false, and nothing sets it back (an
-     * unset can leave it stale-false, which only means the slower,
-     * always-correct wrapping path).
+     * Storing a scalar or null sets this false. An unset can leave it
+     * stale-false, which only means the slower, always-correct wrapping path
+     * until the next rows() scan proves every element is a row and sets it
+     * true again.
      */
     private bool $rowsOnly = true;
 
@@ -591,7 +592,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Returns a new SmartArray sorted ascending by the specified field.
-     * Works on arrays of rows only: throws if the array is flat or any element is not a row.
+     * Works on the rows and ignores other elements; a non-empty array with no rows throws InvalidArgumentException.
      *
      * Rows missing the field sort first: the missing value counts as null for
      * ordering only (like MySQL ORDER BY), and rows are returned unchanged.
@@ -610,14 +611,13 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function sortBy(string $field, int $flags = SORT_REGULAR): static
     {
-        $this->assertNestedArray();
+        $sorted = $this->rows();
         if ($flags === SORT_ASC || $flags === SORT_DESC) {
             throw new InvalidArgumentException("sortBy(): sorting is always ascending, SORT_ASC/SORT_DESC are directions, not comparison flags. For descending, sort in SQL with ORDER BY ... DESC");
         }
         $this->warnIfMissing($field);
 
         // sort by field value, treating missing fields as null
-        $sorted      = $this->toArray();
         $fieldValues = [];
         foreach ($sorted as $row) {
             $fieldValues[] = $row[$field] ?? null;
@@ -672,7 +672,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Returns a new SmartArray containing only elements where a field matches a value.
-     * Works on arrays of rows only: throws if the array is flat or any element is not a row.
+     * Works on the rows and ignores other elements; a non-empty array with no rows throws InvalidArgumentException.
      *
      * How values match: the same answers a SQL WHERE gives, with two exceptions
      * (strings stay case-sensitive, and a non-numeric string never equals 0).
@@ -696,7 +696,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function where(array|string $field, mixed $value = null): static
     {
-        $this->assertNestedArray();
+        $rows = $this->rows();
 
         // Single-argument syntax: where('field') keeps rows where the field is non-empty
         if (is_string($field) && func_num_args() === 1) {
@@ -705,7 +705,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             // would need a per-row closure call, which costs more than it saves. If you
             // change one copy, change all four.
             $matches = [];
-            foreach ($this->toArray() as $key => $row) {
+            foreach ($rows as $key => $row) {
                 if (!empty($row[$field])) {
                     $matches[$key] = $row;
                 }
@@ -723,7 +723,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $value   = is_bool($value) ? (int)$value : $value;
             // loop repeated 4x, comparison repeated 4x - see the first where() loop and contains() for why
             $matches = [];
-            foreach ($this->toArray() as $key => $row) {
+            foreach ($rows as $key => $row) {
                 if (!array_key_exists($field, $row)) {
                     continue;
                 }
@@ -750,7 +750,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Returns a new SmartArray excluding elements where a field matches a value.
-     * The inverse of where(). Only works on nested arrays (throws on flat).
+     * The inverse of where(). Works on the rows and ignores other elements; a
+     * non-empty array with no rows throws InvalidArgumentException.
      *
      * Matches values the same way where() does.
      *
@@ -767,14 +768,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function whereNot(string $field, mixed $value = null): static
     {
-        $this->assertNestedArray();
+        $rows = $this->rows();
         $this->warnIfMissing($field);
 
         // Single-argument syntax: whereNot('field') keeps rows where the field is empty
         if (func_num_args() === 1) {
             // repeated 4x, see the first where() loop for why
             $matches = [];
-            foreach ($this->toArray() as $key => $row) {
+            foreach ($rows as $key => $row) {
                 if (empty($row[$field])) {
                     $matches[$key] = $row;
                 }
@@ -789,7 +790,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $value   = is_bool($value) ? (int)$value : $value;
         // loop repeated 4x, comparison repeated 4x - see the first where() loop and contains() for why
         $matches = [];
-        foreach ($this->toArray() as $key => $row) {
+        foreach ($rows as $key => $row) {
             if (!array_key_exists($field, $row)) {
                 $matches[$key] = $row;
                 continue;
@@ -815,6 +816,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Returns elements where a tab-separated list field contains the specified value.
      * Matches discrete values within tab-delimited fields (e.g., checkbox groups,
      * multi-select fields). Does not perform substring matching.
+     * Works on the rows and ignores other elements; a non-empty array with no rows
+     * throws InvalidArgumentException.
      *
      * Handles both delimited format ("\tmenu\tfooter\t") and plain single values ("menu").
      * Plain single values match the same way where() does.
@@ -830,7 +833,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function whereInList(string $field, mixed $value): static
     {
-        $this->assertNestedArray();
+        $rows = $this->rows();
         $this->warnIfMissing($field);
         if (!is_scalar($value) && $value !== null) { // fast path: skip getRawValue() for plain values
             $value = self::getRawValue($value);
@@ -844,7 +847,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         $value   = is_bool($value) ? (int)$value : $value;
         $needle  = "\t$value\t"; // tab-list membership; plain values compare typed below, like where()
         $matches = [];
-        foreach ($this->toArray() as $key => $row) {
+        foreach ($rows as $key => $row) {
             if (!isset($row[$field])) { // null and missing both mean "nothing selected" for list fields
                 continue;
             }
@@ -927,8 +930,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Creates a new SmartArray indexed by the specified field.
      *
-     * This method transforms the current SmartArray (assumed to be a nested array of rows)
-     * into a new SmartArray where each element is indexed by the value of the specified field.
+     * Works on the rows and ignores other elements; a non-empty array with no rows
+     * throws InvalidArgumentException.
      *
      * Rows with a null or missing field value index under '' (PHP's array-key
      * form of null). Duplicate values: last row wins.
@@ -960,16 +963,16 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $field The field name to index the rows by.
      * @return static A new SmartArray indexed by the specified field.
-     * @throws InvalidArgumentException If the SmartArray is not nested.
+     * @throws InvalidArgumentException If a non-empty array has no rows, or the field has float values.
      */
     public function indexBy(string $field): static
     {
-        $this->assertNestedArray();
+        $rows = $this->rows();
         $this->warnIfMissing($field);
 
         // Index by field; rows with a null or missing value index under '' (duplicates: last wins)
         $values = [];
-        foreach ($this->toArray() as $row) {
+        foreach ($rows as $row) {
             $key = $row[$field] ?? '';
             if (is_float($key)) {
                 $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
@@ -986,8 +989,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     /**
      * Creates a new SmartArray grouped by the specified field.
      *
-     * This method transforms the current SmartArray (assumed to be a nested array of rows)
-     * into a new SmartArray where each element is grouped by the value of the specified field.
+     * Works on the rows and ignores other elements; a non-empty array with no rows
+     * throws InvalidArgumentException.
      *
      * Rows with a null or missing field value group under '' (PHP's array-key
      * form of null), like SQL GROUP BY keeps a NULL group. No rows are dropped.
@@ -1016,15 +1019,15 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *
      * @param string $field The field name to group the rows by.
      * @return static A new SmartArray grouped by the specified field.
-     * @throws InvalidArgumentException If the SmartArray is not nested.
+     * @throws InvalidArgumentException If a non-empty array has no rows, or the field has float values.
      */
     public function groupBy(string $field): static
     {
-        $this->assertNestedArray();
+        $rows = $this->rows();
         $this->warnIfMissing($field);
 
         $values = [];
-        foreach ($this->toArray() as $row) {
+        foreach ($rows as $row) {
             $key = $row[$field] ?? '';
             if (is_float($key)) {
                 $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
@@ -1042,6 +1045,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * Extracts the column at a specific position from each row, ignoring key names.
      * Particularly useful for MySQL results where key names are unpredictable, like SHOW TABLES.
      * Use column() for extraction by key; columnAt() is by position.
+     * Works on the rows and ignores other elements; a non-empty array with no rows
+     * throws InvalidArgumentException.
      *
      * MySQL `SHOW TABLES LIKE 'cms_%'` returns:
      *
@@ -1058,10 +1063,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function columnAt(int $index): static
     {
-        $this->assertNestedArray();
-
         $values = [];
-        foreach ($this->toArray() as $row) {
+        foreach ($this->rows() as $row) {
             $count    = count($row);
             $rowIndex = ($index < 0) ? $count + $index : $index; // Convert negative indexes to positive
 
@@ -1074,6 +1077,8 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
     /**
      * Mirrors PHP's array_column() - extract a column of values, optionally indexed by another column.
+     * Works on the rows and ignores other elements; a non-empty array with no rows
+     * throws InvalidArgumentException.
      *
      * Index keys follow indexBy() rules in both shapes, not array_column()'s: rows
      * missing the index field key under '' (last wins) instead of getting
@@ -1095,7 +1100,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      */
     public function column(int|string|null $columnKey, int|string|null $indexKey = null): static
     {
-        $this->assertNestedArray(); // assert here so the error names column(), not indexBy()
+        $rows = $this->rows(); // run the row check here so a flat-array error names column(), not indexBy()
 
         if ($columnKey === null && $indexKey !== null) {
             return $this->indexBy((string)$indexKey);
@@ -1107,14 +1112,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         }
 
         if ($indexKey === null) {
-            $values = array_column($this->toArray(), $columnKey);
+            $values = array_column($rows, $columnKey);
         }
         else {
             // Same key rules as indexBy(), which array_column() doesn't follow: missing
             // index values key under '' instead of auto-numbering, floats throw instead
             // of truncating, bools key as 1/0
             $values = [];
-            foreach ($this->toArray() as $row) {
+            foreach ($rows as $row) {
                 if (!array_key_exists($columnKey, $row)) {
                     continue; // same as array_column(): no column value, no entry
                 }
@@ -1642,37 +1647,49 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     }
 
     /**
-     * Assert that every element is a row (nested array). Empty arrays pass, so
+     * Returns the rows (elements that are arrays) as plain arrays, keys preserved,
+     * ignoring scalar and null elements. Row-only methods iterate this, so their
+     * loops don't need per-row is_array() checks. Empty arrays return empty, so
      * empty result sets flow through row-only methods without error.
      *
-     * Row-only methods can rely on every element being a child SmartArray, so
-     * their loops don't need per-row is_array() checks.
+     * A non-empty array with no rows is a flat array: throws, naming the
+     * public method that called this (one stack frame up), since calling a
+     * row-only method on a flat array is almost always a mistake.
      *
-     * @throws InvalidArgumentException If the array is flat or contains non-row elements.
+     * @return array The rows as plain arrays, keys preserved.
+     * @throws InvalidArgumentException If a non-empty array has no rows.
      */
-    private function assertNestedArray(): void
+    private function rows(): array
     {
         // Construction and writes maintain rowsOnly, so result sets pass in O(1)
         if ($this->rowsOnly) {
-            return;
+            return $this->toArray();
         }
 
         // rowsOnly false means a scalar was stored at some point, but an unset may
         // have removed it since, so scan to see what's really here
-        foreach ($this->data as $key => $value) {
-            if (!$value instanceof self) {
-                $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
-                $h        = self::h(...); // SECURITY: keys are data - handlers often echo exception messages into pages
-                $error    = $this->isNested()
-                    ? "$function(): Expected a nested array of rows, but element '{$h($key)}' is not a row (" . get_debug_type($value) . ")"
-                    : "$function(): Expected a nested array, but got a flat array";
-                throw new InvalidArgumentException($error);
+        $array = $this->toArray();
+        $rows  = [];
+        foreach ($array as $key => $value) {
+            if (is_array($value)) {
+                $rows[$key] = $value;
             }
         }
 
-        // Turns out it's all rows - the scalar must have been unset - fix the flag
-        // so the next call skips the scan
-        $this->rowsOnly = true;
+        // All rows: the flag was stale, fix it so the next call skips the scan.
+        // A filtered result must leave it false - scalars are still in the data,
+        // and the flag also gates SmartString wrapping in getIterator()
+        if (count($rows) === count($array)) {
+            $this->rowsOnly = true;
+            return $array;
+        }
+
+        if ($rows === []) {
+            $function = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+            throw new InvalidArgumentException("$function(): Expected a nested array, but got a flat array");
+        }
+
+        return $rows;
     }
 
     /**

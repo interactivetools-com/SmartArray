@@ -110,7 +110,7 @@ trait Deprecations
     #[Deprecated(reason: 'renamed to column()', replacement: '%class%->column()')]
     public function pluck(string|int $valueField, ?string $keyField = null): static
     {
-        $this->assertNestedArray(); // assert here so the error names pluck(), not column()
+        $this->rows(); // run the row check here so a flat-array error names pluck(), not column()
         return $this->column($valueField, $keyField);
     }
 
@@ -133,7 +133,7 @@ trait Deprecations
     #[Deprecated(reason: 'renamed to columnAt()', replacement: '%class%->columnAt()')]
     public function pluckNth(int $index): static
     {
-        $this->assertNestedArray(); // assert here so the error names pluckNth(), not columnAt()
+        $this->rows(); // run the row check here so a flat-array error names pluckNth(), not columnAt()
         return $this->columnAt($index);
     }
 

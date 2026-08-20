@@ -177,7 +177,7 @@ class DeprecationsTest extends SmartArrayTestCase
     #[DataProvider('modeProvider')]
     public function testPluckOnFlatArrayNamesPluckInTheError(string $class): void
     {
-        // The alias asserts before delegating, so the message says pluck(), not column()
+        // The alias runs the row check before delegating, so the message says pluck(), not column()
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('pluck(): Expected a nested array, but got a flat array');
 

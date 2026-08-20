@@ -236,29 +236,32 @@ the new collection.
 
 ## Filtering and Sorting
 
-All return a new collection; nested-only methods require every element to be
-a row and throw `InvalidArgumentException` on flat arrays or on mixed arrays
-where an element is not a row (empty arrays pass); flat-only methods likewise
-throw on nested input.
+All return a new collection. Methods marked "Rows only" work on the rows
+(elements that are arrays) and ignore other elements (scalars/null); a
+non-empty array with no rows throws `InvalidArgumentException`
+(empty arrays pass). Methods marked "Flat only" throw on nested input.
 
 | Method                                                     | Behavior                                                                                                                                                                |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `where(string $field, mixed $value = null): static`        | Nested only. Keeps rows where `$field` matches `$value`: strings match as exact text (`'0e12'` never matches `'0e99'`), numbers match numerically in either direction (`'1'` matches 1, 1 matches `'1.00'`), null matches only null (SQL IS NULL), bools compare as 1/0 on either side. Smart args unwrap. Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter matches only stored NULLs |
-| `whereNot(string $field, mixed $value = null): static`     | Nested only. Drops rows where `$field` matches `$value` (same matching rules as `where()`); rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
-| `whereInList(string $field, mixed $value): static`         | Nested only. Keeps rows where tab-separated `$field` contains `$value` as a whole value (`"\tmenu\tfooter\t"` format, CMS Builder checkbox/multi-select fields) or equals it as a plain single value. Never substring matching |
+| `where(string $field, mixed $value = null): static`        | Rows only. Keeps rows where `$field` matches `$value`: strings match as exact text (`'0e12'` never matches `'0e99'`), numbers match numerically in either direction (`'1'` matches 1, 1 matches `'1.00'`), null matches only null (SQL IS NULL), bools compare as 1/0 on either side. Smart args unwrap. Rows without the field are dropped. Chain calls for AND. Warns when `$field` is missing from the first row. Single-arg `where($field)` keeps rows where the field is non-empty (PHP `empty()` rule: NULL, false, 0, "0", "", missing are empty). NOTE: `where($f)` and `where($f, null)` differ - the latter matches only stored NULLs |
+| `whereNot(string $field, mixed $value = null): static`     | Rows only. Drops rows where `$field` matches `$value` (same matching rules as `where()`); rows WITHOUT the field are kept. Single-arg `whereNot($field)` keeps rows where the field is empty or missing (exact complement of `where($field)`)     |
+| `whereInList(string $field, mixed $value): static`         | Rows only. Keeps rows where tab-separated `$field` contains `$value` as a whole value (`"\tmenu\tfooter\t"` format, CMS Builder checkbox/multi-select fields) or equals it as a plain single value. Never substring matching |
 | `filter(?callable $callback = null): static`               | Both shapes. Callback receives raw `($value, $key)`, keeps on true. No callback: removes falsy (`""`, `"0"`, 0, null, false). Keys preserved like `array_filter()` - chain `values()` for a clean JSON array |
 | `sort(int $flags = SORT_REGULAR): static`                  | Flat only. Sorts ascending by value, renumbers keys. `$flags` choose comparison only; `SORT_ASC`/`SORT_DESC` throw `InvalidArgumentException` (sort descending in SQL)  |
-| `sortBy(string $field, int $flags = SORT_REGULAR): static` | Nested only. Ascending by `$field`; rows missing the field sort first (like MySQL ORDER BY) and are kept unchanged. Numeric row keys renumber, string keys preserved. `SORT_NATURAL` for human number order; `SORT_ASC`/`SORT_DESC` throw |
+| `sortBy(string $field, int $flags = SORT_REGULAR): static` | Rows only. Ascending by `$field`; rows missing the field sort first (like MySQL ORDER BY) and are kept unchanged. Numeric row keys renumber, string keys preserved. `SORT_NATURAL` for human number order; `SORT_ASC`/`SORT_DESC` throw |
 | `unique(): static`                                         | Flat only. Removes duplicates keeping the first, keys preserved; compares as strings (`array_unique()`), so 1 and `'1'` are duplicates                                  |
 
 ## Transforming and Grouping
 
+"Rows only" and "Flat only" carry the same contract as in Filtering and
+Sorting above.
+
 | Method                                                                             | Behavior                                                                                                                     |
 |------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Like `array_column()`: one field per row; `$indexKey` keys results by another field using `indexBy()` rules (missing field keys under `''`, floats throw, bools key as 1/0); `column(null, $indexKey)` keys whole rows, same as `indexBy()` |
-| `columnAt(int $index): static`                                                     | The column at a position from each row, ignoring key names (0 first, -1 last)                                                |
-| `indexBy(string $field): static`                                                   | Whole rows keyed by `$field`; duplicate keys keep the LAST row. Null/missing field keys under `''`; floats throw (convert to strings first), booleans key as 1/0 |
-| `groupBy(string $field): static`                                                   | Rows grouped by `$field`: one child collection per distinct value; same keying rules as `indexBy()`                          |
+| `column(int\|string\|null $columnKey, int\|string\|null $indexKey = null): static` | Rows only. Like `array_column()`: one field per row; `$indexKey` keys results by another field using `indexBy()` rules (missing field keys under `''`, floats throw, bools key as 1/0); `column(null, $indexKey)` keys whole rows, same as `indexBy()` |
+| `columnAt(int $index): static`                                                     | Rows only. The column at a position from each row, ignoring key names (0 first, -1 last)                                     |
+| `indexBy(string $field): static`                                                   | Rows only. Whole rows keyed by `$field`; duplicate keys keep the LAST row. Null/missing field keys under `''`; floats throw (convert to strings first), booleans key as 1/0 |
+| `groupBy(string $field): static`                                                   | Rows only. Rows grouped by `$field`: one child collection per distinct value; same keying rules as `indexBy()`                          |
 | `keys(): static`                                                                   | The keys as a new collection (encode on output in HTML mode)                                                                 |
 | `values(): static`                                                                 | The values, keys renumbered from 0                                                                                           |
 | `map(callable $callback): static`                                                  | New collection from `$callback` per element: closures receive raw `($value, $key)`, PHP built-ins receive `$value` only; rows arrive as plain arrays; returned arrays become rows again |

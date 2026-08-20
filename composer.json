@@ -26,7 +26,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Itools\\SmartArray\\Tests\\": "tests/"
+            "Itools\\SmartArray\\Tests\\": "tests/",
+            "Itools\\Standards\\": "tests/Integration/"
         }
     },
     "config": {

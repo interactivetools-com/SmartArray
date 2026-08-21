@@ -145,7 +145,7 @@ echo $tags->sort()->implode(', ');  // Apache, MySQL, PHP
 ## Duplicates and Membership: unique() and contains()
 
 `unique()` drops repeated values from a flat list, keeping the first of each,
-and `contains()` to ask whether a value is in the list at all. Both treat `1`
+and `contains()` asks whether a value is in the list at all. Both treat `1`
 and `'1'` as the same value (`contains()` follows the same matching rules as
 `where()`):
 

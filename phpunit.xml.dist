@@ -9,6 +9,9 @@
          failOnDeprecation="true"
          failOnRisky="true"
          beStrictAboutOutputDuringTests="true">
+  <extensions>
+    <bootstrap class="Itools\SmartArray\Tests\Support\ExitGuard"/>
+  </extensions>
   <testsuites>
     <testsuite name="unit">
       <directory suffix="Test.php">./tests/Unit</directory>

@@ -14,7 +14,7 @@ use Exception;
  * the code under test never swallows it.
  *
  *     try {
- *         SmartArray::new([])->orDie('Gone');
+ *         $value->orDie('Gone');   // any empty guard on a missing value
  *     } catch (ExitCalled $e) {
  *         $this->assertSame(1, $e->status);   // exit(1) sets the status and prints nothing
  *     }

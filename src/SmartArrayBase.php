@@ -1554,7 +1554,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             </body>
             </html>
             __HTML__;
-        exit(1);
+        self::exit(1);
     }
 
     /**
@@ -1572,7 +1572,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     {
         if (empty($this->data)) {
             echo self::h($text); // SECURITY: intentional encode, do not remove (see docblock)
-            exit(1);
+            self::exit(1);
         }
         return $this;
     }
@@ -1627,7 +1627,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         if (empty($this->data)) {
             http_response_code(302);
             header("Location: $url");
-            exit;
+            self::exit();
         }
         return $this;
     }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Itools\SmartArray;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function basename, debug_backtrace, dirname, headers_list, htmlspecialchars, implode, in_array, preg_match, str_ireplace, str_replace, strtolower, trait_exists, trigger_error, trim;
+use function basename, class_exists, debug_backtrace, dirname, headers_list, htmlspecialchars, implode, in_array, preg_match, str_ireplace, str_replace, strtolower, trait_exists, trigger_error, trim;
 use const DEBUG_BACKTRACE_IGNORE_ARGS, ENT_DISALLOWED, ENT_HTML5, ENT_QUOTES, ENT_SUBSTITUTE, E_USER_DEPRECATED, PHP_SAPI;
 
 /**
@@ -141,6 +141,25 @@ trait SharedHelpers
     protected static function stripNamespace(string $typeOrClass): string
     {
         return basename(str_replace('\\', '/', $typeOrClass));
+    }
+
+    /**
+     * Drop-in for exit, with the same rules: a string is printed and the status is 0, an int sets the
+     * process exit status and prints nothing.
+     *
+     *     self::exit();       // after a redirect
+     *     self::exit(1);      // after printing a message, so shells and cron see the failure
+     *
+     * The library's own tests load Tests\Support\ExitCalled, and while that class is loaded this throws it
+     * instead of exiting, so a test can assert on the output and status. tests/ is not shipped, so nothing
+     * outside the test suite can turn that on.
+     */
+    protected static function exit(string|int $status = 0): never
+    {
+        if (class_exists(Tests\Support\ExitCalled::class, false)) {   // false: never try to autoload it
+            throw new Tests\Support\ExitCalled($status);
+        }
+        exit($status);
     }
 
     /**

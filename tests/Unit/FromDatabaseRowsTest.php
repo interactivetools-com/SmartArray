@@ -276,5 +276,52 @@ class FromDatabaseRowsTest extends SmartArrayTestCase
         $this->assertSame('SELECT 1', $row->root()->mysqli('query'));
     }
 
+    #[DataProvider('modeProvider')]
+    public function testRowsKeepIdentityAcrossReadsAndIteration(string $class): void
+    {
+        $input = ['first' => ['id' => 1], 'empty' => [], 'last' => ['id' => 3]];
+        $rows  = $class::fromDatabaseRows($input);
+        $this->assertSame(3, $rows->count());
+        $this->assertSame($input, $rows->toArray());
+        $this->assertSame(['first', 'empty', 'last'], $rows->keys()->toArray());
+
+        $iterator = $rows->getIterator();
+        $this->assertSame($rows->first, $iterator->current());
+        $first     = $rows->first;
+        $first->id = 9;
+        $iterator->rewind();
+        $this->assertSame($first, $iterator->current());
+        $this->assertSame(['first' => ['id' => 9], 'empty' => [], 'last' => ['id' => 3]], $rows->toArray());
+        $this->assertSame([], $rows->empty->toArray());
+        $this->assertSame($rows, $rows->last->root());
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testUnsetAndInsertKeepKeysAndPositions(string $class): void
+    {
+        $rows = $class::fromDatabaseRows(['a' => ['id' => 1], 'b' => ['id' => 2], 'c' => ['id' => 3]]);
+        unset($rows->a);
+        $rows->b = null;
+        $rows->d = ['id' => 4];
+        $this->assertSame(['b' => null, 'c' => ['id' => 3], 'd' => ['id' => 4]], $rows->toArray());
+        $this->assertModeValue(null, $rows->b, $class);
+        $this->assertModeValue(3, $rows->c->id, $class);
+        $this->assertSame($rows, $rows->d->root());
+        $this->assertSame([2, 3], [$rows->c->position(), $rows->d->position()]);
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWriteThroughDerivedCollectionLeavesSourceUnchanged(string $class): void
+    {
+        $input    = [['id' => 1, 'active' => true], ['id' => 2, 'active' => false], ['id' => 3, 'active' => true]];
+        $source   = $class::fromDatabaseRows($input);
+        $filtered = $source->where('active', true);
+        $filtered->first()->id = 8;
+        $this->assertSame($input, $source->toArray());
+        $this->assertModeValue(1, $source->first()->id, $class);
+        $this->assertSame($source, $filtered->first()->root());
+        $this->assertSame([0 => ['id' => 8, 'active' => true], 2 => ['id' => 3, 'active' => true]], $filtered->toArray());
+    }
+
     //endregion
 }

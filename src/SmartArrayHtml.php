@@ -109,7 +109,7 @@ class SmartArrayHtml extends SmartArrayBase
      *             runs), so only use ?? with literal defaults.
      */
     #[Deprecated(reason: "use property access ->key or ->{'key'}, with ->or() for defaults (?? skips encoding)")]
-    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartString|SmartNull
     {
         // func_get_args: get() branches on whether $default was passed, so forward the real arg count
         return parent::get(...func_get_args());
@@ -120,7 +120,7 @@ class SmartArrayHtml extends SmartArrayBase
      * @deprecated Use ->at() - same behavior, new name
      */
     #[Deprecated(reason: 'renamed to at()', replacement: '%class%->at()')]
-    public function nth(int $index): static|SmartNull|SmartString
+    public function nth(int $index): static|SmartString|SmartNull
     {
         return parent::nth($index);
     }

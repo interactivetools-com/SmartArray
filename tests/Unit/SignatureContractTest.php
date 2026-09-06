@@ -6,7 +6,9 @@ namespace Itools\SmartArray\Tests\Unit;
 use Itools\SmartArray\SmartArray;
 use Itools\SmartArray\SmartArrayBase;
 use Itools\SmartArray\SmartArrayHtml;
+use Itools\SmartArray\SmartNull;
 use Itools\SmartArray\Tests\Support\SmartArrayTestCase;
+use Itools\SmartString\SmartString;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -76,6 +78,38 @@ class SignatureContractTest extends SmartArrayTestCase
                 "SmartArrayHtml::$name() return type should be the base union minus the raw scalars",
             );
         }
+    }
+
+    /**
+     * PHP checks the class names in a union in the order written and repeats a failed
+     * lookup on every call for a class that isn't loaded yet. SmartNull only loads once a
+     * missing key is read, so it goes after SmartString in every signature that names both;
+     * the other order made every field read on most pages pay for a lookup that couldn't
+     * succeed.
+     */
+    public function testSmartStringComesBeforeSmartNullInEveryUnion(): void
+    {
+        $checked = 0;
+        foreach ([SmartArrayBase::class, SmartArray::class, SmartArrayHtml::class] as $class) {
+            foreach ((new ReflectionClass($class))->getMethods() as $method) {
+                $types = array_map(static fn($p) => $p->getType(), $method->getParameters());
+                $types[] = $method->getReturnType();
+                foreach ($types as $type) {
+                    if (!$type instanceof ReflectionUnionType) {
+                        continue;
+                    }
+                    $names = array_map(static fn(ReflectionNamedType $t) => $t->getName(), $type->getTypes());
+                    $smartString = array_search(SmartString::class, $names, true);
+                    $smartNull   = array_search(SmartNull::class, $names, true);
+                    if ($smartString === false || $smartNull === false) {
+                        continue;
+                    }
+                    $this->assertLessThan($smartNull, $smartString, "$class::{$method->getName()}() lists SmartNull before SmartString in '$type'");
+                    $checked++;
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $checked, 'no union naming both SmartString and SmartNull found; did the accessor signatures change?');
     }
 
     public function testRedeclaredMethodsNarrowSomething(): void

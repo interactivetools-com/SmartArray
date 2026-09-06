@@ -120,7 +120,7 @@ trait Deprecations
      * @deprecated Use ->at() - same behavior, new name
      */
     #[Deprecated(reason: 'renamed to at()', replacement: '%class%->at()')]
-    public function nth(int $index): static|SmartNull|SmartString|string|int|float|bool|null
+    public function nth(int $index): static|SmartString|SmartNull|string|int|float|bool|null
     {
         return $this->at($index);
     }
@@ -243,7 +243,7 @@ trait Deprecations
      * @return static|SmartNull|SmartString|string|int|float|bool|null
      */
     #[Deprecated(reason: "use property access ->key or ->{'key'}, with ?? (raw) or ->or() (HTML mode) for defaults")]
-    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartNull|SmartString|string|int|float|bool|null
+    public function get(int|string|SmartString|SmartNull $key, mixed $default = null): static|SmartString|SmartNull|string|int|float|bool|null
     {
         // Unwrap Smart keys, then coerce like PHP array keys: null reads key '', bool/float truncate to int
         if ($key instanceof SmartString || $key instanceof SmartNull) {
@@ -513,7 +513,7 @@ trait Deprecations
      *
      * @deprecated Use ->property or ->{'key'} instead of $array['key']
      */
-    public function offsetGet(mixed $offset): static|SmartNull|SmartString|string|int|float|bool|null
+    public function offsetGet(mixed $offset): static|SmartString|SmartNull|string|int|float|bool|null
     {
         $offset = self::coerceOffset($offset) ?? '';   // PHP array key semantics: $arr[null] reads key ''
         self::triggerArrayAccessDeprecation($offset, 'get');

@@ -36,6 +36,8 @@ Everything else is hardening and fixes.
 - **`where($field)` / `whereNot($field)`** - one-argument forms filter by
   PHP's `empty()` rule: `where('featured')` keeps rows where the field is
   non-empty, `whereNot('featured')` keeps the rest
+- **`set404Handler()`** - show your own 404 page from `or404()` instead of
+  the built-in one; SmartString has its own, so set both
 
 ### Performance
 
@@ -133,7 +135,10 @@ Also: writes to a `SmartNull` throw instead of silently discarding the
 value, raw-mode arrays throw on SmartString-style fallbacks like `->or()`
 on missing keys (use `??` instead), `print_r()` and `var_dump()` show
 clean array data (use `debug()` for exact types), `orDie()` and `or404()`
-exit with status 1 so shell scripts see the failure, deprecated names are
+exit with status 1 so shell scripts see the failure, `or404()` works like
+SmartString's (it discards partial page output, skips the 404 status
+instead of warning once output has started, and accepts SmartString
+messages), deprecated names are
 real declared methods so IDEs and `method_exists()` see them, `help()`
 and `debug()` print plain text on the command line, and a couple dozen
 small fixes to error messages and `load()`, `column()`, `get()`, and

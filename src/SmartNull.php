@@ -288,7 +288,9 @@ class SmartNull extends stdClass implements SmartBase, Iterator, ArrayAccess, Js
      * result means nothing was produced, so the SmartNull itself returns and the
      * chain stays open for either ending, ->or('n/a') for a value or ->implode()
      * for a collection. Produced results (or() fallbacks, int() and other scalars)
-     * return as usual. map() and its deprecated alias apply() propagate without
+     * return as usual. Guards like or404() are SmartString methods too, so in HTML
+     * mode they run SmartString's version and its set404Handler() page; raw mode
+     * runs SmartArray's. map() and its deprecated alias apply() propagate without
      * running their callback: a missing key has no value to pass it, while a
      * NULL value in an existing key still runs the callback.
      *

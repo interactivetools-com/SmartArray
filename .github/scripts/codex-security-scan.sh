@@ -47,7 +47,9 @@ behavior. SmartArray and SmartArrayRaw return plain values by design; only
 SmartArrayHtml wraps elements as SmartStrings. toArray(), map() callbacks,
 and jsonSerialize() expose raw values per the documented contract. Only flag
 these if a concrete in-repo path renders their result into HTML without
-encoding.
+encoding. A set404Handler() handler receives or404()'s message as plain text
+by design; flag only a shipped doc example or docblock that prints it
+without encoding.
 
 Known limitations and finding criteria:
 

@@ -138,6 +138,25 @@ echo "<h1>$article->title</h1>";  // with ?num=7 this prints: <h1>Fall Fair Sept
 Messages HTML-encode automatically, so interpolating user input into them is
 safe: `->orDie("No results for '$keyword'")`.
 
+`or404()` prints a plain built-in page. To show your site's own 404 page
+instead, set a handler once in your init file:
+
+```php
+use Itools\SmartArray\SmartArray;
+use Itools\SmartString\SmartString;
+
+$show404 = function (?string $text): void {
+    $message = SmartString::new($text ?? "We couldn't find that page.");  // encodes itself when echoed
+    include __DIR__ . '/404.php';                                         // your page template, which echoes $message
+};
+SmartArray::set404Handler($show404);
+SmartString::set404Handler($show404);
+```
+
+SmartArray and SmartString each keep their own handler, so set both. Field
+guards like `$article->title->or404()`, and `->first()->or404()` with no
+match, use SmartString's.
+
 ## Checking a Single Field
 
 The guards work on single fields too:

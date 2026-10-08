@@ -349,6 +349,27 @@ class DocsExamplesTest extends SmartArrayTestCase
         $this->assertSame('<h1>Fall Fair Sept 20-21</h1>', $output);
     }
 
+
+    /**
+     * The startup lines as written. The handler only runs when or404() fires, which exits,
+     * so this checks both setters take the doc's closure; EmptyGuardsTest covers it firing.
+     */
+    public function testDisplayingFieldsSet404HandlerTakesTheDocsClosure(): void
+    {
+        $show404 = function (?string $text): void {
+            $message = SmartString::new($text ?? "We couldn't find that page.");
+            include __DIR__ . '/404.php';
+        };
+
+        try {
+            $this->assertNull(SmartArray::set404Handler($show404));
+            $this->assertNull(SmartString::set404Handler($show404));
+        } finally {
+            SmartArray::set404Handler(null);
+            SmartString::set404Handler(null);
+        }
+    }
+
     //endregion
     //region Displaying Fields: Checking a Single Field
 

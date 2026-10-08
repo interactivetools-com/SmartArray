@@ -156,6 +156,9 @@ HTML-encode automatically, so interpolated user input is safe.*
 | `->orThrow($text)`      | Throws a `RuntimeException` with `$text`                                       |
 | `->orRedirect($url)`    | Sends a 302 redirect to `$url` and stops (throws if headers were already sent) |
 
+To show your site's own 404 page instead, set it once at startup with
+`SmartArray::set404Handler()`.
+
 ### Database Metadata
 
 *For collections created from query results; ZenDB and CMS Builder set

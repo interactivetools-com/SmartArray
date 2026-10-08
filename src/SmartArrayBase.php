@@ -9,7 +9,7 @@ use ArrayAccess, ArrayIterator, IteratorAggregate, Iterator, Countable, JsonSeri
 use Itools\SmartString\SmartString;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
+use function addcslashes, array_column, array_filter, array_key_exists, array_key_first, array_key_last, array_keys, array_map, array_merge, array_multisort, array_slice, array_unique, array_values, basename, count, debug_backtrace, func_num_args, get_debug_type, header, headers_sent, http_response_code, implode, is_array, is_bool, is_callable, is_float, is_int, is_null, is_object, is_scalar, is_string, json_decode, json_encode, max, method_exists, ob_end_clean, preg_match, preg_replace, rtrim, sort, spl_object_id, sprintf, str_contains, str_pad, str_repeat, strlen, trigger_error, trim, var_export;
 use const ARRAY_FILTER_USE_BOTH, DEBUG_BACKTRACE_IGNORE_ARGS, E_USER_WARNING, JSON_INVALID_UTF8_SUBSTITUTE, SORT_ASC, SORT_DESC, SORT_REGULAR;
 
 /**
@@ -1530,21 +1530,86 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     //region Error Handling
 
     /**
-     * Sends a 404 header and message if the array is empty, then exits with status 1
-     * so shell scripts and cron jobs see the failure.
+     * The handler set with set404Handler(), or null for the built-in page.
+     */
+    private static ?Closure $notFoundHandler = null;
+
+    /**
+     * True while the handler runs, so an or404() on the handler's own page prints
+     * the built-in page instead of calling the handler again.
+     */
+    private static bool $inNotFoundHandler = false;
+
+    /**
+     * Shows your own page when or404() finds an empty array, instead of the built-in
+     * "Not Found" page. Call it once at startup. or404() sends the 404 status before
+     * calling the handler and exits after it returns, so the handler only prints the page.
      *
-     * @param string|null $text Plain-text message; HTML-encoded automatically before output. Defaults to "The requested URL was not found on this server."
+     * SmartArray and SmartArrayHtml share one handler. SmartString keeps its own, which
+     * field guards and ->first()->or404() on an empty SmartArrayHtml result use, so set both.
+     *
+     * SECURITY: the handler gets the message as plain text. HTML-encode it before printing.
+     *
+     *     $show404 = function (?string $text): void {
+     *         $message = SmartString::new($text ?? "We couldn't find that page.");  // encodes itself when echoed
+     *         include __DIR__ . '/404.php';                                         // your page template, which echoes $message
+     *     };
+     *     SmartArray::set404Handler($show404);
+     *     SmartString::set404Handler($show404);
+     *     SmartArray::set404Handler(null);       // back to the built-in page
+     *
+     * @param callable|null $callback Gets or404()'s message as plain text, or null when it has none
+     * @return Closure|null The handler set before, or null
+     */
+    public static function set404Handler(?callable $callback): ?Closure
+    {
+        $previous              = self::$notFoundHandler;
+        self::$notFoundHandler = $callback !== null ? Closure::fromCallable($callback) : null;
+        return $previous;
+    }
+
+    /**
+     * Sends a 404 header and message if the array is empty, then exits with status 1
+     * so shell scripts and cron jobs see the failure. With set404Handler() set, the
+     * handler prints the page instead and gets $text as plain text.
+     *
+     * Any page output that's still buffered is thrown away first, so the 404 page shows on
+     * its own. A buffer PHP won't let us remove keeps its content, and the 404 page prints
+     * after it. If output already went to the browser, the 404 page still prints, but the
+     * HTTP status can't change anymore and stays whatever was already sent (usually 200).
+     *
+     * @param string|SmartString|SmartNull|null $text Plain-text message. The built-in page HTML-encodes it and defaults to "The requested URL was not found on this server."; a set404Handler() handler gets it unencoded, or null.
      * @return static Returns $this if not empty, exits with 404 if empty
      */
-    public function or404(?string $text = null): static
+    public function or404(string|SmartString|SmartNull|null $text = null): static
     {
         if (!empty($this->data)) {
             return $this;
         }
 
-        // Send 404 header and message
-        http_response_code(404);
-        header("Content-Type: text/html; charset=utf-8");
+        // Headers can only be sent before any output. If the page already started printing, skip
+        // them: the visitor still gets the 404 page, under a 200 status instead of a PHP
+        // "headers already sent" warning.
+        if (!headers_sent()) {
+            http_response_code(404);
+            header("Content-Type: text/html; charset=utf-8");
+        }
+        // Throw away buffered output that hasn't been sent yet, so the 404 page shows on its own.
+        // Loop until ob_end_clean() returns false, not until ob_get_level() is 0: a buffer started
+        // without PHP_OUTPUT_HANDLER_REMOVABLE can't be closed, so a level check would loop forever.
+        while (@ob_end_clean()) {
+        }
+        $text = is_string($text) ? $text : self::getRawValue($text); // fast path: skip getRawValue() for plain values
+        $text = $text === null ? null : (string)$text;               // SmartNull stays null; a SmartString number or bool becomes text
+        if (self::$notFoundHandler !== null && !self::$inNotFoundHandler) {
+            self::$inNotFoundHandler = true;
+            try {
+                (self::$notFoundHandler)($text);
+            } finally {
+                self::$inNotFoundHandler = false;
+            }
+            self::exit(1);
+        }
         $text ??= "The requested URL was not found on this server.";
         $text = self::h($text);
 

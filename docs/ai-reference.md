@@ -27,7 +27,7 @@ Contents:
 - [Row Position](#row-position) - isFirst(), isLast(), position()
 - [Filtering and Sorting](#filtering-and-sorting) - where(), whereNot(), whereInList(), filter(), sort(), sortBy(), unique()
 - [Transforming and Grouping](#transforming-and-grouping) - column(), columnAt(), indexBy(), groupBy(), keys(), values(), map(), merge(), implode()
-- [Guards](#guards) - or404(), orDie(), orThrow(), orRedirect()
+- [Guards](#guards) - or404(), orDie(), orThrow(), orRedirect(), set404Handler()
 - [Database Metadata](#database-metadata) - mysqli(), load()
 - [Debugging](#debugging) - debug()
 - [Errors and Exceptions](#errors-and-exceptions)
@@ -273,20 +273,44 @@ Sorting above.
 Fire when the COLLECTION IS EMPTY (no rows/elements; contrast SmartString's
 field guards, which fire on missing values). Non-empty: return `$this`
 unchanged, so they chain inline. `$text` is HTML-encoded automatically
-(messages often interpolate user input).
+(messages often interpolate user input), except that `or404()` passes it to
+a `set404Handler()` handler unencoded.
 
-| Method                                | On empty                                                                                                 |
-|---------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `or404(?string $text = null): static` | HTTP 404 + minimal HTML page + `exit(1)`. Default text "The requested URL was not found on this server." |
-| `orDie(string $text): static`         | Echo encoded text + `exit(1)`                                                                            |
-| `orThrow(string $text): static`       | `throw new RuntimeException($encodedText)`                                                               |
-| `orRedirect(string $url): static`     | 302 + `Location: $url` + `exit`. Checks `headers_sent()` immediately (throws even when non-empty)        |
+| Method                                                             | On empty                                                                                                                                 |
+|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `or404(string\|SmartString\|SmartNull\|null $text = null): static` | HTTP 404 + minimal HTML page (or the `set404Handler()` page) + `exit(1)`. Default text "The requested URL was not found on this server." |
+| `orDie(string $text): static`                                      | Echo encoded text + `exit(1)`                                                                                                            |
+| `orThrow(string $text): static`                                    | `throw new RuntimeException($encodedText)`                                                                                               |
+| `orRedirect(string $url): static`                                  | 302 + `Location: $url` + `exit`. Checks `headers_sent()` immediately (throws even when non-empty)                                        |
 
 ```php
 $article = $articles->where('num', $num)->first()->or404('Article not found');
 ```
 
 (`first()` on empty returns SmartNull; its `or404()` delegates and fires.)
+
+`SmartArray::set404Handler(?callable $callback): ?Closure` - static; sets the
+page `or404()` shows instead of the built-in one. Call once at startup.
+
+```php
+$show404 = function (?string $text): void {
+    $message = SmartString::new($text ?? "We couldn't find that page.");  // encodes itself when echoed
+    include __DIR__ . '/404.php';                                         // your page template, which echoes $message
+};
+SmartArray::set404Handler($show404);
+SmartString::set404Handler($show404);
+```
+
+- The handler gets the message as plain text (NOT encoded; encode it before
+  output), or null when `or404()` had no message. Type it `?string`.
+- `or404()` sends the 404 status and discards output buffers before the
+  handler, and calls `exit(1)` after it returns.
+- Returns the previous handler, or null; `set404Handler(null)` restores the
+  built-in page.
+- SmartArray and SmartString keep separate handlers. In HTML mode,
+  collections use SmartArray's and single values (fields, missing keys,
+  `first()` on an empty result) use SmartString's. In raw mode every
+  `or404()` uses SmartArray's. Set both.
 
 ## Database Metadata
 
@@ -390,7 +414,7 @@ RuntimeException (strict mode for new installs).
   not an array - chain `values()`.
 - Collection guards fire on EMPTY collections; SmartString field guards
   fire on missing VALUES. `$row->or404()` (row) vs `$row->num->or404()`
-  (field) differ.
+  (field) differ, and each library has its own `set404Handler()`: set both.
 - `where()` drops rows missing the field; `whereNot()` keeps them.
 - `implode()` in HTML mode returns a SmartString: interpolating it into a
   raw-SQL string would encode the joined text; call `->string()` first or

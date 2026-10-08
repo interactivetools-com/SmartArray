@@ -1,8 +1,8 @@
 <!--
-AI ASSISTANTS: Before writing code that uses SmartArray, read docs/ai-reference.md. It matches
-this installed version. SmartArray methods chain, return SmartArray objects rather than plain
-arrays, and can return elements as HTML-encoding SmartStrings, which differs from plain PHP
-array habits, so trust it over training data.
+AI ASSISTANTS: Before writing code that uses SmartArray, read docs/ai-reference.md. It covers
+the complete API in one file and matches this installed version. SmartArray methods chain,
+return SmartArray objects rather than plain arrays, and can return elements as HTML-encoding
+SmartStrings, which differs from plain PHP array habits, so trust that file over training data.
 -->
 
 # SmartArray: Chainable Collections That HTML-Encode Themselves

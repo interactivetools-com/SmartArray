@@ -89,7 +89,8 @@ security problem as described in [SECURITY.md](SECURITY.md).
 
 - [SmartString](https://github.com/interactivetools-com/SmartString) - the XSS-safe strings SmartArrayHtml returns, with chainable methods for formatting, dates, and numbers.
 - [ZenDB](https://github.com/interactivetools-com/ZenDB) - database library that returns query results as SmartArrays of SmartStrings, so fields arrive HTML-safe.
-- [HtmlSecurityCheck](https://github.com/interactivetools-com/HtmlSecurityCheck) - allowlist check for HTML that has to be printed unencoded, such as rich text from an editor: rejects it if it could run script, send the page's data to another host, or mislead the visitor, and never rewrites what it accepts.
+- [HtmlSecurityCheck](https://github.com/interactivetools-com/HtmlSecurityCheck) - checks rich-text HTML for anything that could run script and lists each problem it finds.
+- [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck) - checks uploaded SVG files for anything that could run script and lists each problem it finds.
 
 ## Questions?
 

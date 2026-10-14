@@ -78,6 +78,13 @@ $rows = $orders->toArray();
 $total = $order->total->value();
 ```
 
+## Security
+
+Fields encode for HTML text and quoted attribute values.
+[Where Encoding Ends](docs/outputting-html.md#where-encoding-ends) lists
+the places that need more, such as link URLs from user input. Report a
+security problem as described in [SECURITY.md](SECURITY.md).
+
 ## Related Libraries
 
 - [SmartString](https://github.com/interactivetools-com/SmartString) - the XSS-safe strings SmartArrayHtml returns, with chainable methods for formatting, dates, and numbers.

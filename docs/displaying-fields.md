@@ -33,12 +33,14 @@ echo $user->name;  // Jean O&​apos;Brien (with a plain array this would be $us
 ```
 
 The arrow syntax pays off in double-quoted strings: fields interpolate
-directly, with no braces or quotes needed:
+directly and come out HTML-encoded, with no `htmlspecialchars()` calls:
 
 ```php
-// with a plain PHP array, every field needs braces and quotes
+// with a plain PHP array, every field needs its own htmlspecialchars() call
 $plain = $user->toArray();
-echo "<p>Contact {$plain['name']} in {$plain['city']} at {$plain['phone']}</p>";
+echo "<p>Contact " . htmlspecialchars($plain['name'], ENT_QUOTES, 'UTF-8')
+   . " in "        . htmlspecialchars($plain['city'], ENT_QUOTES, 'UTF-8')
+   . " at "        . htmlspecialchars($plain['phone'], ENT_QUOTES, 'UTF-8') . "</p>";
 
 // with a SmartArray, it's just the arrow
 echo "<p>Contact $user->name in $user->city at $user->phone</p>";

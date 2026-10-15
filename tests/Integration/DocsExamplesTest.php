@@ -243,14 +243,16 @@ class DocsExamplesTest extends SmartArrayTestCase
         $plain = $user->toArray();
 
         [, $plainOutput] = $this->captureOutput(static function () use ($plain): void {
-            echo "<p>Contact {$plain['name']} in {$plain['city']} at {$plain['phone']}</p>";
+            echo "<p>Contact " . htmlspecialchars($plain['name'], ENT_QUOTES, 'UTF-8')
+               . " in "        . htmlspecialchars($plain['city'], ENT_QUOTES, 'UTF-8')
+               . " at "        . htmlspecialchars($plain['phone'], ENT_QUOTES, 'UTF-8') . "</p>";
         });
         [, $smartOutput] = $this->captureOutput(static function () use ($user): void {
             echo "<p>Contact $user->name in $user->city at $user->phone</p>";
         });
 
-        // The plain version interpolates the raw value; the SmartArray version encodes it
-        $this->assertSame("<p>Contact Jean O'Brien in Vancouver at 604-555-0132</p>", $plainOutput);
+        // Both encode; htmlspecialchars() writes the apostrophe as &#039;, SmartString as &apos;
+        $this->assertSame('<p>Contact Jean O&#039;Brien in Vancouver at 604-555-0132</p>', $plainOutput);
         $this->assertSame('<p>Contact Jean O&apos;Brien in Vancouver at 604-555-0132</p>', $smartOutput);
     }
 

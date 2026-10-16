@@ -73,6 +73,11 @@ in signatures, docblocks, the changelog, and tests.
   measured uses and a plain foreach is clearer and faster. `sprintf()`
   was a second formatting syntax whose only found uses were inside CMS
   Builder; `map()` with an inline format string covers it.
+  Its result is a raw SmartArray on purpose: the values are finished HTML,
+  and HTML mode would encode them again. Raw data merged in afterwards
+  isn't encoded, the same as with the `asRaw()->map()` replacement. Any
+  collection of finished HTML strings works this way; the fix would be a
+  safe-HTML type, which the composition-helpers entry rules out.
 
 - **Raw-mode misses don't answer SmartString methods (2026-08-04).** On a
   raw array, `$row->missing->or('n/a')` throws instead of returning an

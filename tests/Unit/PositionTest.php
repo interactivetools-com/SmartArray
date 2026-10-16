@@ -65,6 +65,20 @@ class PositionTest extends SmartArrayTestCase
     }
 
     #[DataProvider('modeProvider')]
+    public function testFirstCallSetsEveryRowsPosition(string $class): void
+    {
+        // Asking one row numbers all of them, so a row never asked directly
+        // keeps the position it had at that first call
+        $rows = $class::new(['a' => ['n' => 'a'], 'b' => ['n' => 'b'], 'c' => ['n' => 'c']]);
+
+        $this->assertSame(1, $rows->a->position());
+        unset($rows->a);
+
+        $this->assertSame(3, $rows->c->position());
+        $this->assertFalse($rows->b->isFirst(), 'b was second when positions were set');
+    }
+
+    #[DataProvider('modeProvider')]
     public function testStandaloneArrayHasPositionZero(string $class): void
     {
         // A root array has no parent, so position metadata stays at defaults

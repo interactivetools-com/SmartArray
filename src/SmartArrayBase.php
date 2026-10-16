@@ -82,7 +82,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
     private ?SmartArrayBase $parent = null;
 
     /**
-     * 1-based position within $parent, computed by position() on first use.
+     * 1-based position within $parent, set by the first position() call on any row.
      * 0 = not computed yet (or not a child element).
      */
     private int $position = 0;
@@ -124,18 +124,22 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      *         echo "Row {$row->position()} of " . $rows->count();
      *     }
      *
-     * Computed on first call and kept, so rows added or removed after that don't change it.
+     * The first call on any row sets the position of every row in the collection, and
+     * those positions are kept, so rows added or removed after that don't change them.
+     * A row added later gets its position the first time it's asked.
      *
      * @return int 1-based position (0 if not a child element)
      */
     public function position(): int
     {
+        // One pass numbers every row, so a loop calling isLast() on each row reads the
+        // parent once instead of once per row
         if ($this->position === 0 && $this->parent !== null) {
             $i = 0;
             foreach ($this->parent->data as $sibling) {
                 $i++;
-                if ($sibling === $this) {
-                    return $this->position = $i;
+                if ($sibling instanceof self && $sibling->position === 0) {
+                    $sibling->position = $i;
                 }
             }
         }

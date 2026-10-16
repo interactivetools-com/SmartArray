@@ -112,8 +112,9 @@ the docs - IDEs show a strikethrough with the replacement.
 - **Row positions resolve on first use, not at build time** - a row added
   after construction reports its real `position()` and `isLast()` instead
   of 0/false, the row that was last at build stops reporting `isLast()`,
-  and late-added rows now warn on missing keys like any other row; once
-  read, a row's position is kept
+  and late-added rows now warn on missing keys like any other row; the
+  first read on any row sets every row's position, and they're kept from
+  then on
 
 ### Fixed
 

@@ -85,10 +85,10 @@ unset($user->nickname);              // removes the key
 echo $user->status;                  // Active
 ```
 
-Row positions are computed the first time a row is asked for its
-position, so a row added
-later reports its real position; once computed, a row's `position()` is
-kept and doesn't recalculate when rows are added or removed after that.
+Row positions are computed for every row the first time any row is asked,
+and a row added later gets its real position when it's first asked. Once
+computed, a row's `position()` is kept and doesn't recalculate when rows
+are added or removed after that.
 
 ### [Collection Checks](displaying-fields.md#showing-a-no-results-message)
 

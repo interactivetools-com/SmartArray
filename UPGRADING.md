@@ -21,16 +21,14 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 ## v3.0.0
 
 *Follow this section when upgrading from SmartArray before v3.0.0
-(or CMS Builder before 3.85). Requires PHP 8.1+ and SmartString 3.0+
-(earlier releases accepted any SmartString version); Composer updates it
-automatically unless your composer.json pins `itools/smartstring` lower.*
+(or CMS Builder before 3.85). Requires PHP 8.1+ and SmartString 3.0+;
+Composer installs it automatically unless your composer.json pins
+`itools/smartstring` lower.*
 
 ### Boolean argument to `new()` or the constructor
 
-> Creating an array with a boolean that contradicts the class used to be
-> silently ignored - `SmartArray::new($data, true)` looked like it asked for
-> HTML-safe output but returned raw, unencoded values. It now throws at the
-> call site:
+> `SmartArray::new($data, true)` used to ignore the `true` and return raw,
+> unencoded values. A boolean that contradicts the class now throws:
 >
 > ```php
 > $rows = SmartArray::new($records, true);   // throws: use SmartArrayHtml::new($data) instead
@@ -54,19 +52,15 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 > - `usingSmartStrings()` - check the class instead; it is the mode:
 >   `$arr instanceof SmartArrayHtml`
 > - `setLoadHandler()` - pass the handler as a constructor property:
->   `new SmartArray($data, ['loadHandler' => $handler])`. Setting it after
->   construction never worked on record sets - rows are built during
->   construction and never saw a handler set later.
-> - `newSmartNull()` - now protected; it built the internal missing-value
->   placeholders and had no use outside the library
+>   `new SmartArray($data, ['loadHandler' => $handler])`
+> - `newSmartNull()` - now internal
 >
 > Search: `usingSmartStrings|setLoadHandler|newSmartNull`
 
 ### sortBy() parameter renamed for named arguments
 
-> `sortBy(string $field, int $flags = SORT_REGULAR)` - the second parameter
-> was named `$type` but always held PHP sort flags. It now matches `sort()`
-> and PHP's own sort functions. Only named-argument calls are affected:
+> The second parameter is now `$flags`, like PHP's `sort()`. Only calls that
+> pass it by name are affected:
 >
 > ```php
 > $rows->sortBy('name', type: SORT_NATURAL);   // before
@@ -79,9 +73,7 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 
 > These now match plain PHP arrays: a column whose value is NULL reads as
 > missing, so `isset()` answers false, `empty()` answers true, and `??`
-> returns its fallback. Previously they answered "does the column exist",
-> which meant `??` fallbacks never fired on NULL columns in HTML mode - the
-> wrapped null echoed as `""`:
+> returns its fallback. Before, `??` fallbacks never fired on NULL columns:
 >
 > ```php
 > $row = SmartArrayHtml::new(['nickname' => null]);
@@ -91,21 +83,15 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 > empty($row->nickname);          // before: false - after: true
 > ```
 >
-> Bracket syntax (`isset($row['field'])`) changes the same way. Direct
-> access is unchanged: `$row->nickname` still returns the stored null
-> (wrapped in HTML mode) with no warning.
+> Bracket syntax (`isset($row['field'])`) changes the same way.
 >
 > Fix:
 >
 > - Check templates using `??` on nullable columns - they print the fallback
 >   where they used to print nothing. That's usually the intent; if the
->   fallback carries user data, use `->or()` instead, which HTML-encodes.
->   A `??` fallback skips encoding because PHP substitutes it before the
->   library runs.
-> - When migrating deprecated `get($key, $default)` calls to
->   `$row->key ?? $default`: `get()` returns a stored NULL instead of the
->   default, the `??` form returns the default. Same results everywhere
->   except NULL columns.
+>   fallback comes from data, use `->or()` instead, which HTML-encodes it.
+> - `get($key, $default)` returns a stored NULL, but `$row->key ?? $default`
+>   returns the default. Keep that in mind when replacing `get()` calls.
 > - To ask "does the key exist, even if NULL", use
 >   `$row->keys()->contains('field')`.
 >
@@ -137,9 +123,8 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 
 ### Float key values throw in indexBy(), groupBy(), and column()
 
-> Keying rows by a float field now throws instead of using PHP's
-> float-to-int key truncation (`19.99` and `19.50` both keyed as `19`,
-> losing a row, plus a PHP deprecation notice):
+> Keying rows by a float field now throws. PHP turned `19.99` and `19.50`
+> both into key `19`, silently losing a row:
 >
 > ```php
 > $products->indexBy('price');
@@ -153,15 +138,8 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 ### Row-only methods ignore non-row elements
 
 > `where()`, `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`,
-> `groupBy()`, `column()`, and `columnAt()` now follow one rule: they work
-> on the rows (elements that are arrays) and ignore other elements. A
-> non-empty array with no rows throws `InvalidArgumentException`, same
-> as before; an empty array returns an empty result.
->
-> In v2.x each method handled a scalar next to rows differently: the
-> `where()` family already skipped scalars (unchanged), `sortBy()` sorted
-> them in with the rows, and `indexBy()`, `groupBy()`, and `column()` kept
-> them under renumbered integer keys:
+> `groupBy()`, `column()`, and `columnAt()` work on the rows (elements that
+> are arrays) and ignore other elements:
 >
 > ```php
 > $schema = SmartArray::new([
@@ -173,31 +151,24 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 > $schema->indexBy('type');          // v2.x: scalars kept under renumbered keys; v3.0: rows only
 > ```
 >
-> Database results are unaffected - every element is a row. Review only
-> hand-built arrays that mix scalars and rows: a scalar that used to reach
-> the result through `sortBy()`, `indexBy()`, `groupBy()`, or `column()`
-> is left out now.
+> Database results are unaffected - every element is a row. Review
+> hand-built arrays that mix scalars and rows: `sortBy()`, `indexBy()`,
+> `groupBy()`, and `column()` used to keep the scalars and now leave them
+> out.
 
 ### Silent changes
 
-> - `print_r()` and `var_dump()` show just the array data, like dumping a
-> plain array - the injected pseudo-entries (the README help pointer and the
-> `useSmartStrings` flag) are gone. Use `->debug()` for exact types and
-> metadata.
-> - `indexBy()` keys rows missing the index field under `""` (same as rows
-> where the field is null) instead of leaving a numeric key that looked like
-> a real field value. Duplicates still last-wins.
-> - `sortBy()` sorts rows missing the sort field first, like MySQL ORDER BY
-> sorts nulls, instead of throwing `ValueError: Array sizes are inconsistent`.
-> - `set()`, `->key = $value`, and `get()` defaults now accept Smart values
-> (SmartString, SmartArray, SmartNull) - they unwrap and re-wrap for the
-> array's mode instead of throwing, so values copy between arrays without
-> calling `->value()` first. Only affects code that relied on those throws.
+> - `print_r()` and `var_dump()` show just the array data, like a plain
+> array. Use `->debug()` for types.
+> - `indexBy()` keys rows missing the index field under `""`, the same as
+> rows where the field is null.
+> - `sortBy()` sorts rows missing the sort field first instead of throwing.
+> - Assigning a SmartString, SmartArray, or SmartNull into an array works
+> instead of throwing, so values copy between arrays without `->value()`.
 > - `load()` throws `InvalidArgumentException` instead of `RuntimeException`
-> when the field name contains invalid characters, matching its empty-field
-> check. Only affects code catching `RuntimeException` around `load()`.
-> - Writes to a `SmartNull` (a missing key or empty result) throw
-> `RuntimeException` instead of silently discarding the value.
+> for a field name with invalid characters.
+> - Writing through a missing key (`$row->missing->x = 1`) throws instead of
+> silently doing nothing.
 > - Raw-mode arrays throw on SmartString-style fallbacks like `->or()` on a
 > missing key - use `??` instead.
 > - `orDie()` and `or404()` exit with status 1 instead of 0, so shell

@@ -473,7 +473,7 @@ class ConversionTest extends SmartArrayTestCase
         $sa = $class::new(["caf\xE9" => 1, "caf\xC0" => 2]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("key 'caf\u{FFFD}' appears twice after malformed UTF-8");
+        $this->expectExceptionMessage("key `caf\u{FFFD}` appears twice after malformed UTF-8");
 
         $sa->jsonSerialize();
     }

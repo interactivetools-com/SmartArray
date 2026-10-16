@@ -303,7 +303,7 @@ class LoadTest extends SmartArrayTestCase
             $sa->load('products');
             $this->fail('expected Error');
         } catch (Error $e) {
-            $expected = "Load handler doesn't support field 'products'\n"
+            $expected = "Load handler doesn't support field `products`\n"
                 . "Occurred in " . basename(__FILE__) . ":$expectedLine in " . self::class . "->" . __FUNCTION__ . "()\n"
                 . "Reported";
             $this->assertSame($expected, $e->getMessage());

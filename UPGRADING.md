@@ -143,7 +143,7 @@ automatically unless your composer.json pins `itools/smartstring` lower.*
 >
 > ```php
 > $products->indexBy('price');
-> // InvalidArgumentException: indexBy(): 'price' has float values,
+> // InvalidArgumentException: indexBy(): `price` has float values,
 > // convert them to strings first
 > ```
 >

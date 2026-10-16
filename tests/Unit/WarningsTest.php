@@ -123,7 +123,7 @@ class WarningsTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => $rows->where('zzz', 1));
 
-        $expected = "\nWarning: where(): 'zzz' doesn't exist\n"
+        $expected = "\nWarning: where(): `zzz` doesn't exist\n"
             . "Occurred in TEST_FILE:LINE in CLOSURE()\n"
             . "Reported in SRC_FILE:LINE in SmartArrayBase->warnIfMissing()\n"
             . "\n";
@@ -154,7 +154,7 @@ class WarningsTest extends SmartArrayTestCase
         [, $output] = $this->captureOutput(static fn() => $call($rows));
 
         $firstLine = explode("\n", $output)[1] ?? '';
-        $this->assertSame("Warning: $method(): 'zzz' doesn't exist", $firstLine);
+        $this->assertSame("Warning: $method(): `zzz` doesn't exist", $firstLine);
     }
 
     #[DataProvider('modeProvider')]
@@ -186,13 +186,32 @@ class WarningsTest extends SmartArrayTestCase
 
         [$output, $messages] = $this->captureWarnings(fn() => $rows->indexBy('zzz'));
 
-        $this->assertStringContainsString("Warning: indexBy(): 'zzz' doesn't exist", $output);
+        $this->assertStringContainsString("Warning: indexBy(): `zzz` doesn't exist", $output);
         $this->assertCount(1, $messages);
 
-        $expected = "indexBy(): 'zzz' doesn't exist\n"
+        $expected = "indexBy(): `zzz` doesn't exist\n"
             . "Occurred in TEST_FILE:LINE in CLOSURE()\n"
             . "Reported in SRC_FILE:LINE in SmartArrayBase->warnIfMissing()\n";
         $this->assertSame($expected, self::maskLocations($messages[0]));
+    }
+
+    #[DataProvider('modeProvider')]
+    public function testWarningsHaveNoQuoteBeforeTheKey(string $class): void
+    {
+        // SECURITY: warnings echo wherever the template is. Inside a quoted attribute,
+        // a quote before the key would end the attribute and turn the key into new ones
+        $key  = ' autofocus onfocus=alert(1) data-x=';
+        $rows = $class::new([['a' => 1]]);
+
+        [, $fieldOutput] = $this->captureOutput(fn() => $rows->column($key));
+        [, $keyOutput]   = $this->captureOutput(fn() => $rows->first()->{$key});
+
+        foreach (['field' => $fieldOutput, 'key' => $keyOutput] as $warning => $output) {
+            $beforeKey = strstr($output, $key, true);
+            $this->assertIsString($beforeKey, "$warning warning shows the key");
+            $this->assertStringNotContainsString("'", $beforeKey, "$warning warning");
+            $this->assertStringNotContainsString('"', $beforeKey, "$warning warning");
+        }
     }
 
     //endregion
@@ -219,7 +238,7 @@ class WarningsTest extends SmartArrayTestCase
 
         [, $output] = $this->captureOutput(fn() => $rows->groupBy('count'));
 
-        $expected = "\nWarning: groupBy(): 'count' doesn't exist\n"
+        $expected = "\nWarning: groupBy(): `count` doesn't exist\n"
             . "\n" . self::BRACES_HINT . "\n"
             . "Occurred in TEST_FILE:LINE in CLOSURE()\n"
             . "Reported in SRC_FILE:LINE in SmartArrayBase->warnIfMissing()\n"

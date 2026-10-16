@@ -68,7 +68,7 @@ class ProjectionTest extends SmartArrayTestCase
         [$result, $output] = $this->captureOutput(fn() => $sa->pluck('name'));
 
         $this->assertSame([], $result->toArray());
-        $this->assertStringContainsString("pluck(): 'name' doesn't exist", $output);
+        $this->assertStringContainsString("pluck(): `name` doesn't exist", $output);
     }
 
     #[DataProvider('modeProvider')]
@@ -192,7 +192,7 @@ class ProjectionTest extends SmartArrayTestCase
         $sa = $class::new([['name' => 'Amy', 'price' => 19.99]]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("column(): 'price' has float values, convert them to strings first");
+        $this->expectExceptionMessage("column(): `price` has float values, convert them to strings first");
 
         $sa->column('name', 'price');
     }
@@ -321,7 +321,7 @@ class ProjectionTest extends SmartArrayTestCase
         $floats = $class::new([['price' => 19.99, 'n' => 'a'], ['price' => 19.50, 'n' => 'b']]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("indexBy(): 'price' has float values, convert them to strings first");
+        $this->expectExceptionMessage("indexBy(): `price` has float values, convert them to strings first");
 
         $floats->indexBy('price');
     }
@@ -417,7 +417,7 @@ class ProjectionTest extends SmartArrayTestCase
         $floats = $class::new([['price' => 19.99], ['price' => 19.50]]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("groupBy(): 'price' has float values, convert them to strings first");
+        $this->expectExceptionMessage("groupBy(): `price` has float values, convert them to strings first");
 
         $floats->groupBy('price');
     }

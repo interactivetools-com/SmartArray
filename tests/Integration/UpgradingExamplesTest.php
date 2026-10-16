@@ -197,7 +197,7 @@ class UpgradingExamplesTest extends SmartArrayTestCase
     public function testFloatKeyValuesThrowWithTheDocumentedMessage(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("indexBy(): 'price' has float values, convert them to strings first");
+        $this->expectExceptionMessage("indexBy(): `price` has float values, convert them to strings first");
 
         SmartArray::new([['price' => 19.99], ['price' => 19.50]])->indexBy('price');
     }

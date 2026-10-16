@@ -102,3 +102,13 @@ in signatures, docblocks, the changelog, and tests.
   developer log), never through PHP's default error log. It also means
   `$onOffsetAccess = 'log'` is named for that handler, and on a site with no
   handler it is silent. Don't remove the `@` to make PHP log these.
+
+- **Bracket deprecation notices keep quotes around the key (2026-10-15).**
+  The notice prints code to copy, like `->{'my key'}`, and that code needs
+  its quotes. So a notice echoed inside a single-quoted attribute can end
+  the attribute, and the encoded key then becomes new attributes.
+  Accepted: it needs a key taken from the request, used with deprecated
+  bracket syntax, inline in a single-quoted attribute, with
+  `$onOffsetAccess` left at `'notify'` (`'log'` and `'throw'` don't echo).
+  Missing-key warnings have no such constraint, so they put no `'` or `"`
+  before the key and use backticks instead.

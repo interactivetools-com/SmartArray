@@ -198,7 +198,7 @@ class FilterUniqueSortTest extends SmartArrayTestCase
 
         $firstRowMissingField = $class::new([['name' => 'Amy'], ['age' => 30]]);
         [, $warned] = $this->captureOutput(fn() => $firstRowMissingField->sortBy('age'));
-        $this->assertStringContainsString("sortBy(): 'age' doesn't exist", $warned);
+        $this->assertStringContainsString("sortBy(): `age` doesn't exist", $warned);
     }
 
     #[DataProvider('modeProvider')]

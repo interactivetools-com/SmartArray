@@ -154,7 +154,7 @@ Separate rule for method ARGUMENTS: a field name passed to `where()`,
 `whereNot()`, `whereInList()`, `sortBy()`, `indexBy()`, `groupBy()`, or
 `column()` that doesn't exist in the first row warns from ANY nested
 collection, result set or not, with the format
-`funcName(): 'field' doesn't exist` (caller's file:line appended).
+``funcName(): `field` doesn't exist`` (caller's file:line appended).
 
 SmartNull behavior: `echo` → `""`; `value()` → null; `count()` → 0;
 `foreach` iterates zero times; `toArray()` → `[]`; `json_encode()` → null;

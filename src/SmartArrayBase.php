@@ -980,7 +980,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $key = $row[$field] ?? '';
             if (is_float($key)) {
                 $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
-                throw new InvalidArgumentException("indexBy(): '{$h($field)}' has float values, convert them to strings first");
+                throw new InvalidArgumentException("indexBy(): `{$h($field)}` has float values, convert them to strings first");
             }
             $values[$key] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
@@ -1035,7 +1035,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             $key = $row[$field] ?? '';
             if (is_float($key)) {
                 $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
-                throw new InvalidArgumentException("groupBy(): '{$h($field)}' has float values, convert them to strings first");
+                throw new InvalidArgumentException("groupBy(): `{$h($field)}` has float values, convert them to strings first");
             }
             $values[$key][] = $row; // PHP keys natively: bools as 1/0, numeric strings as ints
         }
@@ -1130,7 +1130,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
                 $key = $row[$indexKey] ?? '';
                 if (is_float($key)) {
                     $h = self::h(...); // SECURITY: field names are data - handlers often echo exception messages into pages
-                    throw new InvalidArgumentException("column(): '{$h($indexKey)}' has float values, convert them to strings first");
+                    throw new InvalidArgumentException("column(): `{$h($indexKey)}` has float values, convert them to strings first");
                 }
                 $values[$key] = $row[$columnKey]; // PHP keys natively: bools as 1/0, numeric strings as ints
             }
@@ -1283,7 +1283,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
         // get handler output
         $result = $loadHandler($this, $field);
         if ($result === false) {
-            throw new Error("Load handler doesn't support field '$field'\n" . self::occurredInFile());
+            throw new Error("Load handler doesn't support field `$field`\n" . self::occurredInFile());
         }
 
         // output error checking
@@ -1802,12 +1802,14 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
 
         // SECURITY: the key can be user input (e.g. ->{$_GET['sort']}) and the warning echoes
         // into the page, so encode it. The trigger_error() copy gets the same encoded key.
+        // No ' or " before the key: if the template is in the middle of a quoted attribute,
+        // a quote here ends it and the key text becomes new attributes. Backticks are safe.
         $keyDisplay       = self::h($key);
         $keyOrEmptyQuotes = $keyDisplay === "" ? "''" : $keyDisplay; // Show empty quotes for empty string keys
 
         $warning = $isOffset
             ? "$keyOrEmptyQuotes is undefined in {$caller['file']}:{$caller['line']}\n"
-            : "{$caller['function']}(): '$keyDisplay' doesn't exist\n";
+            : "{$caller['function']}(): `$keyDisplay` doesn't exist\n";
 
         // Catch if user tried to call a method in a double-quoted string without braces
         if (is_string($key) && method_exists($this, $key)) { // Catch cases such as "Nums: $users->pluck('num')->implode(',')->value();" which are missing braces
@@ -1965,7 +1967,7 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
             }
             if (array_key_exists($key, $data)) { // original keys were unique, so a repeat means substitution collapsed two keys
                 $h = self::h(...); // SECURITY: keys are data - handlers often echo exception messages into pages
-                throw new RuntimeException("jsonSerialize(): key '{$h($key)}' appears twice after malformed UTF-8 bytes were replaced with \u{FFFD}, which would silently drop a record. Fix the key encoding before calling json_encode().");
+                throw new RuntimeException("jsonSerialize(): key `{$h($key)}` appears twice after malformed UTF-8 bytes were replaced with \u{FFFD}, which would silently drop a record. Fix the key encoding before calling json_encode().");
             }
             $data[$key] = $value;
         }

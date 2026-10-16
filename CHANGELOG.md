@@ -22,7 +22,9 @@ Everything else is hardening and fixes.
 
 - **Warnings HTML-encode dynamic keys** - missing-key warnings and
   deprecation notices echoed keys like `$_GET['sort']` unencoded, a
-  reflected XSS vector
+  reflected XSS vector. Warnings and errors also wrap field names in
+  backticks instead of quotes, so a message echoed inside a quoted
+  attribute can't end it
 - **`json_encode()` survives malformed UTF-8 in keys** - bad bytes become
   � instead of the whole document returning false (values were already
   handled). If the substitution would make two keys identical, it throws

@@ -429,7 +429,7 @@ trait Deprecations
         $h          = self::h(...); // SECURITY: keys and values are data - handlers often echo exception and deprecation messages into pages
         foreach ($conditions as $key => $listValue) {
             if (is_int($key)) { // a list like where(['featured']) has no field names to match on
-                $hint = is_string($listValue) ? " Did you mean ->where('{$h($listValue)}') to match rows where '{$h($listValue)}' is non-empty?" : "";
+                $hint = is_string($listValue) ? " Did you mean ->where('{$h($listValue)}') to match rows where `{$h($listValue)}` is non-empty?" : "";
                 throw new InvalidArgumentException("where(): the array form takes ['field' => value] pairs, list given.$hint");
             }
         }

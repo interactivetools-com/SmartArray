@@ -303,7 +303,7 @@ class WhereTest extends SmartArrayTestCase
         // where(['featured']) is a half-migration of where('featured', ...): a list
         // has no field names, so the error names the form the caller meant
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("where(): the array form takes ['field' => value] pairs, list given. Did you mean ->where('featured') to match rows where 'featured' is non-empty?");
+        $this->expectExceptionMessage("where(): the array form takes ['field' => value] pairs, list given. Did you mean ->where('featured') to match rows where `featured` is non-empty?");
 
         $class::new([['featured' => 1]])->where(['featured']);
     }
@@ -606,7 +606,7 @@ class WhereTest extends SmartArrayTestCase
         $firstRowMissing = $class::new([['other' => 1], ['f' => 1]]);
 
         [, $whereOutput] = $this->captureOutput(fn() => $firstRowMissing->where('f', 1));
-        $this->assertStringContainsString("where(): 'f' doesn't exist", $whereOutput);
+        $this->assertStringContainsString("where(): `f` doesn't exist", $whereOutput);
 
         $firstRowHasField = $class::new([['f' => 1], ['other' => 1]]);
         [, $silent] = $this->captureOutput(fn() => $firstRowHasField->where('f', 1));

@@ -4,7 +4,7 @@
 > per version - tagged releases roll up every change since the previous tag.
 > Versions bundled with CMS Builder are marked on their sections.
 
-## [3.0.0] - [UNRELEASED]
+## [3.0.0] - 2026-10-16
 
 > **Bundled with CMS Builder v3.85**
 

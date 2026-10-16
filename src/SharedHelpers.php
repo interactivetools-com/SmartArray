@@ -116,11 +116,12 @@ trait SharedHelpers
      *
      * Every error, warning, or exception message encodes the values it interpolates
      * (keys, identifiers, method names - anything that isn't safe by construction):
-     * handlers often echo messages into pages. Assign it to a variable to encode
-     * inline in interpolated strings:
+     * handlers often echo messages into pages. Wrap the value in backticks, not
+     * quotes, so a message echoed inside a quoted attribute can't end it. Assign
+     * h() to a variable to encode inline in interpolated strings:
      *
      *     $h = self::h(...);
-     *     throw new RuntimeException("Unknown key '{$h($key)}', expected a column name");
+     *     throw new RuntimeException("Unknown key `{$h($key)}`, expected a column name");
      */
     protected static function h(string|int|float|null $input): string
     {

@@ -124,3 +124,13 @@ in signatures, docblocks, the changelog, and tests.
   large string, but only when a developer calls `debug()` on data where
   an attacker picks the keys. It's a developer tool, so we keep the simple
   alignment rather than capping the width.
+
+- **`setlocale()`: Turkish and Azeri locales aren't supported (2026-10-16).**
+  Under a Turkish or Azeri locale set with `setlocale()` (`LC_ALL` or
+  `LC_CTYPE`), PHP's regular expressions stop matching `I` to `i`, and on
+  PHP 8.1 so do `strtolower()` and `stripos()`. Code that ignores case can
+  then miss a capital I. No other locale changes how ASCII is read (checked
+  against all 529 glibc locales), and Windows builds aren't affected. A site
+  that wants Turkish month and day names can set `LC_TIME` alone, which
+  changes none of this. Here it only touches `strtolower()`-style calls on
+  PHP 8.1; there are no `/i` patterns.

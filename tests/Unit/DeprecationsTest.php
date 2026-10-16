@@ -306,6 +306,10 @@ class DeprecationsTest extends SmartArrayTestCase
         $sa = $class::new([60, 62]);
 
         $formats = ['%c', '%1$c', '%2$c', "%'x5c", '%-5c', '%lc', '%1$lc', '%5.2lc', "%'\n3c", '%*c', '%1$*c', '%.c', '%.*c'];
+
+        // a long run of ' padding flags before a %c: the regex has to read each ' one way, or PCRE
+        // gives up on this format and the %c gets through
+        $formats[] = '%' . str_repeat("'", 28) . 'sx %1$c';
         foreach ($formats as $format) {
             try {
                 $sa->sprintf($format);

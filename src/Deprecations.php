@@ -207,7 +207,9 @@ trait Deprecations
         // recreating markup after HTML encoding. Every other conversion emits only
         // digits/letters or the substituted string.
         $scan = str_replace('%%', '', $format); // %% is literal text, not a directive
-        if (preg_match('/%(?:\'.|[^a-z])*l?c/s', $scan)) { // matches variations of %c: %lc, %1$c, %*c, %.c, %'x5c
+        // Matches variations of %c: %lc, %1$c, %*c, %.c, %'x5c. A ' only matches as a padding pair, so
+        // there's one way to read any format, and a false (PCRE gave up) refuses like a match does
+        if (preg_match('/%(?:\'.|[^a-z\'%])*+l?c/s', $scan) !== 0) {
             throw new InvalidArgumentException("sprintf(): %c is not supported - it converts numbers to raw characters after HTML encoding");
         }
 

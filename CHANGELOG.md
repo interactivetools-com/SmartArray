@@ -19,7 +19,7 @@ Everything else is security and bug fixes.
 
 ### Security
 
-- **Warnings and debug output can't inject HTML** - missing-key warnings
+- **Warnings and debug output encode keys** - missing-key warnings
   and deprecation notices printed keys like `$_GET['sort']` unencoded, so a
   crafted link could add script to a page. `debug()` had a similar gap with
   stored values

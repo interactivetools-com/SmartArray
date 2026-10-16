@@ -203,11 +203,11 @@ trait Deprecations
         // Convert {value} and {key} aliases to sprintf positional format
         $format = str_replace(['{value}', '{key}'], ['%1$s', '%2$s'], $format);
 
-        // %c maps attacker-chosen numbers to raw characters (60 -> '<'), recreating
-        // markup after HTML encoding. Every other conversion emits only digits/letters
-        // or the substituted string, so only %c is blocked.
+        // Block %c: it maps attacker-chosen numbers to raw characters (60 -> '<'),
+        // recreating markup after HTML encoding. Every other conversion emits only
+        // digits/letters or the substituted string.
         $scan = str_replace('%%', '', $format); // %% is literal text, not a directive
-        if (preg_match('/%(?:\d+\$)?(?:\'.|[-+ 0])*\d*(?:\.\d+)?c/', $scan)) {
+        if (preg_match('/%(?:\'.|[^a-z])*l?c/s', $scan)) { // matches variations of %c: %lc, %1$c, %*c, %.c, %'x5c
             throw new InvalidArgumentException("sprintf(): %c is not supported - it converts numbers to raw characters after HTML encoding");
         }
 

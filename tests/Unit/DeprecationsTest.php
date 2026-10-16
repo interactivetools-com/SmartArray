@@ -305,7 +305,8 @@ class DeprecationsTest extends SmartArrayTestCase
         // the one directive where the data picks the output character
         $sa = $class::new([60, 62]);
 
-        foreach (['%c', '%1$c', '%2$c', "%'x5c", '%-5c'] as $format) {
+        $formats = ['%c', '%1$c', '%2$c', "%'x5c", '%-5c', '%lc', '%1$lc', '%5.2lc', "%'\n3c", '%*c', '%1$*c', '%.c', '%.*c'];
+        foreach ($formats as $format) {
             try {
                 $sa->sprintf($format);
                 $this->fail("Expected InvalidArgumentException for format $format");
@@ -316,6 +317,9 @@ class DeprecationsTest extends SmartArrayTestCase
 
         // %%c is a literal "%c", not a directive
         $this->assertSame(['%c', '%c'], $sa->sprintf('%%c')->toArray());
+
+        // a letter pad character isn't mistaken for %c
+        $this->assertSame(['xxx60', 'xxx62'], $sa->sprintf("%'x5s")->toArray());
     }
 
     #[DataProvider('modeProvider')]

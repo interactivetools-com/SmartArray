@@ -68,8 +68,11 @@ Use prior findings as leads, not proof against the current checkout. Verify
 the current implementation and consolidate repeated manifestations of one
 root cause. Separate known documented risks, hardening suggestions, and
 confirmed current defects. Documentation is counterevidence, not an exemption:
-report contradictions, unsafe recommended usage, and new attack paths with
-concrete inputs, source-to-sink evidence, prerequisites, and validation limits.
+report contradictions, unsafe recommended usage, and new paths where
+untrusted input reaches output unencoded, with an example input value,
+source-to-sink evidence, prerequisites, and validation limits. A plain marker
+like <b>x</b> showing up unencoded is enough proof; don't build script
+payloads.
 
 Prioritize, in order:
 
@@ -79,7 +82,7 @@ Prioritize, in order:
 2. Unencoded keys or raw element values reaching HTML output through the row
    and layout helpers.
 3. Type juggling and offset handling on mixed integer and string keys.
-4. Unbounded work on attacker-controlled input: loops or recursion whose
+4. Unbounded work on untrusted input: loops or recursion whose
    depth depends on input structure.
 PROMPT
 

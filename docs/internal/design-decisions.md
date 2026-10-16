@@ -112,3 +112,10 @@ in signatures, docblocks, the changelog, and tests.
   `$onOffsetAccess` left at `'notify'` (`'log'` and `'throw'` don't echo).
   Missing-key warnings have no such constraint, so they put no `'` or `"`
   before the key and use backticks instead.
+
+- **`debug()` pads every key to the longest key's width (2026-10-15).**
+  Keys line up in one column, even when one long key pushes the rest far
+  right. A huge key across many rows can make `debug()` build a very
+  large string, but only when a developer calls `debug()` on data where
+  an attacker picks the keys. It's a developer tool, so we keep the simple
+  alignment rather than capping the width.

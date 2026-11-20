@@ -578,7 +578,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * - SORT_NUMERIC       - compare as numbers
      * - SORT_STRING        - compare as strings
      * - SORT_NATURAL       - natural order for embedded numbers: "item10" sorts after "item9"
-     * - SORT_LOCALE_STRING - compare as strings using the current locale
      * - SORT_FLAG_CASE     - case-insensitive, combined with a string flag: SORT_NATURAL|SORT_FLAG_CASE
      * - SORT_ASC/SORT_DESC - throws: direction constants, not comparison flags
      */
@@ -609,7 +608,6 @@ abstract class SmartArrayBase extends stdClass implements SmartBase, ArrayAccess
      * - SORT_NUMERIC       - compare as numbers
      * - SORT_STRING        - compare as strings
      * - SORT_NATURAL       - natural order for embedded numbers: "item10" sorts after "item9"
-     * - SORT_LOCALE_STRING - compare as strings using the current locale
      * - SORT_FLAG_CASE     - case-insensitive, combined with a string flag: SORT_NATURAL|SORT_FLAG_CASE
      * - SORT_ASC/SORT_DESC - throws: direction constants, not comparison flags
      */

@@ -6,7 +6,7 @@
 
 ## [3.0.0] - 2026-10-16
 
-> **Bundled with CMS Builder v3.85**
+> **Bundled with CMS Builder v4.0.0**
 
 The headlines: building arrays is about 4x faster, and method
 names now match JavaScript and PHP conventions (old names keep working).

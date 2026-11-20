@@ -21,7 +21,7 @@ Full lists of what changed per release: [CHANGELOG.md](CHANGELOG.md).
 ## v3.0.0
 
 *Follow this section when upgrading from SmartArray before v3.0.0
-(or CMS Builder before 3.85). Requires PHP 8.1+ and SmartString 3.0+;
+(or CMS Builder before 4.0.0). Requires PHP 8.1+ and SmartString 3.0+;
 Composer installs it automatically unless your composer.json pins
 `itools/smartstring` lower.*
 
@@ -194,7 +194,7 @@ IDEs like PHPStorm show them in strikethrough with a one-click rename.
 ## v2.7.0
 
 *Follow this section when upgrading from SmartArray before v2.7.0
-(or CMS Builder before 3.85).*
+(or CMS Builder before 4.0.0).*
 
 ### Parameter renames (named arguments only)
 
